@@ -1,0 +1,2256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIRA — Asisten Keuangan AI via WhatsApp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+/* ─── DESIGN TOKENS ─── */
+:root {
+  --blue: #0570DE;
+  --blue-dark: #0555C0;
+  --blue-deeper: #003DAA;
+  --blue-soft: #EBF3FF;
+  --blue-mid: #3B82F6;
+  --ink-900: #0A2540;
+  --ink-800: #1a3558;
+  --ink-700: #2d4a6e;
+  --ink-600: #425466;
+  --ink-500: #697386;
+  --ink-400: #8898aa;
+  --ink-300: #b0bec7;
+  --ink-200: #d0d9e4;
+  --ink-100: #E3E8EE;
+  --ink-50: #F6F9FC;
+  --white: #FFFFFF;
+  --green: #00D4AA;
+  --green-soft: #D1FAF2;
+  --red: #DF1B41;
+  --amber: #F59E0B;
+  --shadow-xs: 0 1px 3px rgba(10,37,64,.05), 0 1px 2px rgba(10,37,64,.03);
+  --shadow-sm: 0 4px 12px rgba(10,37,64,.07), 0 1px 4px rgba(10,37,64,.04);
+  --shadow-md: 0 8px 24px rgba(10,37,64,.09), 0 2px 8px rgba(10,37,64,.04);
+  --shadow-lg: 0 20px 48px rgba(10,37,64,.12), 0 4px 16px rgba(10,37,64,.06);
+  --shadow-xl: 0 32px 80px rgba(10,37,64,.14), 0 8px 24px rgba(10,37,64,.07);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: sohne-var, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, "Helvetica Neue", sans-serif;
+  font-size: 16px; line-height: 1.6;
+  color: var(--ink-600); background: var(--white);
+  overflow-x: hidden; -webkit-font-smoothing: antialiased;
+}
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+button { font-family: inherit; cursor: pointer; border: none; }
+
+/* ─── LOADER ─── */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--white); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .5s ease .1s, visibility .5s ease .1s;
+}
+#loader.hidden { opacity: 0; visibility: hidden; }
+.loader-wordmark {
+  font-size: 1.6rem; font-weight: 800; color: var(--ink-900);
+  letter-spacing: -0.04em; display: flex; align-items: center; gap: 4px;
+}
+.loader-wordmark span { color: var(--blue); }
+.loader-bar {
+  width: 100px; height: 2px;
+  background: var(--ink-100); border-radius: 2px;
+  overflow: hidden; margin-top: 14px;
+}
+.loader-bar-fill {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--blue) 0%, var(--blue-mid) 100%);
+  border-radius: 2px; animation: loadFill 1.2s ease forwards;
+}
+@keyframes loadFill { to { width: 100%; } }
+#page { opacity: 0; transition: opacity .4s ease; }
+#page.visible { opacity: 1; }
+
+/* ─── REVEAL ─── */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+.d1 { transition-delay: .06s; }
+.d2 { transition-delay: .12s; }
+.d3 { transition-delay: .18s; }
+.d4 { transition-delay: .24s; }
+
+/* ─── NAV ─── */
+nav {
+  position: fixed; inset: 0 0 auto; z-index: 200;
+  height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 max(24px, 4%);
+  background: transparent;
+  transition: background .3s ease, backdrop-filter .3s ease, border-color .3s ease;
+  border-bottom: 1px solid transparent;
+}
+nav.scrolled {
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.nav-logo {
+  font-size: 1.2rem; font-weight: 800;
+  color: var(--ink-900); letter-spacing: -0.04em; flex-shrink: 0;
+  min-width: 80px;
+}
+.nav-links {
+  display: flex; gap: 0;
+  position: absolute; left: 50%; transform: translateX(-50%);
+}
+.nav-links a {
+  font-size: .82rem; font-weight: 500; color: var(--ink-600);
+  padding: 6px 12px; border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.nav-links a:hover { color: var(--ink-900); background: rgba(0,0,0,.04); }
+.nav-right { display: flex; align-items: center; gap: 4px; min-width: 80px; justify-content: flex-end; }
+.nav-signin {
+  font-size: .82rem; font-weight: 500; color: var(--ink-600);
+  padding: 6px 14px; border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.nav-signin:hover { color: var(--ink-900); background: rgba(0,0,0,.04); }
+.nav-cta {
+  background: var(--blue); color: #fff;
+  font-size: .82rem; font-weight: 600;
+  padding: 8px 18px; border-radius: 6px;
+  transition: background .15s, box-shadow .15s;
+}
+.nav-cta:hover { background: var(--blue-dark); box-shadow: 0 4px 12px rgba(5,112,222,.4); }
+@media(max-width:768px) { .nav-links { display: none; } .nav-logo { min-width: unset; } }
+
+/* ─── BTN SYSTEM ─── */
+.btn-stripe {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--blue); color: #fff;
+  font-size: .9rem; font-weight: 600;
+  padding: 10px 22px; border-radius: 6px;
+  transition: background .15s, box-shadow .15s, transform .1s;
+  white-space: nowrap;
+}
+.btn-stripe:hover { background: var(--blue-dark); box-shadow: 0 4px 14px rgba(5,112,222,.45); transform: translateY(-1px); }
+.btn-stripe:active { transform: translateY(0); }
+.btn-stripe-lg {
+  font-size: .95rem; padding: 12px 26px; border-radius: 6px;
+}
+.btn-stripe-outline {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: transparent; color: var(--ink-700);
+  font-size: .9rem; font-weight: 500;
+  padding: 10px 22px; border-radius: 6px;
+  border: 1px solid var(--ink-200);
+  transition: border-color .15s, background .15s;
+  white-space: nowrap;
+}
+.btn-stripe-outline:hover { border-color: var(--ink-400); background: var(--ink-50); }
+.btn-stripe-dark {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.15); color: #fff;
+  font-size: .9rem; font-weight: 600;
+  padding: 10px 22px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.25);
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-stripe-dark:hover { background: rgba(255,255,255,.22); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ─── HERO ─── */
+.hero {
+  min-height: 100vh;
+  background: transparent;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 80px max(24px,4%) 60px;
+  position: relative; overflow: visible;
+  gap: 40px;
+  max-width: 1200px; margin: 0 auto; width: 100%;
+}
+/* The Stripe "wave" gradient wrapper - full page, bleeds behind nav */
+.hero-wrap {
+  background: var(--white);
+  position: relative; overflow: hidden;
+  padding-top: 0;
+}
+/* No grey tint - let the gradient be vivid */
+.hero-wrap::before { display: none; }
+
+/* Animated Stripe vivid ribbon - covers full hero width, bleeds into nav area */
+.stripe-wave {
+  position: absolute;
+  top: -120px; right: -60px;
+  width: 72%; height: 130%;
+  pointer-events: none;
+  z-index: 0;
+}
+.stripe-wave svg {
+  width: 100%; height: 100%;
+  animation: ribbonFloat 14s ease-in-out infinite;
+}
+@keyframes ribbonFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  20% { transform: translateY(-18px) rotate(1deg) scale(1.015); }
+  45% { transform: translateY(-32px) rotate(-1.2deg) scale(1.02); }
+  70% { transform: translateY(-12px) rotate(1.8deg) scale(1.01); }
+}
+
+.hero-left {
+  position: relative; z-index: 1;
+  padding-top: 20px;
+}
+.hero-supertitle {
+  font-size: .75rem; font-weight: 600; color: var(--ink-400);
+  letter-spacing: .5px; margin-bottom: 18px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-supertitle::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); display: block;
+  box-shadow: 0 0 0 3px rgba(0,212,170,.2);
+  animation: dotPulse 2.5s infinite;
+}
+@keyframes dotPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(0,212,170,.2); } 50% { box-shadow: 0 0 0 7px rgba(0,212,170,.07); } }
+
+.hero h1 {
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  line-height: 1.08; letter-spacing: -0.02em;
+  color: var(--ink-900); margin-bottom: 20px;
+  font-weight: 600;
+}
+.hero h1 em {
+  font-weight: 800;
+  font-size: 1.1em; color: var(--ink-900);
+}
+#rotating-hl {
+  color: var(--blue);
+  font-weight: 600;
+  display: inline-block;
+}
+.hero-sub {
+  font-size: 1rem; color: var(--ink-600); line-height: 1.7;
+  max-width: 430px; margin-bottom: 28px;
+}
+.hero-cta-row {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 16px;
+}
+.hero-trust { font-size: .78rem; color: var(--ink-400); }
+
+.hero-right {
+  position: relative; z-index: 2;
+}
+/* Phone mockup styled like Stripe's product screenshots */
+.hero-phone {
+  background: var(--white);
+  border: 1px solid var(--ink-100);
+  border-radius: 18px;
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  max-width: 360px; margin-left: auto;
+}
+.hero-phone-chrome {
+  background: var(--ink-50); border-bottom: 1px solid var(--ink-100);
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+}
+.phone-dots { display: flex; gap: 5px; }
+.phone-dots span { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.phone-dots span:nth-child(1) { background: #ff5f57; }
+.phone-dots span:nth-child(2) { background: #febc2e; }
+.phone-dots span:nth-child(3) { background: #28c840; }
+.phone-url { font-size: .7rem; color: var(--ink-400); flex: 1; text-align: center; }
+.hero-phone-body { padding: 20px; }
+.phone-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--ink-100); }
+.phone-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .8rem; color: #fff; flex-shrink: 0; }
+.phone-name { font-size: .85rem; font-weight: 700; color: var(--ink-900); }
+.phone-status { font-size: .7rem; color: var(--green); font-weight: 500; }
+.bubble { padding: 9px 13px; border-radius: 13px; font-size: .82rem; margin-bottom: 9px; max-width: 82%; line-height: 1.5; }
+.bubble.user { background: var(--blue); color: #fff; margin-left: auto; border-bottom-right-radius: 3px; }
+.bubble.bot { background: var(--ink-50); border: 1px solid var(--ink-100); color: var(--ink-700); border-bottom-left-radius: 3px; }
+.bubble.bot strong { color: var(--ink-900); }
+.bubble.bot .g { color: var(--green); font-weight: 700; }
+
+@media(max-width:768px) {
+  .hero { grid-template-columns: 1fr; padding-top: 100px; }
+  .hero-right { display: none; }
+}
+
+/* ─── LOGOS BAND ─── */
+.logos-band {
+  border-top: 1px solid var(--ink-100);
+  border-bottom: 1px solid var(--ink-100);
+  background: var(--white);
+  padding: 24px max(24px,4%);
+  display: flex; align-items: center; gap: 40px; flex-wrap: wrap; justify-content: center;
+}
+.logos-label { font-size: .72rem; font-weight: 600; color: var(--ink-400); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.logos-row { display: flex; gap: 36px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.logo-item { font-size: .82rem; font-weight: 700; color: var(--ink-300); letter-spacing: -0.01em; transition: color .2s; }
+.logo-item:hover { color: var(--ink-500); }
+
+/* ─── SECTION BASE ─── */
+.s { padding: 96px max(24px,4%); }
+.s-sm { padding: 72px max(24px,4%); }
+.eyebrow {
+  font-size: .75rem; font-weight: 600; color: var(--ink-400);
+  letter-spacing: .5px; text-transform: uppercase; margin-bottom: 12px;
+  display: block;
+}
+.hl {
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  font-weight: 700; letter-spacing: -0.03em;
+  color: var(--ink-900); line-height: 1.15;
+}
+.hl em {  font-size: 1em; font-weight: 800; }
+.hl-accent { color: var(--blue); font-weight: inherit; }
+.backbone-hl .hl-accent { color: rgba(255,255,255,.7); }
+.body-text { font-size: .975rem; color: var(--ink-600); line-height: 1.7; }
+.tc { text-align: center; }
+.tc .body-text { max-width: 500px; margin-left: auto; margin-right: auto; margin-top: 14px; }
+.max-w { max-width: 1200px; margin-left: auto; margin-right: auto; }
+
+/* ─── BENTO GRID ─── */
+.bento-section { background: var(--ink-50); }
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto auto;
+  gap: 20px; margin-top: 48px;
+}
+.bento-card {
+  background: var(--white);
+  border-radius: 14px;
+  border: 1px solid var(--ink-100);
+  overflow: hidden;
+  padding: 28px 28px 0;
+  transition: box-shadow .2s;
+  display: flex; flex-direction: column;
+}
+.bento-card:hover { box-shadow: var(--shadow-md); }
+.bento-card-lg { grid-column: span 5; }
+.bento-card-md { grid-column: span 4; }
+.bento-card-sm { grid-column: span 3; }
+.bento-card-wide { grid-column: span 7; }
+.bento-card-narrow { grid-column: span 5; }
+@media(max-width:1024px) { .bento-card-lg,.bento-card-md,.bento-card-sm,.bento-card-wide,.bento-card-narrow { grid-column: span 6; } }
+@media(max-width:640px) { .bento-card-lg,.bento-card-md,.bento-card-sm,.bento-card-wide,.bento-card-narrow { grid-column: span 12; } }
+
+.bento-tag { font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+.bento-title { font-size: 1.05rem; font-weight: 700; color: var(--ink-900); line-height: 1.3; margin-bottom: 8px; }
+.bento-body { font-size: .85rem; color: var(--ink-600); line-height: 1.65; flex: 1; }
+.bento-visual {
+  height: 140px; margin: 20px -28px 0;
+  border-top: 1px solid var(--ink-100);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+}
+/* Colorful gradient visuals per bento card */
+.bv-blue { background: linear-gradient(135deg, #EBF3FF 0%, #C7D2FE 100%); }
+.bv-green { background: linear-gradient(135deg, #D1FAF2 0%, #99F6E4 100%); }
+.bv-orange { background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); }
+.bv-pink { background: linear-gradient(135deg, #FCE7F3 0%, #F9A8D4 100%); }
+.bv-purple { background: linear-gradient(135deg, #EDE9FE 0%, #C4B5FD 100%); }
+.bv-dark { background: linear-gradient(135deg, #1E293B 0%, #0A2540 100%); }
+.bv-chat {
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 16px;
+  width: 100%;
+}
+.bv-chat-bubble { padding: 7px 11px; border-radius: 10px; font-size: .72rem; max-width: 80%; line-height: 1.4; }
+.bv-chat-bubble.u { background: var(--blue); color: #fff; margin-left: auto; border-bottom-right-radius: 2px; }
+.bv-chat-bubble.b { background: var(--white); border: 1px solid var(--ink-100); color: var(--ink-700); border-bottom-left-radius: 2px; }
+.bv-chart { display: flex; align-items: flex-end; gap: 3px; height: 80px; padding: 8px 16px 0; }
+.bv-bar { flex: 1; border-radius: 3px 3px 0 0; }
+.bv-excel { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; width: 100%; }
+.bv-excel-row { display: flex; gap: 6px; }
+.bv-excel-cell { flex: 1; height: 18px; border-radius: 3px; background: var(--white); border: 1px solid var(--ink-100); font-size: .6rem; color: var(--ink-600); display: flex; align-items: center; padding: 0 6px; }
+.bv-excel-cell.header { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); font-weight: 700; }
+.bv-icons { display: flex; gap: 10px; padding: 0 16px; flex-wrap: wrap; justify-content: center; }
+.bv-icon-chip { padding: 5px 11px; background: var(--white); border-radius: 999px; font-size: .7rem; font-weight: 600; color: var(--ink-600); border: 1px solid var(--ink-100); }
+
+/* ─── STEPS SECTION ─── */
+.steps-section { background: var(--white); }
+.steps-grid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 40px; margin-top: 52px; position: relative;
+}
+.steps-grid::before {
+  content: ''; position: absolute;
+  top: 18px; left: 9%; right: 9%;
+  height: 1px; background: linear-gradient(90deg, var(--blue), var(--blue-mid), transparent);
+  opacity: .25;
+}
+@media(max-width:880px) { .steps-grid { grid-template-columns: 1fr 1fr; } .steps-grid::before { display: none; } }
+@media(max-width:500px) { .steps-grid { grid-template-columns: 1fr; } }
+.step-item { }
+.step-n {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  font-size: .82rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px; box-shadow: 0 4px 12px rgba(5,112,222,.3);
+}
+.step-item h3 { font-size: .9rem; font-weight: 700; color: var(--ink-900); margin-bottom: 7px; letter-spacing: -0.01em; }
+.step-item p { font-size: .85rem; color: var(--ink-500); line-height: 1.6; }
+
+/* ─── BACKBONE / STATS BAND ─── */
+.backbone {
+  background: var(--ink-900);
+  position: relative; overflow: hidden;
+  padding: 80px max(24px,4%);
+}
+.backbone::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 80% at 20% 50%, rgba(5,112,222,.25) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 60% at 80% 40%, rgba(5,112,222,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+/* Stripe-style concentric lines */
+.backbone-lines {
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent, transparent 40px,
+    rgba(255,255,255,.015) 40px, rgba(255,255,255,.015) 41px
+  ),
+  repeating-linear-gradient(
+    90deg,
+    transparent, transparent 40px,
+    rgba(255,255,255,.015) 40px, rgba(255,255,255,.015) 41px
+  );
+  pointer-events: none;
+}
+.backbone-inner {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 60px; align-items: center;
+  max-width: 1200px; margin: 0 auto;
+}
+@media(max-width:768px) { .backbone-inner { grid-template-columns: 1fr; gap: 40px; } }
+.backbone-hl {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 700; color: #fff;
+  letter-spacing: -0.04em; line-height: 1.12;
+}
+.backbone-hl em {  font-size: 1.1em; color: rgba(255,255,255,.85); }
+.backbone-sub { font-size: .95rem; color: rgba(255,255,255,.55); margin-top: 14px; line-height: 1.7; max-width: 360px; }
+.backbone-cta { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.stat-item { }
+.stat-n {
+  font-size: 3rem; font-weight: 800; color: #fff;
+  letter-spacing: -0.05em; line-height: 1;
+}
+.stat-n .accent { color: var(--blue-mid); }
+.stat-lbl { font-size: .8rem; color: rgba(255,255,255,.45); margin-top: 8px; line-height: 1.5; }
+
+/* ─── TESTIMONIALS ─── */
+.testi-section { background: var(--ink-50); }
+.testi-section .section-inner { max-width: 1200px; margin: 0 auto; }
+.marquee-outer { position: relative; overflow: hidden; margin-top: 48px; }
+.mf-l,.mf-r { position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2; pointer-events: none; }
+.mf-l { left: 0; background: linear-gradient(to right, var(--ink-50), transparent); }
+.mf-r { right: 0; background: linear-gradient(to left, var(--ink-50), transparent); }
+.marquee-track { display: flex; gap: 18px; width: max-content; animation: marquee 50s linear infinite; }
+.marquee-track:hover { animation-play-state: paused; }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.testi-card {
+  background: var(--white); border: 1px solid var(--ink-100);
+  border-radius: 12px; padding: 22px 24px; width: 290px; flex-shrink: 0;
+  transition: box-shadow .2s, transform .2s;
+}
+.testi-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.testi-stars { color: var(--amber); font-size: .78rem; letter-spacing: 2px; margin-bottom: 10px; }
+.testi-text { font-size: .85rem; color: var(--ink-600); line-height: 1.7; margin-bottom: 16px; }
+.testi-who { display: flex; gap: 10px; align-items: center; }
+.testi-av { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .76rem; color: #fff; flex-shrink: 0; }
+.testi-nm { font-size: .82rem; font-weight: 700; color: var(--ink-900); }
+.testi-rl { font-size: .72rem; color: var(--ink-400); }
+
+/* ─── COMPARE ─── */
+.compare-section { background: var(--white); }
+.compare-wrap {
+  max-width: 700px; margin: 48px auto 0;
+  border: 1px solid var(--ink-100); border-radius: 14px;
+  overflow: hidden; box-shadow: var(--shadow-xs);
+}
+.compare-head {
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+  background: var(--blue-soft); padding: 13px 22px;
+  font-size: .78rem; font-weight: 700; color: var(--ink-500);
+}
+.compare-head .col-m { color: var(--blue); }
+.compare-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+  padding: 12px 22px; border-top: 1px solid var(--ink-100);
+  font-size: .875rem; align-items: center;
+}
+.compare-row:nth-child(even) { background: var(--ink-50); }
+.cyes { color: var(--green); text-align: center; }
+.cno { color: var(--ink-200); text-align: center; }
+
+/* ─── FAQ ─── */
+.faq-section { background: var(--ink-50); }
+.faq-wrap { max-width: 720px; margin: 48px auto 0; }
+.faq-item { border-bottom: 1px solid var(--ink-100); }
+.faq-q {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 18px 0; cursor: pointer; gap: 16px;
+  font-size: .9rem; font-weight: 600; color: var(--ink-900);
+  transition: color .15s; user-select: none;
+}
+.faq-q:hover { color: var(--blue); }
+.faq-ico {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--ink-100); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .72rem; color: var(--ink-500);
+  transition: background .2s, transform .28s;
+}
+.faq-item.open .faq-ico { transform: rotate(45deg); background: var(--blue-soft); color: var(--blue); }
+.faq-a {
+  max-height: 0; overflow: hidden;
+  font-size: .875rem; color: var(--ink-600); line-height: 1.75;
+  transition: max-height .35s ease, padding .2s;
+}
+.faq-item.open .faq-a { max-height: 500px; padding-bottom: 20px; }
+.faq-a strong { color: var(--ink-900); }
+.faq-a ul { margin: 8px 0 0 16px; list-style: disc; }
+.faq-a ul li { margin-bottom: 4px; }
+
+/* ─── DASHBOARD SECTION ─── */
+.dashboard-section { background: var(--white); }
+.db-layout {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 64px; align-items: center; margin-top: 52px;
+}
+@media(max-width:900px) { .db-layout { grid-template-columns: 1fr; } }
+.db-copy h2 { font-size: clamp(1.6rem,2.8vw,2.2rem); margin-bottom: 14px; letter-spacing: -0.03em; }
+.db-copy p { font-size: .95rem; color: var(--ink-600); line-height: 1.7; margin-bottom: 22px; }
+.check-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+.check-item { display: flex; gap: 11px; align-items: flex-start; font-size: .875rem; color: var(--ink-700); line-height: 1.5; }
+.check-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--green-soft); color: var(--green); display: flex; align-items: center; justify-content: center; font-size: .62rem; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.db-frame {
+  border-radius: 14px; overflow: hidden;
+  box-shadow: var(--shadow-xl); border: 1px solid var(--ink-100);
+}
+.db-chrome { background: var(--ink-50); border-bottom: 1px solid var(--ink-100); padding: 9px 14px; display: flex; align-items: center; gap: 10px; }
+.db-dots { display: flex; gap: 4px; }
+.db-dots span { width: 9px; height: 9px; border-radius: 50%; }
+.db-dots span:nth-child(1) { background: #ff5f57; }
+.db-dots span:nth-child(2) { background: #febc2e; }
+.db-dots span:nth-child(3) { background: #28c840; }
+.db-url { font-size: .68rem; color: var(--ink-400); flex: 1; text-align: center; }
+.db-body { display: flex; background: var(--ink-50); min-height: 340px; }
+.db-sidebar { width: 148px; background: var(--white); border-right: 1px solid var(--ink-100); display: flex; flex-direction: column; flex-shrink: 0; }
+.db-logo { font-size: .9rem; font-weight: 800; color: var(--ink-900); letter-spacing: -0.04em; padding: 14px 12px 10px; border-bottom: 1px solid var(--ink-50); }
+.db-logo span { color: var(--blue); }
+.db-nav { flex: 1; padding: 6px 5px; display: flex; flex-direction: column; gap: 1px; }
+.db-ni { padding: 7px 9px; border-radius: 6px; font-size: .7rem; color: var(--ink-500); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.db-ni.a { background: var(--blue-soft); color: var(--blue); font-weight: 700; }
+.db-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.db-topbar { padding: 9px 12px; border-bottom: 1px solid var(--ink-100); background: var(--white); display: flex; align-items: center; gap: 6px; }
+.db-ptitle { font-size: .76rem; font-weight: 700; color: var(--ink-900); flex: 1; }
+.db-pill { padding: 3px 7px; border-radius: 4px; border: 1px solid var(--ink-100); font-size: .62rem; font-weight: 600; color: var(--ink-400); background: var(--white); }
+.db-pill.a { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.db-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 7px; padding: 9px 10px; }
+.db-stat { background: var(--white); border: 1px solid var(--ink-100); border-radius: 9px; padding: 9px; }
+.db-stat-ico { font-size: .82rem; margin-bottom: 5px; }
+.db-stat-lbl { font-size: .58rem; color: var(--ink-400); margin-bottom: 2px; }
+.db-stat-v { font-size: .78rem; font-weight: 800; line-height: 1; }
+.db-row { display: flex; gap: 7px; padding: 0 10px 10px; flex: 1; }
+.db-chart-c, .db-txn-c { background: var(--white); border: 1px solid var(--ink-100); border-radius: 9px; padding: 9px; }
+.db-chart-c { flex: 3; min-width: 0; }
+.db-txn-c { flex: 2; min-width: 0; }
+.db-card-lbl { font-size: .6rem; font-weight: 700; color: var(--ink-400); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 7px; }
+.db-bars { display: flex; align-items: flex-end; gap: 2px; height: 56px; }
+.db-bar { flex: 1; border-radius: 2px 2px 0 0; }
+.db-tr { display: flex; align-items: center; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--ink-50); }
+.db-tr:last-child { border-bottom: none; }
+.db-tr-icon { font-size: .78rem; }
+.db-tr-info { flex: 1; min-width: 0; }
+.db-tr-nm { font-size: .62rem; font-weight: 600; color: var(--ink-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.db-tr-mc { font-size: .56rem; color: var(--ink-400); }
+.db-tr-amt { font-size: .62rem; font-weight: 700; white-space: nowrap; }
+
+/* ─── CTA ─── */
+.cta-section {
+  background: var(--ink-900);
+  padding: 96px max(24px,4%);
+  text-align: center; position: relative; overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 90% at 50% 100%, rgba(5,112,222,.3) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 50% at 20% 0%, rgba(5,112,222,.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+.cta-inner { position: relative; z-index: 1; }
+.cta-section h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700; color: #fff; letter-spacing: -0.04em;
+  line-height: 1.1; margin-bottom: 16px;
+}
+.cta-section h2 em {  }
+.cta-section p { font-size: 1rem; color: rgba(255,255,255,.55); max-width: 440px; margin: 0 auto 32px; line-height: 1.7; }
+.cta-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.cta-footnote { margin-top: 14px; font-size: .78rem; color: rgba(255,255,255,.3); }
+
+/* ─── FOOTER ─── */
+footer { background: var(--ink-900); border-top: 1px solid rgba(255,255,255,.06); padding: 64px max(24px,4%) 0; }
+.footer-grid { display: grid; grid-template-columns: 1.7fr 1fr 1fr 1.4fr; gap: 48px; padding-bottom: 52px; border-bottom: 1px solid rgba(255,255,255,.06); }
+@media(max-width:900px) { .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; } .footer-brand-col { grid-column: 1/-1; } }
+@media(max-width:560px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer-logo { font-size: 1.25rem; font-weight: 800; color: #fff; letter-spacing: -0.04em; margin-bottom: 6px; }
+.footer-logo span { color: var(--blue-mid); }
+.footer-tagline { font-size: .75rem; color: rgba(255,255,255,.3); margin-bottom: 14px; }
+.footer-desc { font-size: .82rem; color: rgba(255,255,255,.4); line-height: 1.75; max-width: 270px; margin-bottom: 20px; }
+.footer-socials { display: flex; gap: 8px; }
+.footer-soc {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,255,255,.4); transition: background .15s, color .15s;
+}
+.footer-soc:hover { background: rgba(5,112,222,.2); color: var(--blue-mid); }
+.footer-col-title { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.35); margin-bottom: 14px; }
+.footer-col-links { display: flex; flex-direction: column; gap: 9px; }
+.footer-col-links a { font-size: .83rem; color: rgba(255,255,255,.5); transition: color .15s; }
+.footer-col-links a:hover { color: #fff; }
+.footer-contact-block { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.footer-ci { display: flex; gap: 9px; align-items: flex-start; }
+.footer-ci-ico { font-size: .85rem; opacity: .5; margin-top: 2px; flex-shrink: 0; }
+.footer-ci-lbl { font-size: .66rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 2px; }
+.footer-ci-val { font-size: .82rem; color: rgba(255,255,255,.5); }
+.footer-pay-title { font-size: .66rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: rgba(255,255,255,.3); margin-bottom: 9px; }
+.footer-pays { display: flex; flex-wrap: wrap; gap: 5px; }
+.footer-pay-chip { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); border-radius: 4px; padding: 3px 9px; font-size: .68rem; font-weight: 600; color: rgba(255,255,255,.4); }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 22px; font-size: .76rem; color: rgba(255,255,255,.35); flex-wrap: wrap; gap: 10px; }
+.footer-bottom a { color: rgba(255,255,255,.35); transition: color .15s; }
+.footer-bottom a:hover { color: rgba(255,255,255,.65); }
+.footer-bottom-links { display: flex; gap: 16px; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(10,37,64,.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; opacity: 0; visibility: hidden;
+  transition: opacity .25s ease, visibility .25s ease;
+}
+.modal-overlay.open { opacity: 1; visibility: visible; }
+.modal-box {
+  background: var(--white); border-radius: 16px;
+  width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 40px 100px rgba(10,37,64,.28);
+  transform: translateY(24px) scale(.97);
+  transition: transform .32s cubic-bezier(.34,1.2,.64,1);
+}
+.modal-overlay.open .modal-box { transform: none; }
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 26px 0;
+}
+.modal-ttl { font-size: 1rem; font-weight: 800; color: var(--blue); letter-spacing: -0.02em; }
+.modal-x { width: 30px; height: 30px; border-radius: 50%; background: var(--ink-100); color: var(--ink-500); display: flex; align-items: center; justify-content: center; font-size: .9rem; transition: background .15s; }
+.modal-x:hover { background: var(--ink-200); }
+.modal-body { padding: 22px 26px 30px; }
+@media(max-width:560px) { .modal-head { padding: 18px 18px 0; } .modal-body { padding: 18px 18px 24px; } }
+
+/* Assessment */
+.prog-track { display: flex; gap: 4px; margin-bottom: 22px; }
+.prog-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--ink-100); transition: background .3s; }
+.prog-seg.done { background: var(--blue); }
+.prog-seg.active { background: var(--blue-mid); }
+.prog-info { font-size: .75rem; color: var(--ink-400); margin-top: 5px; }
+.step-badge { display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--blue); background: var(--blue-soft); padding: 3px 9px; border-radius: 99px; margin-bottom: 7px; }
+.step-title { font-size: 1.05rem; font-weight: 800; color: var(--ink-900); margin-bottom: 3px; letter-spacing: -0.02em; }
+.step-desc { font-size: .82rem; color: var(--ink-400); }
+.q-block { margin: 18px 0; }
+.q-label { font-size: .875rem; font-weight: 600; color: var(--ink-800); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.q-n { width: 20px; height: 20px; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .68rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.r-opts { display: flex; flex-direction: column; gap: 7px; }
+.r-opt {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 13px; border: 1.5px solid var(--ink-100);
+  border-radius: 8px; cursor: pointer;
+  transition: border-color .12s, background .12s; user-select: none;
+}
+.r-opt:hover { border-color: var(--blue); background: var(--blue-soft); }
+.r-opt.sel { border-color: var(--blue); background: var(--blue-soft); }
+.r-circle { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--ink-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color .12s; }
+.r-opt.sel .r-circle { border-color: var(--blue); }
+.r-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--blue); display: none; }
+.r-opt.sel .r-dot { display: block; }
+.r-txt { font-size: .845rem; color: var(--ink-700); }
+.cb-opts { display: flex; flex-direction: column; gap: 7px; }
+.cb-opt {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 13px; border: 1.5px solid var(--ink-100);
+  border-radius: 8px; cursor: pointer;
+  transition: border-color .12s, background .12s; user-select: none;
+}
+.cb-opt:hover { border-color: var(--blue); background: var(--blue-soft); }
+.cb-opt.sel { border-color: var(--blue); background: var(--blue-soft); }
+.cb-box { width: 16px; height: 16px; border-radius: 4px; border: 2px solid var(--ink-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color .12s, background .12s; }
+.cb-opt.sel .cb-box { border-color: var(--blue); background: var(--blue); }
+.cb-tick { font-size: .6rem; color: #fff; display: none; }
+.cb-opt.sel .cb-tick { display: block; }
+.cb-txt { font-size: .845rem; color: var(--ink-700); }
+.range-input { width: 100%; accent-color: var(--blue); }
+.slider-labels { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-400); margin-top: 5px; }
+.step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--ink-100); }
+.s-count { font-size: .76rem; color: var(--ink-400); }
+.btn-next { background: var(--blue); color: #fff; font-size: .86rem; font-weight: 600; padding: 9px 20px; border-radius: 6px; transition: background .15s; }
+.btn-next:hover { background: var(--blue-dark); }
+.btn-back { background: none; color: var(--ink-500); font-size: .845rem; padding: 9px 14px; border-radius: 6px; transition: background .15s; }
+.btn-back:hover { background: var(--ink-100); color: var(--ink-800); }
+
+/* Outcomes */
+.score-ring { width: 96px; height: 96px; border-radius: 50%; background: conic-gradient(var(--blue) 0%, var(--blue-mid) var(--pct), var(--ink-100) var(--pct)); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; box-shadow: 0 0 0 4px #fff, 0 0 0 6px var(--blue-soft); }
+.score-inner { width: 68px; height: 68px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+.score-n { font-size: 1.4rem; font-weight: 800; color: var(--ink-900); line-height: 1; }
+.score-lbl { font-size: .6rem; color: var(--ink-400); font-weight: 600; }
+.outcome-title { text-align: center; font-size: 1.1rem; font-weight: 800; color: var(--ink-900); margin-bottom: 5px; letter-spacing: -0.02em; }
+.outcome-desc { text-align: center; font-size: .85rem; color: var(--ink-500); max-width: 360px; margin: 0 auto 22px; line-height: 1.6; }
+.outcome-items { display: flex; flex-direction: column; gap: 9px; margin-bottom: 22px; }
+.outcome-item { background: var(--ink-50); border: 1px solid var(--ink-100); border-radius: 8px; padding: 12px 15px; display: flex; gap: 11px; align-items: flex-start; }
+.oi-icon { font-size: .95rem; flex-shrink: 0; margin-top: 1px; }
+.oi-text { font-size: .845rem; color: var(--ink-700); line-height: 1.55; }
+
+/* Pricing */
+.pricing-tabs { display: flex; background: var(--ink-100); border-radius: 8px; padding: 3px; gap: 0; margin-bottom: 18px; }
+.p-tab { flex: 1; text-align: center; padding: 8px 10px; border-radius: 6px; font-size: .8rem; font-weight: 600; color: var(--ink-500); cursor: pointer; transition: background .12s, color .12s; }
+.p-tab.a { background: var(--white); color: var(--ink-900); box-shadow: 0 1px 4px rgba(0,0,0,.09); }
+.plan-card { background: var(--ink-50); border: 1px solid var(--ink-100); border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+.plan-head { padding: 15px 18px; border-bottom: 1px solid var(--ink-100); }
+.plan-head h3 { font-size: .95rem; font-weight: 700; color: var(--ink-900); margin-bottom: 3px; }
+.plan-head p { font-size: .8rem; color: var(--ink-500); }
+.dur-opts { padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+.dur-opt { background: var(--white); border: 1.5px solid var(--ink-100); border-radius: 8px; padding: 11px 13px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: border-color .12s; }
+.dur-opt:hover { border-color: var(--blue); }
+.dur-opt.sel { border-color: var(--blue); background: var(--blue-soft); }
+.dur-left { display: flex; gap: 10px; align-items: center; }
+.dur-check { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--ink-200); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: border-color .12s; }
+.dur-opt.sel .dur-check { border-color: var(--blue); background: var(--blue); }
+.dur-cdot { width: 5px; height: 5px; border-radius: 50%; background: #fff; display: none; }
+.dur-opt.sel .dur-cdot { display: block; }
+.dur-nm { font-size: .84rem; font-weight: 600; color: var(--ink-900); }
+.dur-per { font-size: .72rem; color: var(--ink-400); margin-top: 1px; }
+.dur-right { text-align: right; }
+.dur-price { font-size: .9rem; font-weight: 800; color: var(--ink-900); }
+.dur-save { font-size: .68rem; font-weight: 700; color: var(--green); background: var(--green-soft); border-radius: 4px; padding: 2px 5px; margin-top: 2px; display: inline-block; }
+.voucher-lbl { font-size: .84rem; font-weight: 600; color: var(--ink-800); margin-bottom: 6px; }
+.voucher-row { display: flex; gap: 7px; margin-top: 7px; }
+.voucher-input { flex: 1; padding: 9px 13px; border: 1.5px solid var(--ink-100); border-radius: 7px; font-size: .845rem; font-family: inherit; outline: none; transition: border-color .15s; }
+.voucher-input:focus { border-color: var(--blue); }
+.btn-voucher { background: var(--blue-soft); color: var(--blue); font-size: .8rem; font-weight: 600; padding: 9px 15px; border-radius: 7px; transition: background .15s; }
+.btn-voucher:hover { background: var(--blue); color: #fff; }
+.voucher-msg { font-size: .77rem; margin-top: 5px; padding: 7px 11px; border-radius: 6px; }
+.voucher-msg.ok { background: var(--green-soft); color: var(--green); }
+.voucher-msg.err { background: #FEE2E2; color: var(--red); }
+.order-sum { background: var(--ink-50); border: 1px solid var(--ink-100); border-radius: 9px; padding: 14px 16px; margin-top: 18px; }
+.order-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: .845rem; }
+.order-row.total { border-top: 1px solid var(--ink-100); margin-top: 7px; padding-top: 10px; font-weight: 700; font-size: .95rem; }
+
+/* WA */
+.wa-field { margin-bottom: 13px; }
+.wa-field label { display: block; font-size: .8rem; font-weight: 600; color: var(--ink-800); margin-bottom: 5px; }
+.wa-hint { font-size: .72rem; color: var(--ink-400); margin-bottom: 4px; }
+.wa-ig { display: flex; border: 1.5px solid var(--ink-100); border-radius: 7px; overflow: hidden; transition: border-color .15s; }
+.wa-ig:focus-within { border-color: var(--blue); }
+.wa-pfx { padding: 10px 11px; background: var(--ink-50); font-size: .83rem; color: var(--ink-500); border-right: 1px solid var(--ink-100); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+.wa-ig input { flex: 1; padding: 10px 13px; border: none; font-size: .875rem; font-family: inherit; outline: none; color: var(--ink-800); }
+.wa-note { background: var(--blue-soft); border-radius: 8px; padding: 11px 13px; font-size: .79rem; color: var(--ink-700); margin: 4px 0 18px; }
+/* ─── WHATSAPP SCREENSHOT STYLE ─── */
+/* ─── IPHONE MOCKUP ─── */
+.iphone-wrap {
+  display: flex; justify-content: center; align-items: center;
+  padding: 20px 0;
+  position: relative; z-index: 2;
+}
+.iphone-shell {
+  width: 300px;
+  background: linear-gradient(160deg, #1a1a1a 0%, #2d2d2d 40%, #1a1a1a 100%);
+  border-radius: 46px;
+  padding: 12px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.12),
+    0 0 0 2px #0a0a0a,
+    inset 0 0 0 1px rgba(255,255,255,.04),
+    0 40px 80px rgba(0,0,0,.5),
+    0 16px 32px rgba(0,0,0,.3);
+  position: relative;
+}
+/* Side buttons */
+.iphone-btn-vol1 {
+  position: absolute; left: -2.5px; top: 100px;
+  width: 3px; height: 34px; background: #2a2a2a;
+  border-radius: 2px 0 0 2px;
+  box-shadow: -1px 0 2px rgba(0,0,0,.4);
+}
+.iphone-btn-vol2 {
+  position: absolute; left: -2.5px; top: 144px;
+  width: 3px; height: 34px; background: #2a2a2a;
+  border-radius: 2px 0 0 2px;
+  box-shadow: -1px 0 2px rgba(0,0,0,.4);
+}
+.iphone-btn-power {
+  position: absolute; right: -2.5px; top: 110px;
+  width: 3px; height: 52px; background: #2a2a2a;
+  border-radius: 0 2px 2px 0;
+  box-shadow: 1px 0 2px rgba(0,0,0,.4);
+}
+.iphone-screen {
+  background: #000;
+  border-radius: 36px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  position: relative;
+}
+/* Dynamic Island */
+.iphone-island {
+  width: 90px; height: 28px;
+  background: #000;
+  border-radius: 0 0 16px 16px;
+  margin: 0 auto;
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  z-index: 10;
+  box-shadow: 0 0 0 2px #1a1a1a;
+}
+.iphone-home-bar {
+  background: #ECE5DD;
+  padding: 8px 0 14px;
+  display: flex; justify-content: center;
+}
+.iphone-home-bar::before {
+  content: ''; display: block;
+  width: 100px; height: 4px;
+  background: rgba(0,0,0,.25); border-radius: 2px;
+}
+.wa-status-bar {
+  background: #075E54;
+  padding: 32px 16px 4px; /* 32px top for dynamic island space */
+  display: flex; justify-content: space-between; align-items: center;
+}
+.wa-time { font-size: .72rem; font-weight: 600; color: #fff; letter-spacing: .3px; }
+.wa-status-icons { display: flex; gap: 5px; align-items: center; }
+.wa-app-header {
+  background: #075E54;
+  padding: 6px 12px 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.wa-contact-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #0570DE, #3B82F6);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: .82rem; color: #fff; flex-shrink: 0;
+}
+.wa-contact-info { flex: 1; }
+.wa-contact-name { font-size: .86rem; font-weight: 600; color: #fff; }
+.wa-contact-status { font-size: .68rem; color: rgba(255,255,255,.75); }
+.wa-header-icons { display: flex; gap: 16px; }
+.wa-chat-area {
+  background: #ECE5DD;
+  padding: 10px 8px; display: flex; flex-direction: column; gap: 4px;
+  min-height: 280px; flex: 1;
+}
+.wa-date-badge {
+  text-align: center; margin: 0 auto 6px;
+  background: rgba(225,245,254,.85); color: #546E7A;
+  font-size: .58rem; font-weight: 600; letter-spacing: .5px;
+  padding: 3px 8px; border-radius: 8px; display: inline-block;
+  align-self: center;
+}
+.wa-bubble-row { display: flex; margin-bottom: 3px; }
+.wa-outgoing { justify-content: flex-end; }
+.wa-incoming { justify-content: flex-start; }
+.wa-bubble { max-width: 82%; border-radius: 8px; padding: 6px 9px; position: relative; }
+.wa-bubble-out {
+  background: #DCF8C6; color: #111;
+  border-top-right-radius: 2px;
+  font-size: .74rem; line-height: 1.4;
+}
+.wa-bubble-in {
+  background: #fff; color: #111;
+  border-top-left-radius: 2px;
+  font-size: .72rem; line-height: 1.45;
+}
+.wa-bot-header { font-weight: 700; color: #075E54; margin-bottom: 3px; font-size: .74rem; }
+.wa-bot-item { font-size: .68rem; color: #333; margin-bottom: 2px; }
+.wa-label { font-weight: 600; color: #666; }
+.wa-today-total { margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee; font-size: .68rem; }
+.wa-bubble-meta {
+  display: flex; align-items: center; justify-content: flex-end; gap: 3px;
+  margin-top: 2px;
+}
+.wa-bubble-time { font-size: .58rem; color: #999; }
+.wa-check { margin-top: 1px; }
+.wa-input-bar {
+  background: #F0F0F0;
+  padding: 7px 10px; display: flex; align-items: center; gap: 8px;
+}
+.wa-input-field {
+  flex: 1; background: #fff; border-radius: 22px;
+  padding: 7px 12px; font-size: .72rem;
+}
+.wa-placeholder { color: #999; }
+.wa-send-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #25D366; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ─── STEPS SEQUENTIAL ANIMATION ─── */
+.step-item { opacity: 0; transform: translateY(16px); transition: none; }
+.step-item.step-animate { animation: stepReveal .5s ease forwards; }
+@keyframes stepReveal { to { opacity: 1; transform: translateY(0); } }
+.step-item .step-n { position: relative; }
+.step-item.step-animate .step-n::after {
+  content: '';
+  position: absolute; inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--blue);
+  animation: stepPing .6s ease-out forwards;
+}
+@keyframes stepPing { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
+.steps-connector {
+  position: absolute; top: 18px; left: 0; right: 0; height: 2px;
+  background: var(--ink-100); z-index: 0;
+}
+.steps-connector-fill {
+  height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--blue-mid));
+  transition: width 1.5s ease; border-radius: 2px;
+}
+
+/* ─── STRIPE-STYLE BACKBONE ─── */
+.backbone {
+  background: linear-gradient(170deg, #1a1f71 0%, #0f1257 30%, #090d4a 70%, #060a40 100%);
+}
+.backbone::before {
+  background:
+    radial-gradient(ellipse 50% 70% at 50% 110%, rgba(5,112,222,.4) 0%, transparent 60%),
+    radial-gradient(ellipse 30% 40% at 15% 0%, rgba(131,124,255,.2) 0%, transparent 50%);
+}
+/* Animated light burst / starburst like Stripe's backbone */
+.backbone-starburst {
+  position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 400px; pointer-events: none; z-index: 0;
+}
+.backbone-inner {
+  position: relative; z-index: 2;
+}
+.backbone-divider {
+  border: none; border-top: 1px solid rgba(255,255,255,.08);
+  margin: 40px 0;
+  max-width: 1200px; margin-left: auto; margin-right: auto;
+  position: relative; z-index: 2;
+}
+
+/* ─── COMPARE REDESIGN (Stripe-style feature grid) ─── */
+.compare-section { background: var(--ink-50); }
+.compare-new-wrap {
+  margin-top: 56px; display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px; max-width: 900px; margin-left: auto; margin-right: auto;
+}
+@media(max-width:640px) { .compare-new-wrap { grid-template-columns: 1fr; } }
+.compare-col-header {
+  padding: 32px 28px 24px;
+  border-radius: 16px;
+  position: relative; overflow: hidden;
+}
+.compare-col-mira {
+  background: var(--ink-900);
+  border: 1.5px solid rgba(5,112,222,.3);
+  box-shadow: 0 20px 60px rgba(0,0,0,.15);
+}
+.compare-col-mira::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(5,112,222,.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+.compare-col-other {
+  background: #fff;
+  border: 1.5px solid var(--ink-100);
+}
+.compare-col-badge {
+  display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 99px; margin-bottom: 14px;
+}
+.compare-col-mira .compare-col-badge { background: rgba(5,112,222,.2); color: var(--blue-mid); }
+.compare-col-other .compare-col-badge { background: var(--ink-100); color: var(--ink-400); }
+.compare-col-title {
+  font-size: 1.3rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 6px;
+}
+.compare-col-mira .compare-col-title { color: #fff; }
+.compare-col-other .compare-col-title { color: var(--ink-900); }
+.compare-col-sub {
+  font-size: .83rem; margin-bottom: 24px; line-height: 1.6;
+}
+.compare-col-mira .compare-col-sub { color: rgba(255,255,255,.5); }
+.compare-col-other .compare-col-sub { color: var(--ink-400); }
+.compare-features { display: flex; flex-direction: column; gap: 0; }
+.compare-feat {
+  padding: 12px 0; border-bottom: 1px solid;
+  display: flex; align-items: center; gap: 12px;
+  font-size: .86rem;
+}
+.compare-col-mira .compare-feat { border-color: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+.compare-col-other .compare-feat { border-color: var(--ink-100); color: var(--ink-500); text-decoration-line: none; }
+.compare-feat:last-child { border-bottom: none; }
+.cf-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 700; flex-shrink: 0;
+}
+.cf-yes { background: rgba(0,212,170,.15); color: var(--green); }
+.cf-no { background: rgba(255,255,255,.06); color: rgba(255,255,255,.2); }
+.compare-col-other .cf-yes { background: var(--green-soft); }
+.compare-col-other .cf-no { background: var(--ink-100); color: var(--ink-200); }
+.compare-col-cta {
+  margin-top: 24px;
+}
+
+/* ─── SECTION GRADIENT ACCENTS ─── */
+.section-gradient-teal {
+  position: absolute; pointer-events: none;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,212,170,.07) 0%, transparent 70%);
+  z-index: 0;
+}
+.section-gradient-amber {
+  position: absolute; pointer-events: none;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,158,11,.06) 0%, transparent 70%);
+  z-index: 0;
+}
+
+/* ─── STAT COUNTDOWN ─── */
+.stat-n[data-count] { transition: none; }
+
+/* ─── KENAPA MIRA / STRIPE PRODUCT CARDS ─── */
+.kenapa-section { background: var(--ink-50); }
+.kenapa-intro { margin-bottom: 48px; max-width: 780px; }
+.kenapa-intro-hl {
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  font-weight: 400; color: var(--ink-600);
+  line-height: 1.45; letter-spacing: -0.02em;
+}
+.kenapa-intro-hl strong { color: var(--ink-900); font-weight: 700; }
+.kenapa-grid-top {
+  display: grid; grid-template-columns: 1.4fr 1fr;
+  gap: 16px; margin-bottom: 16px;
+}
+.kenapa-grid-bottom {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media(max-width:900px) {
+  .kenapa-grid-top { grid-template-columns: 1fr; }
+  .kenapa-grid-bottom { grid-template-columns: 1fr 1fr; }
+}
+@media(max-width:560px) {
+  .kenapa-grid-bottom { grid-template-columns: 1fr; }
+}
+.kcard {
+  background: #fff; border-radius: 14px;
+  border: 1px solid var(--ink-100);
+  overflow: hidden; transition: box-shadow .2s, transform .2s;
+  display: flex; flex-direction: column;
+}
+.kcard:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.kcard-top {
+  height: 240px; position: relative; overflow: hidden;
+  display: flex; align-items: flex-end;
+  background: var(--ink-50);
+}
+.kcard-top-gradient {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.kcard-top-content {
+  position: relative; z-index: 1;
+  width: 100%; padding: 20px;
+}
+/* Chat demo in first card top */
+.kcard-chat-demo {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.kcd-bubble {
+  padding: 9px 13px; border-radius: 12px;
+  font-size: .8rem; line-height: 1.4; max-width: 85%;
+}
+.kcd-user {
+  background: linear-gradient(135deg,#0570DE,#3B82F6);
+  color: #fff; margin-left: auto;
+  border-bottom-right-radius: 3px;
+  box-shadow: 0 2px 8px rgba(5,112,222,.3);
+}
+.kcd-bot {
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(255,255,255,.6);
+  color: var(--ink-800);
+  border-bottom-left-radius: 3px;
+  backdrop-filter: blur(4px);
+}
+/* Dashboard mini in second card */
+.kcard-dash-mini {
+  width: 100%; padding: 16px; position: relative; z-index: 1;
+}
+.kdm-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.kdm-stat {
+  flex: 1; background: rgba(255,255,255,.85);
+  border-radius: 8px; padding: 8px 10px;
+  border: 1px solid rgba(0,0,0,.06);
+}
+.kdm-lbl { font-size: .55rem; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; color: var(--ink-400); }
+.kdm-val { font-size: .8rem; font-weight: 800; color: var(--ink-900); }
+.kdm-green .kdm-val { color: #059669; }
+.kdm-red .kdm-val { color: var(--red); }
+.kdm-blue .kdm-val { color: var(--blue); }
+.kdm-bars {
+  display: flex; align-items: flex-end; gap: 4px; height: 52px;
+  background: rgba(255,255,255,.6); border-radius: 6px; padding: 6px 8px;
+}
+.kdm-bar { flex: 1; background: rgba(5,112,222,.25); border-radius: 2px 2px 0 0; }
+.kdm-bar-active { background: var(--blue); box-shadow: 0 2px 6px rgba(5,112,222,.4); }
+/* Card body */
+.kcard-body { padding: 22px 24px 26px; flex: 1; }
+.kcard-tag {
+  font-size: .68rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--blue);
+  margin-bottom: 8px; display: block;
+}
+.kcard-title {
+  font-size: 1rem; font-weight: 700; color: var(--ink-900);
+  line-height: 1.3; margin-bottom: 8px; letter-spacing: -0.01em;
+}
+.kcard-desc { font-size: .85rem; color: var(--ink-500); line-height: 1.65; }
+/* Chips */
+.kchip {
+  padding: 5px 12px; border-radius: 999px;
+  font-size: .72rem; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--ink-100); color: var(--ink-600);
+}
+.kchip-green { background: #D1FAE5; color: #065F46; }
+.kchip-blue { background: var(--blue-soft); color: var(--blue); }
+.kchip-orange { background: #FFEDD5; color: #9A3412; }
+.kchip-red { background: #FEE2E2; color: #991B1B; }
+.kchip-purple { background: var(--blue-soft); color: var(--blue); }
+/* Excel mini */
+.kcard-excel { width: 100%; }
+.ke-row { display: flex; gap: 4px; margin-bottom: 3px; }
+.ke-cell {
+  flex: 1; height: 20px; border-radius: 3px;
+  background: #fff; border: 1px solid var(--ink-100);
+  font-size: .58rem; color: var(--ink-600);
+  display: flex; align-items: center; padding: 0 5px;
+}
+.ke-header .ke-cell { background: var(--blue-soft); border-color: #BFDBFE; color: var(--blue); font-weight: 700; }
+
+/* ─── MOBILE STEP FIXES ─── */
+@media(max-width:880px) {
+  .steps-grid { grid-template-columns: 1fr 1fr; }
+  .steps-connector { display: none; }
+  .step-item { opacity: 1 !important; transform: none !important; }
+  .step-item.step-animate { animation: none !important; }
+}
+@media(max-width:500px) {
+  .steps-grid { grid-template-columns: 1fr; }
+}
+/* On mobile, steps just fade in normally */
+@media(max-width:880px) {
+  .step-item { animation: none !important; opacity: 1; transform: none; }
+}
+
+/* ─── MOBILE HERO ─── */
+@media(max-width:768px) {
+  .hero { grid-template-columns: 1fr; padding-top: 100px; }
+  .hero-right { display: block; }
+  .wa-screenshot { margin: 0 auto; max-width: 300px; }
+  .stripe-wave { width: 480px; height: 480px; top: -20px; right: -60px; }
+}
+
+/* ─── MOBILE NAV ─── */
+@media(max-width:768px) {
+  .nav-links { display: none; }
+  .nav-logo { min-width: unset; }
+}
+
+/* ─── MOBILE BACKBONE ─── */
+@media(max-width:768px) {
+  .backbone-inner { grid-template-columns: 1fr; gap: 40px; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .stat-n { font-size: 2rem; }
+}
+
+/* ─── MOBILE COMPARE ─── */
+@media(max-width:640px) {
+  .compare-new-wrap { grid-template-columns: 1fr; }
+}
+
+/* ─── MOBILE DASHBOARD ─── */
+@media(max-width:900px) {
+  .db-layout { grid-template-columns: 1fr; }
+}
+
+/* ─── MOBILE FOOTER ─── */
+@media(max-width:900px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .footer-brand-col { grid-column: 1/-1; }
+}
+@media(max-width:560px) {
+  .footer-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── MOBILE HERO PHONE ─── */
+@media(max-width:500px) {
+  .wa-screenshot { width: 280px; font-size: 90%; }
+  .kcd-bubble { font-size: .72rem; }
+}
+
+@keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+.shake { animation: shake .32s ease; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div>
+    <div class="loader-wordmark">MI<span>RA</span></div>
+    <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  </div>
+</div>
+
+<div id="page">
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">mira</div>
+  <ul class="nav-links">
+    <li><a href="#fitur">Fitur</a></li>
+    <li><a href="#cara-kerja">Cara Kerja</a></li>
+    <li><a href="#testimoni">Testimoni</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="nav-signin" onclick="openLoginModal()">Masuk</button>
+    <button class="nav-cta" onclick="openModal()">Mulai sekarang</button>
+  </div>
+</nav>
+
+<!-- HERO WRAPPER (light bg + animated Stripe ribbon) -->
+<div class="hero-wrap">
+  <!-- Stripe-style vivid animated ribbon gradient -->
+  <div class="stripe-wave">
+    <svg viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="r1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FF9A00"/>
+          <stop offset="35%" stop-color="#FF3CAC"/>
+          <stop offset="70%" stop-color="#784BA0"/>
+          <stop offset="100%" stop-color="#2B86C5"/>
+        </linearGradient>
+        <linearGradient id="r2" x1="0%" y1="20%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FFBE0B"/>
+          <stop offset="40%" stop-color="#FB5607"/>
+          <stop offset="75%" stop-color="#FF006E"/>
+          <stop offset="100%" stop-color="#8338EC"/>
+        </linearGradient>
+        <linearGradient id="r3" x1="10%" y1="0%" x2="100%" y2="80%">
+          <stop offset="0%" stop-color="#3A86FF" stop-opacity=".8"/>
+          <stop offset="50%" stop-color="#8338EC" stop-opacity=".85"/>
+          <stop offset="100%" stop-color="#FF006E" stop-opacity=".7"/>
+        </linearGradient>
+        <filter id="softBlur"><feGaussianBlur stdDeviation="22"/></filter>
+        <filter id="medBlur"><feGaussianBlur stdDeviation="14"/></filter>
+        <filter id="sharpBlur"><feGaussianBlur stdDeviation="6"/></filter>
+      </defs>
+      <rect width="900" height="900" fill="white"/>
+
+      <!-- WIDE base color wash - reaches far left -->
+      <path filter="url(#softBlur)"
+        d="M200,-50 Q500,100 900,0 L900,900 Q700,800 400,700 Q100,600 0,300 Z"
+        fill="url(#r2)" opacity=".18"/>
+
+      <!-- Main bold ribbons - from top sweeping down-right -->
+      <path filter="url(#softBlur)"
+        d="M300,-10 Q600,150 900,80 L900,0 L300,-10 Z"
+        fill="url(#r1)" opacity=".92"/>
+      <path filter="url(#softBlur)"
+        d="M200,0 Q550,220 900,250 L900,80 Q600,150 200,0 Z"
+        fill="url(#r1)" opacity=".82"/>
+
+      <!-- Second wide sweeping band -->
+      <path filter="url(#medBlur)"
+        d="M250,0 Q580,320 900,420 L900,250 Q560,230 250,0 Z"
+        fill="url(#r2)" opacity=".88"/>
+
+      <!-- Thin bright highlights (the white shimmer lines) -->
+      <path filter="url(#sharpBlur)"
+        d="M420,0 Q680,160 900,140 L900,120 Q680,136 408,0 Z"
+        fill="white" opacity=".55"/>
+      <path filter="url(#sharpBlur)"
+        d="M340,0 Q620,200 900,190 L900,168 Q622,175 325,0 Z"
+        fill="#FFD700" opacity=".6"/>
+
+      <!-- Deep blue-purple undertone extending down -->
+      <path filter="url(#softBlur)"
+        d="M500,0 Q750,400 900,600 L900,420 Q590,330 500,0 Z"
+        fill="url(#r3)" opacity=".75"/>
+
+      <!-- Bottom right glow -->
+      <ellipse filter="url(#softBlur)" cx="820" cy="750" rx="300" ry="220"
+        fill="#FF3CAC" opacity=".35"/>
+    </svg>
+  </div>
+
+  <div class="hero max-w">
+    <div class="hero-left">
+      <div class="hero-supertitle">Asisten Keuangan AI via WhatsApp</div>
+      <h1><span id="rotating-hl">Kelola uang dengan cerdas.</span><br/>Pengeluaran terpantau,<br/>keuangan terkendali.</h1>
+      <p class="hero-sub">Catat pengeluaran tanpa ribet — 24/7. Cukup kirim lewat WhatsApp, sisanya MIRA yang urus.</p>
+      <div class="hero-cta-row">
+        <button class="btn-stripe btn-stripe-lg" onclick="openModal()">Mulai sekarang</button>
+        <a href="#cara-kerja" class="btn-stripe-outline btn-stripe-lg">Lihat cara kerja</a>
+      </div>
+      <p class="hero-trust">Tanpa download aplikasi baru · Langsung aktif di WhatsApp</p>
+    </div>
+    <div class="hero-right">
+      <!-- iPhone mockup with WhatsApp inside -->
+      <div class="iphone-wrap">
+        <!-- iPhone shell -->
+        <div class="iphone-shell">
+          <!-- Side buttons -->
+          <div class="iphone-btn-vol1"></div>
+          <div class="iphone-btn-vol2"></div>
+          <div class="iphone-btn-power"></div>
+          <!-- Screen -->
+          <div class="iphone-screen">
+            <!-- Dynamic Island -->
+            <div class="iphone-island"></div>
+            <!-- WA Status bar -->
+            <div class="wa-status-bar">
+              <span class="wa-time">09:41</span>
+              <div class="wa-status-icons">
+                <!-- Signal -->
+                <svg width="17" height="12" viewBox="0 0 17 12" fill="white"><rect x="0" y="6" width="3" height="6" rx=".5"/><rect x="4.5" y="4" width="3" height="8" rx=".5"/><rect x="9" y="2" width="3" height="10" rx=".5"/><rect x="13.5" y="0" width="3" height="12" rx=".5"/></svg>
+                <!-- WiFi -->
+                <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><path d="M8 9.5a1.2 1.2 0 110 2.4A1.2 1.2 0 018 9.5z"/><path d="M4.7 7.2a4.7 4.7 0 016.6 0" stroke="white" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M2.1 4.6a8.3 8.3 0 0111.8 0" stroke="white" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+                <!-- Battery -->
+                <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".5" y="1" width="21" height="10" rx="2.5" stroke="white" stroke-width="1"/><rect x="22" y="4" width="2.5" height="4" rx="1" fill="white" opacity=".4"/><rect x="2" y="2.5" width="17" height="7" rx="1.5" fill="white"/></svg>
+              </div>
+            </div>
+            <!-- WA Header -->
+            <div class="wa-app-header">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+              <div class="wa-contact-avatar">M</div>
+              <div class="wa-contact-info">
+                <div class="wa-contact-name">MIRA</div>
+                <div class="wa-contact-status">Online</div>
+              </div>
+              <div class="wa-header-icons">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </div>
+            </div>
+            <!-- WA chat area -->
+            <div class="wa-chat-area">
+              <div class="wa-date-badge">HARI INI</div>
+              <div class="wa-bubble-row wa-outgoing">
+                <div class="wa-bubble wa-bubble-out">
+                  <span>Belanja supermarket Rp185.000, Debit BCA 🛒</span>
+                  <div class="wa-bubble-meta"><span class="wa-bubble-time">09:32</span><svg class="wa-check" width="14" height="9" viewBox="0 0 16 11"><path d="M11.071.653L4.53 7.195 1.414 4.08 0 5.494l4.53 4.53 7.954-7.954L11.071.653z" fill="#53bdeb"/><path d="M15.071.653L8.53 7.195 7.116 5.78l-1.414 1.414L8.53 10.024l7.954-7.954L15.071.653z" fill="#53bdeb"/></svg></div>
+                </div>
+              </div>
+              <div class="wa-bubble-row wa-incoming">
+                <div class="wa-bubble wa-bubble-in">
+                  <div class="wa-bot-header">✅ Dicatat!</div>
+                  <div class="wa-bot-item"><span class="wa-label">Kategori</span> Belanja · Kebutuhan Rumah</div>
+                  <div class="wa-bot-item"><span class="wa-label">Nominal</span> Rp185.000</div>
+                  <div class="wa-bot-item"><span class="wa-label">Metode</span> Debit BCA</div>
+                  <div class="wa-bubble-meta"><span class="wa-bubble-time">09:32</span></div>
+                </div>
+              </div>
+              <div class="wa-bubble-row wa-outgoing">
+                <div class="wa-bubble wa-bubble-out">
+                  <span>Bayar listrik 250rb 💡</span>
+                  <div class="wa-bubble-meta"><span class="wa-bubble-time">09:38</span><svg class="wa-check" width="14" height="9" viewBox="0 0 16 11"><path d="M11.071.653L4.53 7.195 1.414 4.08 0 5.494l4.53 4.53 7.954-7.954L11.071.653z" fill="#53bdeb"/><path d="M15.071.653L8.53 7.195 7.116 5.78l-1.414 1.414L8.53 10.024l7.954-7.954L15.071.653z" fill="#53bdeb"/></svg></div>
+                </div>
+              </div>
+              <div class="wa-bubble-row wa-incoming">
+                <div class="wa-bubble wa-bubble-in">
+                  <div class="wa-bot-header">✅ Masuk!</div>
+                  <div class="wa-bot-item"><span class="wa-label">Kategori</span> Tagihan Listrik</div>
+                  <div class="wa-bot-item"><span class="wa-label">Nominal</span> Rp250.000</div>
+                  <div class="wa-bot-item wa-today-total">Total hari ini: <strong style="color:#25D366">Rp435.000</strong></div>
+                  <div class="wa-bubble-meta"><span class="wa-bubble-time">09:38</span></div>
+                </div>
+              </div>
+            </div>
+            <!-- WA input bar -->
+            <div class="wa-input-bar">
+              <div class="wa-input-field"><span class="wa-placeholder">Ketik pesan...</span></div>
+              <div class="wa-send-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </div>
+            </div>
+            <!-- iPhone home bar -->
+            <div class="iphone-home-bar"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGOS -->
+<div class="logos-band">
+  <span class="logos-label">Dipercaya pengguna dari</span>
+  <div class="logos-row">
+    <span class="logo-item">GoPay</span>
+    <span class="logo-item">OVO</span>
+    <span class="logo-item">DANA</span>
+    <span class="logo-item">Shopee</span>
+    <span class="logo-item">Tokopedia</span>
+    <span class="logo-item">BCA</span>
+  </div>
+</div>
+
+<!-- KENAPA MIRA - Stripe product card style -->
+<section class="s kenapa-section" id="fitur" style="position:relative;overflow:hidden;background:var(--ink-50);">
+  <div class="max-w" style="position:relative;z-index:1;">
+    <div class="kenapa-intro reveal">
+      <h2 class="kenapa-intro-hl"><strong>Solusi simpel untuk pembukuan harian.</strong> Kelola pengeluaran, pantau tren, dan ekspor laporan — semua dari WhatsApp yang sudah ada di HP kamu.</h2>
+    </div>
+    <!-- Row 1: Large left card + narrow right -->
+    <div class="kenapa-grid-top reveal">
+      <!-- Card 1: Catat via WA - large with gradient top -->
+      <div class="kcard kcard-main">
+        <div class="kcard-top">
+          <div class="kcard-top-gradient" style="background:linear-gradient(135deg,#FF6B00 0%,#FF3D9A 40%,#7C3AED 80%,#0570DE 100%);"></div>
+          <div class="kcard-top-content">
+            <div class="kcard-chat-demo">
+              <div class="kcd-bubble kcd-user">Makan siang 45rb gopay 🍜</div>
+              <div class="kcd-bubble kcd-bot">✅ Makan Siang · Rp45.000 · GoPay</div>
+              <div class="kcd-bubble kcd-user">Foto struk alfamart 📷</div>
+              <div class="kcd-bubble kcd-bot">✅ Belanja · Rp127.500 · Tunai</div>
+            </div>
+          </div>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-tag">Catat</div>
+          <div class="kcard-title">Catat transaksi via chat, foto, atau suara</div>
+          <div class="kcard-desc">Tinggal kirim pesan ke MIRA. Tidak perlu buka aplikasi lain atau isi form apapun.</div>
+        </div>
+      </div>
+      <!-- Card 2: Dashboard -->
+      <div class="kcard kcard-sub">
+        <div class="kcard-top kcard-top-dash" style="height:200px;">
+          <div class="kcard-top-gradient" style="background:linear-gradient(135deg,#0570DE 0%,#06B6D4 100%);opacity:.12;"></div>
+          <div class="kcard-dash-mini">
+            <div class="kdm-row">
+              <div class="kdm-stat kdm-green"><div class="kdm-lbl">Pemasukan</div><div class="kdm-val">Rp8,5jt</div></div>
+              <div class="kdm-stat kdm-red"><div class="kdm-lbl">Pengeluaran</div><div class="kdm-val">Rp5,2jt</div></div>
+              <div class="kdm-stat kdm-blue"><div class="kdm-lbl">Tabungan</div><div class="kdm-val">Rp3,3jt</div></div>
+            </div>
+            <div class="kdm-bars">
+              <div class="kdm-bar" style="height:55%"></div>
+              <div class="kdm-bar" style="height:72%"></div>
+              <div class="kdm-bar" style="height:45%"></div>
+              <div class="kdm-bar" style="height:88%"></div>
+              <div class="kdm-bar" style="height:60%"></div>
+              <div class="kdm-bar" style="height:78%"></div>
+              <div class="kdm-bar kdm-bar-active" style="height:92%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-tag">Dashboard</div>
+          <div class="kcard-title">Semua keuanganmu dalam satu tampilan</div>
+          <div class="kcard-desc">Dashboard real-time — lihat tren, analisis pengeluaran, dan insight personal kapanpun.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Three equal cards -->
+    <div class="kenapa-grid-bottom reveal">
+      <div class="kcard kcard-sm">
+        <div class="kcard-top" style="height:140px;justify-content:center;padding:20px;">
+          <div class="kcard-top-gradient" style="background:linear-gradient(135deg,#064E3B 0%,#059669 100%);opacity:.1;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;position:relative;z-index:1;">
+            <span class="kchip kchip-green">🍜 Makan</span>
+            <span class="kchip kchip-blue">🚗 Transport</span>
+            <span class="kchip kchip-orange">🛍️ Belanja</span>
+            <span class="kchip kchip-red">💡 Tagihan</span>
+            <span class="kchip" style="background:#EBF3FF;color:#0570DE;">💊 Kesehatan</span>
+            <span class="kchip kchip-blue">✈️ Liburan</span>
+          </div>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-tag">AI</div>
+          <div class="kcard-title">Kategorisasi otomatis tanpa manual</div>
+          <div class="kcard-desc">AI MIRA memahami konteks transaksi Indonesia dan langsung mengelompokkan dengan akurat.</div>
+        </div>
+      </div>
+      <div class="kcard kcard-sm">
+        <div class="kcard-top" style="height:140px;padding:14px 16px;">
+          <div class="kcard-top-gradient" style="background:linear-gradient(135deg,#7C2D12 0%,#EA580C 100%);opacity:.1;"></div>
+          <div class="kcard-excel" style="position:relative;z-index:1;">
+            <div class="ke-row ke-header"><div class="ke-cell">Tanggal</div><div class="ke-cell">Nominal</div><div class="ke-cell">Kategori</div></div>
+            <div class="ke-row"><div class="ke-cell">1 Mar</div><div class="ke-cell">45.000</div><div class="ke-cell">Makan</div></div>
+            <div class="ke-row"><div class="ke-cell">1 Mar</div><div class="ke-cell">185.000</div><div class="ke-cell">Belanja</div></div>
+            <div class="ke-row"><div class="ke-cell">2 Mar</div><div class="ke-cell">250.000</div><div class="ke-cell">Tagihan</div></div>
+          </div>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-tag">Laporan</div>
+          <div class="kcard-title">Ekspor Excel bulanan otomatis</div>
+          <div class="kcard-desc">Laporan siap pakai tiap bulan. Download kapan saja, bagikan ke akuntan, atau analisis sendiri.</div>
+        </div>
+      </div>
+      <div class="kcard kcard-sm">
+        <div class="kcard-top" style="height:140px;padding:20px;justify-content:center;">
+          <div class="kcard-top-gradient" style="background:linear-gradient(135deg,#1E1B4B 0%,#4338CA 100%);opacity:.08;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;position:relative;z-index:1;">
+            <span class="kchip" style="background:#00AE11;color:#fff;font-weight:700;">GoPay</span>
+            <span class="kchip" style="background:#4C2082;color:#fff;font-weight:700;">OVO</span>
+            <span class="kchip" style="background:#118EEA;color:#fff;font-weight:700;">DANA</span>
+            <span class="kchip" style="background:#005BAA;color:#fff;font-weight:700;">BCA</span>
+            <span class="kchip" style="background:#E6502A;color:#fff;font-weight:700;">QRIS</span>
+            <span class="kchip" style="background:#EE4D2D;color:#fff;font-weight:700;">Shopee</span>
+          </div>
+        </div>
+        <div class="kcard-body">
+          <div class="kcard-tag">Lokal</div>
+          <div class="kcard-title">Dioptimalkan untuk Indonesia</div>
+          <div class="kcard-desc">GoPay, OVO, DANA, QRIS, transfer bank — MIRA mengerti semua metode pembayaran lokal.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="s steps-section" id="cara-kerja" style="position:relative;overflow:hidden;">
+  <!-- Diagonal stripe pattern for steps section -->
+  <div style="position:absolute;inset:0;background:repeating-linear-gradient(135deg, transparent, transparent 60px, rgba(5,112,222,.015) 60px, rgba(5,112,222,.015) 61px);pointer-events:none;"></div>
+  <div class="section-gradient-amber" style="bottom:-100px;right:-80px;width:400px;height:400px;"></div>
+  <div class="max-w" style="position:relative;z-index:1;">
+    <div class="tc reveal">
+      <span class="eyebrow">Cara Kerja</span>
+      <h2 class="hl"><span class="hl-accent">Semudah</span> chat biasa</h2>
+      <p class="body-text">4 langkah sederhana dan keuanganmu langsung terkelola rapi.</p>
+    </div>
+    <div class="steps-grid" id="steps-grid">
+      <div class="steps-connector"><div class="steps-connector-fill" id="steps-fill"></div></div>
+      <div class="step-item" id="step-1">
+        <div class="step-n">1</div>
+        <h3>Kirim Resi / Teks / Audio</h3>
+        <p>Chat natural atau foto struk langsung ke MIRA via WhatsApp</p>
+      </div>
+      <div class="step-item" id="step-2">
+        <div class="step-n">2</div>
+        <h3>MIRA Merespons</h3>
+        <p>AI membaca dan memahami konteks transaksimu secara otomatis</p>
+      </div>
+      <div class="step-item" id="step-3">
+        <div class="step-n">3</div>
+        <h3>Kategorisasi Otomatis</h3>
+        <p>MIRA mengelompokkan berdasarkan jenis pengeluaran yang sesuai</p>
+      </div>
+      <div class="step-item" id="step-4">
+        <div class="step-n">4</div>
+        <h3>Pembukuan Tersimpan</h3>
+        <p>Laporan Excel siap unduh dan dianalisis kapan saja</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section class="s dashboard-section" id="preview">
+  <div class="max-w">
+    <div class="db-layout">
+      <div class="db-copy reveal">
+        <span class="eyebrow">Dashboard</span>
+        <h2 class="hl">Semua keuanganmu<br/><span class="hl-accent">dalam satu tampilan</span></h2>
+        <p>Dashboard real-time yang cerdas — lihat tren, analisis pengeluaran, dan insight personal kapanpun kamu butuhkan.</p>
+        <div class="check-list">
+          <div class="check-item"><div class="check-dot">✓</div> Tanpa input manual yang ribet</div>
+          <div class="check-item"><div class="check-dot">✓</div> Bisa kirim foto struk & voice note</div>
+          <div class="check-item"><div class="check-dot">✓</div> Laporan Excel otomatis setiap bulan</div>
+        </div>
+        <button class="btn-stripe btn-stripe-lg" onclick="openModal()">Coba gratis sekarang</button>
+        <p style="margin-top:10px;font-size:.78rem;color:var(--ink-400)">Tanpa download aplikasi · Langsung aktif</p>
+      </div>
+      <div class="db-frame reveal d2">
+        <div class="db-chrome">
+          <div class="db-dots"><span></span><span></span><span></span></div>
+          <div class="db-url">app.getmira.id/dashboard</div>
+        </div>
+        <div class="db-body">
+          <div class="db-sidebar">
+            <div class="db-logo">MI<span>RA</span></div>
+            <div class="db-nav">
+              <div class="db-ni a">📊 Dasbor</div>
+              <div class="db-ni">📋 Transaksi</div>
+              <div class="db-ni">⚙️ Pengaturan</div>
+              <div class="db-ni">🤝 Affiliate</div>
+            </div>
+          </div>
+          <div class="db-main">
+            <div class="db-topbar">
+              <span class="db-ptitle">Dasbor Utama</span>
+              <span class="db-pill">7H</span>
+              <span class="db-pill a">30H</span>
+              <span class="db-pill">3B</span>
+            </div>
+            <div class="db-stats">
+              <div class="db-stat"><div class="db-stat-ico">💰</div><div class="db-stat-lbl">Pemasukan</div><div class="db-stat-v" style="color:#00D4AA">8,5jt</div></div>
+              <div class="db-stat"><div class="db-stat-ico">💸</div><div class="db-stat-lbl">Pengeluaran</div><div class="db-stat-v" style="color:var(--red)">5,2jt</div></div>
+              <div class="db-stat"><div class="db-stat-ico">🏦</div><div class="db-stat-lbl">Tabungan</div><div class="db-stat-v" style="color:var(--blue)">3,3jt</div></div>
+              <div class="db-stat"><div class="db-stat-ico">📊</div><div class="db-stat-lbl">Transaksi</div><div class="db-stat-v">47</div></div>
+            </div>
+            <div class="db-row">
+              <div class="db-chart-c">
+                <div class="db-card-lbl">Tren Pengeluaran</div>
+                <div class="db-bars" id="db-bars-main"></div>
+              </div>
+              <div class="db-txn-c">
+                <div class="db-card-lbl">Terkini</div>
+                <div class="db-tr"><span class="db-tr-icon">🍜</span><div class="db-tr-info"><div class="db-tr-nm">Makan Siang</div><div class="db-tr-mc">GrabFood</div></div><span class="db-tr-amt" style="color:var(--red)">−45rb</span></div>
+                <div class="db-tr"><span class="db-tr-icon">🚗</span><div class="db-tr-info"><div class="db-tr-nm">Grab Car</div><div class="db-tr-mc">Grab</div></div><span class="db-tr-amt" style="color:var(--red)">−32rb</span></div>
+                <div class="db-tr"><span class="db-tr-icon">💰</span><div class="db-tr-info"><div class="db-tr-nm">Gaji Bulanan</div><div class="db-tr-mc">Transfer</div></div><span class="db-tr-amt" style="color:var(--green)">+8,5jt</span></div>
+                <div class="db-tr"><span class="db-tr-icon">🛍️</span><div class="db-tr-info"><div class="db-tr-nm">Belanja Online</div><div class="db-tr-mc">Shopee</div></div><span class="db-tr-amt" style="color:var(--red)">−210rb</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BACKBONE STATS -->
+<section class="backbone" id="backbone">
+  <div class="backbone-lines"></div>
+  <!-- Starburst SVG like Stripe's backbone -->
+  <div class="backbone-starburst">
+    <canvas id="starburstCanvas" style="width:100%;height:100%;"></canvas>
+  </div>
+  <div class="backbone-inner reveal">
+    <div>
+      <h2 class="backbone-hl">Tulang punggung <span class="hl-accent">finansial harian</span> pengguna Indonesia.</h2>
+      <p class="backbone-sub">Cara sederhana untuk melacak pengeluaran dan membantu kamu menabung lebih banyak setiap hari.</p>
+      <div class="backbone-cta">
+        <button class="btn-stripe btn-stripe-lg" onclick="openModal()">Mulai sekarang</button>
+        <button class="btn-stripe-dark btn-stripe-lg" onclick="openLoginModal()">Masuk</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-n"><span class="stat-counter accent" data-target="12700" data-suffix="+" data-prefix="">0</span></div>
+        <div class="stat-lbl">pengguna aktif di seluruh Indonesia</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-n">Rp<span class="stat-counter accent" data-target="11" data-suffix="M+" data-prefix="">0</span></div>
+        <div class="stat-lbl">pengeluaran terdokumentasi</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-n"><span class="stat-counter accent" data-target="99" data-suffix="%" data-prefix="">0</span></div>
+        <div class="stat-lbl">akurasi kategorisasi AI untuk transaksi Indonesia</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-n"><span class="accent">24</span>/7</div>
+        <div class="stat-lbl">MIRA aktif setiap saat, tanpa hari libur</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="s-sm testi-section" id="testimoni">
+  <div class="section-inner max-w tc reveal">
+    <span class="eyebrow">Cerita dari Pengguna MIRA</span>
+    <h2 class="hl">Mereka sudah <span class="hl-accent">merasakan manfaatnya</span></h2>
+  </div>
+  <div class="marquee-outer">
+    <div class="mf-l"></div>
+    <div class="mf-r"></div>
+    <div class="marquee-track" id="testi-track"></div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="s compare-section" style="position:relative;overflow:hidden;">
+  <div class="section-gradient-teal" style="top:-200px;right:-200px;"></div>
+  <div class="max-w" style="position:relative;z-index:1;">
+    <div class="tc reveal">
+      <span class="eyebrow">Perbandingan</span>
+      <h2 class="hl">Apa bedanya MIRA <span class="hl-accent">dengan aplikasi lain?</span></h2>
+      <p class="body-text" style="margin-top:12px;">Didesain dari nol untuk pengguna Indonesia — bukan adaptasi produk asing.</p>
+    </div>
+    <div class="compare-new-wrap reveal">
+      <!-- MIRA Column -->
+      <div class="compare-col-header compare-col-mira">
+        <div class="compare-col-badge">Pilihan Terbaik</div>
+        <div class="compare-col-title">MIRA</div>
+        <div class="compare-col-sub">Langsung dari WhatsApp, tanpa setup, langsung catat.</div>
+        <div class="compare-features">
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Tanpa install aplikasi baru</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Input via WhatsApp — teks, foto, suara</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Dioptimalkan untuk Rupiah & GoPay/OVO</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Transaksi tidak terbatas</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Laporan Excel otomatis tiap bulan</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Mulai dari Rp16.500 / bulan</div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div>Aktif 24/7 — tanpa hari libur</div>
+        </div>
+        <div class="compare-col-cta">
+          <button class="btn-stripe btn-stripe-lg btn-full" onclick="openModal()">Coba Sekarang →</button>
+        </div>
+      </div>
+      <!-- Others Column -->
+      <div class="compare-col-header compare-col-other">
+        <div class="compare-col-badge">Aplikasi Lain</div>
+        <div class="compare-col-title">Money Manager Biasa</div>
+        <div class="compare-col-sub">Perlu install, perlu setup, perlu disiplin buka app sendiri.</div>
+        <div class="compare-features">
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Tanpa install aplikasi baru</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Input via WhatsApp</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Optimal untuk Rupiah & e-wallet lokal</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Transaksi tidak terbatas</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-yes">✓</div><span style="color:var(--ink-400);">Ada laporan (tapi manual)</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Harga terjangkau — rata-rata Rp600rb–1jt/thn</span></div>
+          <div class="compare-feat"><div class="cf-icon cf-no" style="color:#cbd5e1;">✗</div><span style="text-decoration:line-through;color:var(--ink-300);">Butuh reminder agar rajin buka app</span></div>
+        </div>
+        <div class="compare-col-cta">
+          <div style="padding:12px 22px;background:var(--ink-100);border-radius:6px;text-align:center;font-size:.85rem;color:var(--ink-400);">Bukan pilihan kami</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="s faq-section" id="faq">
+  <div class="max-w">
+    <div class="tc reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="hl">Pertanyaan yang <span class="hl-accent">sering ditanyakan</span></h2>
+    </div>
+    <div class="faq-wrap" id="faq-wrap"></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="coba">
+  <div class="cta-inner">
+    <h2>Pembukuan <span class="hl-accent">tanpa effort.</span></h2>
+    <p>Ngobrol aja dengan MIRA lewat chat, foto, atau suara. Semudah chatting di WhatsApp.</p>
+    <div class="cta-btns">
+      <button class="btn-stripe btn-stripe-lg" onclick="openModal()">Gabung sekarang</button>
+      <button class="btn-stripe-dark btn-stripe-lg" onclick="openLoginModal()">Masuk</button>
+    </div>
+    <p class="cta-footnote">Tanpa download aplikasi baru · Langsung aktif di WhatsApp</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand-col">
+      <div class="footer-logo">mi<span>ra</span></div>
+      <div class="footer-tagline">#SemuaMudah</div>
+      <p class="footer-desc">Asisten keuangan pribadi berbasis WhatsApp. Catat, analisis, dan kelola keuangan harianmu — tanpa download aplikasi baru.</p>
+      <div class="footer-socials">
+        <a href="#" class="footer-soc" title="WhatsApp">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        </a>
+        <a href="#" class="footer-soc" title="Instagram">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Produk</div>
+      <div class="footer-col-links">
+        <a href="#fitur">Fitur Unggulan</a>
+        <a href="#cara-kerja">Cara Kerja</a>
+        <a href="#preview">Lihat Dashboard</a>
+        <a href="#testimoni">Testimoni</a>
+        <a href="#coba">Paket & Harga</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Bantuan</div>
+      <div class="footer-col-links">
+        <a href="#faq">FAQ</a>
+        <a href="#">Chat Support WA</a>
+        <a href="#">Kebijakan Privasi</a>
+        <a href="#">Syarat & Ketentuan</a>
+        <a href="#">Refund Policy</a>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-title">Kontak</div>
+      <div class="footer-contact-block">
+        <div class="footer-ci"><span class="footer-ci-ico">💬</span><div><div class="footer-ci-lbl">WhatsApp</div><div class="footer-ci-val">+62 812-3456-7890</div></div></div>
+        <div class="footer-ci"><span class="footer-ci-ico">⏰</span><div><div class="footer-ci-lbl">Support</div><div class="footer-ci-val">MIRA aktif 24/7</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 PT. Mira Teknologi Indonesia. All rights reserved.</span>
+    <div class="footer-bottom-links">
+      <a href="#">Kebijakan Privasi</a>
+      <a href="#">Syarat & Ketentuan</a>
+    </div>
+  </div>
+</footer>
+
+</div><!-- end #page -->
+
+<!-- MAIN MODAL -->
+<div class="modal-overlay" id="mainModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-ttl" id="modal-ttl">Cek Kesehatan Finansialmu</div>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal" onclick="if(event.target===this)closeLoginModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div class="modal-ttl">Masuk ke MIRA</div>
+      <button class="modal-x" onclick="closeLoginModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:22px">
+        <div style="font-size:2.4rem;margin-bottom:8px">📱</div>
+        <p style="font-size:.875rem;color:var(--ink-500)">Masuk dengan nomor WhatsApp yang terdaftar</p>
+      </div>
+      <div class="wa-field">
+        <label>Nomor WhatsApp</label>
+        <div class="wa-ig"><span class="wa-pfx">🇮🇩 +62</span><input type="tel" placeholder="81234567890"/></div>
+      </div>
+      <button class="btn-stripe btn-stripe-lg btn-full" onclick="alert('Fitur login memerlukan koneksi server. Gunakan versi live di getmira.id')">Masuk →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────── STEPS SEQUENTIAL ANIMATION ───────────
+function initStepsAnimation() {
+  const stepsSection = document.getElementById('steps-grid');
+  if (!stepsSection) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const fill = document.getElementById('steps-fill');
+        if (fill) fill.style.width = '100%';
+        [1,2,3,4].forEach((n, i) => {
+          const el = document.getElementById('step-' + n);
+          if (el) {
+            setTimeout(() => {
+              el.classList.add('step-animate');
+              el.style.animationDelay = '0s';
+            }, i * 280);
+          }
+        });
+        obs.disconnect();
+      }
+    });
+  }, { threshold: 0.3 });
+  obs.observe(stepsSection);
+}
+
+// ─────────── STAT COUNTERS ───────────
+function animateCounter(el) {
+  const target = parseInt(el.dataset.target);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1800;
+  const start = performance.now();
+  function update(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const value = Math.floor(eased * target);
+    // Format display
+    let display;
+    if (target >= 10000) {
+      // 12700 → 12.7K
+      display = (value / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    } else {
+      display = value;
+    }
+    el.textContent = display + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+    else {
+      // Final value
+      if (target >= 10000) el.textContent = '12.7K' + suffix;
+      else el.textContent = target + suffix;
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+function initStatCounters() {
+  const backbone = document.getElementById('backbone');
+  if (!backbone) return;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        document.querySelectorAll('.stat-counter').forEach(el => animateCounter(el));
+        obs.disconnect();
+      }
+    });
+  }, { threshold: 0.4 });
+  obs.observe(backbone);
+}
+
+// ─────────── STARBURST CANVAS ───────────
+function initStarburst() {
+  const canvas = document.getElementById('starburstCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h, lines = [], animId;
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width || 700;
+    canvas.height = rect.height || 400;
+    w = canvas.width; h = canvas.height;
+  }
+  function createLines() {
+    lines = [];
+    const cx = w / 2, cy = h + 20;
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 0.85 * (i / (count - 1))) - Math.PI * 0.925;
+      const len = 120 + Math.random() * 200;
+      const speed = 0.2 + Math.random() * 0.5;
+      const opacity = 0.2 + Math.random() * 0.5;
+      const dotSize = 1.5 + Math.random() * 2;
+      lines.push({ angle, len, speed, opacity, dotSize, progress: Math.random(), growing: Math.random() > 0.5 });
+    }
+  }
+  function draw() {
+    ctx.clearRect(0, 0, w, h);
+    const cx = w / 2, cy = h + 20;
+    lines.forEach(l => {
+      if (l.growing) { l.progress += l.speed * 0.003; if (l.progress >= 1) { l.progress = 1; l.growing = false; } }
+      else { l.progress -= l.speed * 0.002; if (l.progress <= 0) { l.progress = 0; l.growing = true; l.len = 100 + Math.random() * 220; } }
+      const endX = cx + Math.cos(l.angle) * l.len * l.progress;
+      const endY = cy + Math.sin(l.angle) * l.len * l.progress;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = `rgba(255,255,255,${l.opacity * 0.4})`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+      // Dot at end
+      ctx.beginPath();
+      ctx.arc(endX, endY, l.dotSize * l.progress, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${l.opacity})`;
+      ctx.fill();
+    });
+    animId = requestAnimationFrame(draw);
+  }
+  resize();
+  createLines();
+  draw();
+  window.addEventListener('resize', () => { resize(); createLines(); });
+}
+
+// ─────────── BENTO BARS INIT ───────────
+function initBentoBars() {
+  const bars = document.querySelectorAll('.bv-bar-d');
+  bars.forEach(b => {
+    const h = b.dataset.h;
+    b.style.height = h + '%';
+  });
+}
+
+// ─────────── DATA ───────────
+const testimonials=[
+  {stars:5,text:'"Akhirnya nemu cara catat keuangan yang beneran aku lakuin tiap hari. Tinggal kirim pesan ke MIRA, udah beres. Ga perlu buka aplikasi lain!"',name:'Anisa R.',role:'Jakarta · Karyawan Swasta',av:'A',color:'#0570DE'},
+  {stars:5,text:'"Laporan Excel-nya detail banget. Baru sadar selama ini pengeluaran makan siang aku udah gila-gilaan 😅 Sekarang jadi lebih terkontrol."',name:'Budi S.',role:'Surabaya · Freelancer',av:'B',color:'#00D4AA'},
+  {stars:5,text:'"Foto struk kasir langsung terbaca otomatis, ga perlu ketik manual. MIRA ini beneran ngerti konteks transaksi orang Indonesia."',name:'Clara W.',role:'Bandung · Ibu Rumah Tangga',av:'C',color:'#3B82F6'},
+  {stars:5,text:'"UMKM saya sekarang pembukuannya rapi banget. Export XLS-nya langsung bisa dikirim ke akuntan. Hemat waktu banget!"',name:'Dian P.',role:'Yogyakarta · Pemilik UMKM',av:'D',color:'#059669'},
+  {stars:5,text:'"Voice note pun bisa langsung dicatat. Lagi nyetir pun bisa sambil laporan pengeluaran. Ini yang aku cari selama ini!"',name:'Eko F.',role:'Medan · Sales Executive',av:'E',color:'#1F35B8'},
+  {stars:5,text:'"Harganya jauh lebih masuk akal dibanding aplikasi lain. Fiturnya lengkap, bisa export kapan aja tanpa batasan transaksi."',name:'Fanny K.',role:'Semarang · Guru',av:'F',color:'#0891B2'},
+  {stars:5,text:'"Baru 2 minggu pakai MIRA, langsung ketahuan bocor di mana. Ternyata GoFood aku 40% dari pengeluaran 😂 Game changer banget!"',name:'Galih M.',role:'Depok · Software Engineer',av:'G',color:'#7C3AED'},
+  {stars:5,text:'"Saya coba beberapa aplikasi keuangan, MIRA yang paling sering aku pakai. Karena pakai WA, jadi ga kerasa lagi pakai aplikasi baru."',name:'Ivan T.',role:'Makassar · Wiraswasta',av:'I',color:'#B45309'},
+  {stars:5,text:'"Fitur spending alert-nya mantap. Langsung dapat notif kalau udah mau lewat batas harian. Bantu banget ngontrol impulsif beli-beli."',name:'Julia R.',role:'Bali · Content Creator',av:'J',color:'#047857'},
+];
+
+const faqs=[
+  {q:'Apakah AI-nya akurat? Bisa salah?',a:'Pencatatan MIRA sudah dioptimalkan dengan training data khusus keuangan harian Indonesia. Tentu, masih ada kemungkinan kesalahan. Untuk hasil terbaik, kirim data yang jelas + info tambahan.<br><br><strong>Contoh:</strong> "Belanja supermarket Rp1.500.000, Debit BCA" → pencatatan jadi lebih presisi.'},
+  {q:'Bisa export data keuangan?',a:'Bisa banget! Setiap ada transaksi baru, MIRA membagikan link laporan terbaru dalam format <strong>Excel (XLS)</strong>. Cocok untuk pembukuan, laporan bisnis, atau analisis lanjutan.'},
+  {q:'Berapa banyak transaksi per hari?',a:'Tidak ada batasan transaksi untuk pengguna berlangganan. Catat sepuasnya, praktis dan hemat.'},
+  {q:'Bagaimana cara kerja MIRA di WhatsApp?',a:'Setelah daftar & berlangganan, kamu akan menerima pesan selamat datang dari MIRA. Selanjutnya, cukup:<ul><li>kirim chat transaksi</li><li>foto struk</li><li>atau voice note</li></ul><br>MIRA langsung mencatat dan merapikan keuanganmu.'},
+  {q:'Apa bedanya MIRA dengan aplikasi money manager lain?',a:'<strong>MIRA:</strong><ul><li>✅ Lewat WhatsApp — tanpa download aplikasi</li><li>✅ Dibuat untuk kebiasaan finansial orang Indonesia</li><li>✅ Input bebas: chat, foto, voice note</li><li>✅ Harga jauh lebih terjangkau</li></ul><br><strong>Aplikasi lain:</strong><ul><li>❌ Harus install & setup</li><li>❌ Kurang optimal untuk rupiah</li><li>❌ Input kaku & ribet</li><li>❌ Biaya Rp600rb–Rp1jt/tahun</li></ul>'},
+];
+
+const plans={
+  personal:{name:'Personal',icon:'👤',desc:'Untuk kamu yang ingin mulai sendiri.',members:1,durations:[{id:'3',label:'3 Bulan',price:69000,per:'≈ Rp23.000 / bulan',save:'',note:''},{id:'6',label:'6 Bulan',price:109000,per:'≈ Rp18.000 / bulan',save:'Hemat 22%',note:''},{id:'12',label:'12 Bulan ⭐',price:199000,per:'≈ Rp16.500 / bulan',save:'Hemat 28%',note:'Setara 1 kopi kekinian'}]},
+  duo:{name:'Duo',icon:'👥',desc:'Bareng pasangan atau sahabat.',members:2,durations:[{id:'3',label:'3 Bulan',price:99000,per:'≈ Rp16.500 / orang / bln',save:'',note:''},{id:'6',label:'6 Bulan',price:179000,per:'≈ Rp14.900 / orang / bln',save:'Hemat 10%',note:''},{id:'12',label:'12 Bulan ⭐',price:349000,per:'≈ Rp14.500 / orang / bln',save:'Best Value',note:''}]},
+  combo:{name:'Combo',icon:'🔥',desc:'Untuk keluarga atau kelompok — hingga 5 orang.',members:5,durations:[{id:'3',label:'3 Bulan',price:179000,per:'≈ Rp11.900 / orang / bln',save:'',note:''},{id:'6',label:'6 Bulan',price:299000,per:'≈ Rp9.970 / orang / bln',save:'Hemat 16%',note:''},{id:'12',label:'12 Bulan ⭐ BEST DEAL',price:599000,per:'≈ Rp9.980 / orang / bln',save:'Paling Hemat',note:''}]},
+};
+
+const VOUCHERS={MIRA10:10,HEMAT20:20,COBAMIRA:15};
+
+const questions=[
+  {id:'q1',step:0,num:1,tag:'Step 1 — Pemasukan',title:'Stabilitas Penghasilan',desc:'Bantu MIRA kenali kondisi keuangan kamu',label:'💵 Rata-rata penghasilan bulanan kamu',type:'radio',opts:[{v:'<3jt',l:'< Rp3 juta'},{v:'3-5jt',l:'Rp3–5 juta'},{v:'5-10jt',l:'Rp5–10 juta'},{v:'10-20jt',l:'Rp10–20 juta'},{v:'20-30jt',l:'Rp20–30 juta'},{v:'>30jt',l:'Rp30 juta+'}]},
+  {id:'q2',step:0,num:2,tag:'Step 1 — Pemasukan',title:'Stabilitas Penghasilan',desc:'Bantu MIRA kenali kondisi keuangan kamu',label:'📅 Jenis pemasukan kamu',type:'radio',opts:[{v:'tetap',l:'✅ Tetap tiap bulan'},{v:'freelance',l:'🎯 Tidak tetap / freelance'},{v:'campuran',l:'🔄 Campuran'}]},
+  {id:'q3',step:0,num:3,tag:'Step 1 — Pemasukan',title:'Stabilitas Penghasilan',desc:'Bantu MIRA kenali kondisi keuangan kamu',label:'📆 Tanggal menerima pemasukan',type:'radio',opts:[{v:'tetap',l:'📌 Tanggal tetap'},{v:'bervariasi',l:'↔️ Bervariasi'},{v:'harian',l:'📆 Harian / mingguan'}]},
+  {id:'q4',step:1,num:4,tag:'Step 2 — Kewajiban',title:'Beban & Pengeluaran Wajib',desc:'Seberapa besar beban finansial tetap kamu?',label:'💸 Pengeluaran wajib per bulan',type:'radio',opts:[{v:'<30',l:'😊 < 30% penghasilan'},{v:'30-50',l:'🟡 30–50%'},{v:'50-70',l:'🟠 50–70%'},{v:'>70',l:'🔴 > 70%'}]},
+  {id:'q5',step:1,num:5,tag:'Step 2 — Kewajiban',title:'Beban & Pengeluaran Wajib',desc:'Seberapa besar beban finansial tetap kamu?',label:'🏠 Pengeluaran wajib kamu (boleh pilih lebih dari satu)',type:'checkbox',opts:[{v:'sewa',l:'🏠 Sewa / cicilan rumah'},{v:'listrik',l:'💡 Listrik & utilitas'},{v:'transport',l:'🚗 Transportasi'},{v:'asuransi',l:'🛡️ Asuransi'},{v:'cicilan',l:'💳 Cicilan hutang'},{v:'tanggungan',l:'👨‍👩‍👧 Tanggungan keluarga'}]},
+  {id:'q6',step:2,num:6,tag:'Step 3 — Pengeluaran',title:'Pola Belanja & Kebiasaan',desc:'Deteksi kebocoran dan perilaku impulsif',label:'🤔 Uang paling sering habis untuk',type:'radio',opts:[{v:'makan',l:'🍜 Makan & jajan harian'},{v:'lifestyle',l:'☕ Nongkrong & lifestyle'},{v:'belanja-online',l:'🛍️ Belanja online'},{v:'keluarga',l:'👨‍👩‍👧 Kebutuhan keluarga'},{v:'ga-terasa',l:'❓ Tidak terasa habis'}]},
+  {id:'q7',step:2,num:7,tag:'Step 3 — Pengeluaran',title:'Pola Belanja & Kebiasaan',desc:'Deteksi kebocoran dan perilaku impulsif',label:'🛒 Seberapa sering belanja impulsif saat promo?',type:'radio',opts:[{v:'jarang',l:'😇 Hampir tidak pernah'},{v:'kadang',l:'🤷 Kadang-kadang'},{v:'sering',l:'😅 Sering'},{v:'sangat-sering',l:'😬 Sangat sering'}]},
+  {id:'q8',step:2,num:8,tag:'Step 3 — Pengeluaran',title:'Pola Belanja & Kebiasaan',desc:'Deteksi kebocoran dan perilaku impulsif',label:'💳 Transaksi kecil e-wallet biasanya',type:'radio',opts:[{v:'jarang',l:'✅ Jarang'},{v:'beberapa',l:'🔁 Beberapa kali sehari'},{v:'tanpa-sadar',l:'😱 Sangat sering tanpa sadar'}]},
+  {id:'q9',step:3,num:9,tag:'Step 4 — Tabungan',title:'Disiplin Menabung',desc:'Seberapa konsisten kamu menyisihkan uang?',label:'🏦 Apakah kamu rutin menabung?',type:'radio',opts:[{v:'otomatis',l:'🤖 Ya, otomatis setiap bulan'},{v:'tidak-konsisten',l:'🔄 Ya, tapi tidak konsisten'},{v:'jarang',l:'😕 Jarang'},{v:'tidak',l:'❌ Tidak pernah'}]},
+  {id:'q10',step:3,num:10,tag:'Step 4 — Tabungan',title:'Disiplin Menabung',desc:'Seberapa konsisten kamu menyisihkan uang?',label:'⚖️ Porsi pengeluaran vs tabungan',type:'slider'},
+  {id:'q11',step:3,num:11,tag:'Step 4 — Tabungan',title:'Disiplin Menabung',desc:'Seberapa konsisten kamu menyisihkan uang?',label:'🎯 Tujuan tabungan kamu',type:'checkbox',opts:[{v:'darurat',l:'🚨 Dana darurat'},{v:'rumah',l:'🏠 Beli rumah'},{v:'mobil',l:'🚗 Kendaraan'},{v:'menikah',l:'💍 Menikah'},{v:'pendidikan',l:'🎓 Pendidikan'},{v:'liburan',l:'✈️ Liburan'},{v:'bisnis',l:'💼 Modal bisnis'},{v:'tidak-ada',l:'🤷 Tidak ada tujuan'}]},
+  {id:'q12',step:4,num:12,tag:'Step 5 — Dana Darurat',title:'Ketahanan Finansial',desc:'Seberapa siap menghadapi situasi darurat?',label:'🚨 Dana darurat cukup untuk:',type:'radio',opts:[{v:'<1',l:'😰 < 1 bulan'},{v:'1-3',l:'😐 1–3 bulan'},{v:'3-6',l:'😊 3–6 bulan'},{v:'>6',l:'💪 > 6 bulan'},{v:'tidak-ada',l:'❌ Tidak punya'}]},
+  {id:'q13',step:5,num:13,tag:'Step 6 — Investasi',title:'Kesiapan Berinvestasi',desc:'Sudah membangun aset untuk masa depan?',label:'📈 Apakah kamu berinvestasi?',type:'radio',opts:[{v:'tidak',l:'❌ Tidak'},{v:'sesekali',l:'🔄 Ya, sesekali'},{v:'rutin',l:'✅ Ya, rutin'}]},
+  {id:'q14',step:5,num:14,tag:'Step 6 — Investasi',title:'Kesiapan Berinvestasi',desc:'Sudah membangun aset untuk masa depan?',label:'💼 Instrumen investasi yang digunakan',type:'checkbox',opts:[{v:'reksa',l:'📊 Reksa dana'},{v:'saham',l:'📈 Saham'},{v:'emas',l:'🪙 Emas'},{v:'crypto',l:'₿ Crypto'},{v:'properti',l:'🏠 Properti'},{v:'tidak',l:'❌ Tidak ada'}]},
+  {id:'q15',step:6,num:15,tag:'Step 7 — Hutang',title:'Risiko Kredit & Hutang',desc:'Pahami beban kreditmu',label:'💳 Apakah kamu memiliki cicilan / hutang aktif?',type:'radio',opts:[{v:'tidak',l:'✅ Tidak'},{v:'ringan',l:'🟡 Ya, ringan'},{v:'besar',l:'🔴 Ya, cukup besar'}]},
+  {id:'q16',step:6,num:16,tag:'Step 7 — Hutang',title:'Risiko Kredit & Hutang',desc:'Pahami beban kreditmu',label:'🏦 Penggunaan PayLater / kartu kredit',type:'radio',opts:[{v:'tidak',l:'✅ Tidak pernah'},{v:'sesekali',l:'🔄 Sesekali'},{v:'terkontrol',l:'😊 Rutin tapi terkontrol'},{v:'menumpuk',l:'😰 Sering & menumpuk'}]},
+  {id:'q17',step:7,num:17,tag:'Step 8 — Pembayaran',title:'Pola Transaksi',desc:'Rekening, dompet digital, dan cara bayar sehari-hari',label:'🏦 Bank yang kamu gunakan',type:'checkbox',opts:[{v:'bri',l:'BRI'},{v:'bca',l:'BCA'},{v:'mandiri',l:'Mandiri'},{v:'bni',l:'BNI'},{v:'jago',l:'Bank Jago'},{v:'jenius',l:'Jenius'}]},
+  {id:'q18',step:7,num:18,tag:'Step 8 — Pembayaran',title:'Pola Transaksi',desc:'Rekening, dompet digital, dan cara bayar sehari-hari',label:'📱 E-wallet yang kamu pakai',type:'checkbox',opts:[{v:'gopay',l:'🟢 GoPay'},{v:'ovo',l:'🟣 OVO'},{v:'dana',l:'🔵 DANA'},{v:'shopeepay',l:'🟠 ShopeePay'},{v:'linkaja',l:'🔴 LinkAja'}]},
+];
+const TOTAL_STEPS=8;
+
+// ─── STATE ───
+let answers={},currentQ=0,panel='assessment',selPlan='personal',selDur='12',voucherDisc=0,activeVoucher='';
+
+// ─── INIT ───
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    document.getElementById('loader').classList.add('hidden');
+    setTimeout(()=>document.getElementById('page').classList.add('visible'),200);
+  },1400);
+
+  const ro=new IntersectionObserver(entries=>{
+    entries.forEach((e,i)=>{
+      if(e.isIntersecting){setTimeout(()=>e.target.classList.add('visible'),i*70);ro.unobserve(e.target);}
+    });
+  },{threshold:.06});
+  document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+  window.addEventListener('scroll',()=>document.getElementById('navbar').classList.toggle('scrolled',scrollY>10));
+
+  // Rotating hero text
+  const txts=['Kelola uang dengan cerdas.','Lihat ke mana uangmu pergi.','Pengeluaran terpantau rapi.'];
+  let idx=0;
+  const el=document.getElementById('rotating-hl');
+  el.style.transition='opacity .25s,transform .25s';
+  setInterval(()=>{
+    el.style.opacity='0';el.style.transform='translateY(-8px)';
+    setTimeout(()=>{idx=(idx+1)%txts.length;el.textContent=txts[idx];el.style.opacity='1';el.style.transform='';},260);
+  },2800);
+
+  // Testimonials
+  const track=document.getElementById('testi-track');
+  const doubled=[...testimonials,...testimonials];
+  track.innerHTML=doubled.map(t=>`
+    <div class="testi-card">
+      <div class="testi-stars">${'★'.repeat(t.stars)}</div>
+      <p class="testi-text">${t.text}</p>
+      <div class="testi-who">
+        <div class="testi-av" style="background:${t.color}">${t.av}</div>
+        <div><div class="testi-nm">${t.name}</div><div class="testi-rl">${t.role}</div></div>
+      </div>
+    </div>`).join('');
+
+  // FAQ
+  const faqWrap=document.getElementById('faq-wrap');
+  faqWrap.innerHTML=faqs.map((f,i)=>`
+    <div class="faq-item" id="faq-${i}">
+      <div class="faq-q" onclick="toggleFaq(${i})"><span>${f.q}</span><div class="faq-ico">+</div></div>
+      <div class="faq-a">${f.a}</div>
+    </div>`).join('');
+
+  // Bar charts
+  const bars=[38,62,45,78,54,82,66,42,71,58,88,64,50,74,60];
+  const colors=['#0570DE','#3B82F6'];
+  const toEl=(id,h)=>{
+    const el=document.getElementById(id);
+    if(el)el.innerHTML=bars.map((b,i)=>`<div class="db-bar" style="height:${b}%;background:${colors[i%2]}"></div>`).join('');
+  };
+  toEl('db-bars-main',60);
+  const bb=document.getElementById('bento-bars');
+  if(bb)bb.innerHTML=bars.slice(0,10).map((b,i)=>`<div class="bv-bar" style="height:${b}%;background:${colors[i%2]};flex:1;border-radius:2px 2px 0 0"></div>`).join('');
+
+  // New: init steps, counters, starburst, bento dashboard bars
+  initStepsAnimation();
+  initStatCounters();
+  initStarburst();
+  initBentoBars();
+});
+
+// ─── FAQ ───
+function toggleFaq(i){
+  const item=document.getElementById('faq-'+i);
+  const was=item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(e=>e.classList.remove('open'));
+  if(!was)item.classList.add('open');
+}
+
+// ─── MODAL ───
+function setTitle(t){document.getElementById('modal-ttl').textContent=t;}
+function openModal(){answers={};currentQ=0;panel='assessment';voucherDisc=0;activeVoucher='';selPlan='personal';selDur='12';document.getElementById('mainModal').classList.add('open');document.body.style.overflow='hidden';renderPanel();}
+function closeModal(){document.getElementById('mainModal').classList.remove('open');document.body.style.overflow='';}
+function openLoginModal(){document.getElementById('loginModal').classList.add('open');document.body.style.overflow='hidden';}
+function closeLoginModal(){document.getElementById('loginModal').classList.remove('open');document.body.style.overflow='';}
+function renderPanel(){if(panel==='assessment')renderAssessment();else if(panel==='outcomes')renderOutcomes();else if(panel==='pricing')renderPricing();else if(panel==='wa')renderWA();}
+
+function renderAssessment(){
+  setTitle('Cek Kesehatan Finansialmu');
+  const q=questions[currentQ];
+  if(!q){panel='outcomes';renderPanel();return;}
+  const segs=Array.from({length:TOTAL_STEPS},(_,i)=>`<div class="prog-seg${i<q.step?' done':i===q.step?' active':''}"></div>`).join('');
+  let inp='';
+  if(q.type==='radio'){
+    inp=`<div class="r-opts">${q.opts.map(o=>`<div class="r-opt${answers[q.id]===o.v?' sel':''}" onclick="selRad('${q.id}','${o.v}',this)"><div class="r-circle"><div class="r-dot"></div></div><span class="r-txt">${o.l}</span></div>`).join('')}</div>`;
+  }else if(q.type==='checkbox'){
+    const s=answers[q.id]||[];
+    inp=`<div class="cb-opts">${q.opts.map(o=>`<div class="cb-opt${s.includes(o.v)?' sel':''}" onclick="toggleCb('${q.id}','${o.v}',this)"><div class="cb-box"><span class="cb-tick">✓</span></div><span class="cb-txt">${o.l}</span></div>`).join('')}</div>`;
+  }else if(q.type==='slider'){
+    const v=answers[q.id]||50;
+    inp=`<input type="range" class="range-input" min="0" max="100" value="${v}" oninput="answers['${q.id}']=this.value;document.getElementById('sv').textContent=this.value+'% pengeluaran / '+(100-this.value)+'% tabungan'"/>
+    <div id="sv" style="text-align:center;font-size:.8rem;color:var(--blue);font-weight:600;margin-top:7px">${v}% pengeluaran / ${100-v}% tabungan</div>
+    <div class="slider-labels"><span>100% Pengeluaran</span><span>50/50</span><span>100% Tabungan</span></div>`;
+  }
+  document.getElementById('modal-body').innerHTML=`
+    <div><div class="prog-track">${segs}</div><div class="prog-info">Langkah ${q.step+1} dari ${TOTAL_STEPS}</div></div>
+    <div style="margin:18px 0"><div class="step-badge">${q.tag}</div><div class="step-title">${q.title}</div><div class="step-desc">${q.desc}</div></div>
+    <div class="q-block" id="q-block">
+      <div class="q-label"><span class="q-n">${q.num}</span>${q.label}</div>
+      ${inp}
+    </div>
+    <div class="step-nav">
+      ${currentQ>0?`<button class="btn-back" onclick="currentQ--;renderAssessment()">← Kembali</button>`:`<div></div>`}
+      <span class="s-count">${currentQ+1} / ${questions.length}</span>
+      <button class="btn-next" onclick="nextQ('${q.type}')">Lanjut →</button>
+    </div>`;
+}
+function selRad(id,v,el){answers[id]=v;document.querySelectorAll('#modal-body .r-opt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');}
+function toggleCb(id,v,el){if(!answers[id])answers[id]=[];const i=answers[id].indexOf(v);if(i>-1){answers[id].splice(i,1);el.classList.remove('sel');}else{answers[id].push(v);el.classList.add('sel');}}
+function nextQ(type){
+  const q=questions[currentQ];
+  if(type!=='slider'&&type!=='checkbox'&&!answers[q.id]){const b=document.getElementById('q-block');b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake');return;}
+  currentQ++;
+  if(currentQ>=questions.length){panel='outcomes';renderPanel();}else renderAssessment();
+}
+
+function renderOutcomes(){
+  setTitle('Hasil Analisis Finansialmu');
+  const score=Math.floor(Math.random()*30)+55;
+  const pct=score+'%';
+  const items=[
+    {icon:'📊',text:'Kebiasaan catat keuangan kamu masih perlu ditingkatkan — mulai dari yang kecil, hasilnya akan besar!'},
+    {icon:'💰',text:'Ada potensi tabungan tambahan Rp300–500rb per bulan jika pengeluaran dioptimalkan.'},
+    {icon:'🎯',text:'MIRA bisa membantu kamu mencapai tujuan finansialmu lebih cepat dengan pembukuan otomatis.'},
+    {icon:'📈',text:'Tracking pengeluaran harian terbukti meningkatkan kesadaran finansial 3x lebih efektif.'},
+  ];
+  document.getElementById('modal-body').innerHTML=`
+    <div style="text-align:center;margin-bottom:22px">
+      <div class="score-ring" style="--pct:${pct}"><div class="score-inner"><div class="score-n">${score}</div><div class="score-lbl">/ 100</div></div></div>
+      <div class="outcome-title">Skor Kesehatan Finansialmu</div>
+      <div class="outcome-desc">Masih ada ruang berkembang! MIRA hadir membantu kamu lebih disiplin dan terkontrol.</div>
+    </div>
+    <div class="outcome-items">${items.map(i=>`<div class="outcome-item"><div class="oi-icon">${i.icon}</div><div class="oi-text">${i.text}</div></div>`).join('')}</div>
+    <button class="btn-stripe btn-stripe-lg btn-full" onclick="panel='pricing';renderPanel()">Lihat Paket & Mulai Sekarang →</button>
+    <div style="text-align:center;margin-top:10px"><button style="background:none;border:none;cursor:pointer;font-size:.8rem;color:var(--ink-400);text-decoration:underline" onclick="closeModal()">Tutup</button></div>`;
+}
+
+function renderPricing(){
+  setTitle('Pilih Paket MIRA');
+  const plan=plans[selPlan];
+  const dur=plan.durations.find(d=>d.id===selDur)||plan.durations[0];
+  const price=dur.price,disc=Math.round(price*voucherDisc/100),final=price-disc;
+  const tabs=Object.entries(plans).map(([k,p])=>`<div class="p-tab${selPlan===k?' a':''}" onclick="selPlan='${k}';selDur=plans['${k}'].durations[2]?.id||plans['${k}'].durations[0].id;renderPricing()">${p.icon} ${p.name}</div>`).join('');
+  const durs=plan.durations.map(d=>`<div class="dur-opt${selDur===d.id?' sel':''}" onclick="selDur='${d.id}';renderPricing()"><div class="dur-left"><div class="dur-check"><div class="dur-cdot"></div></div><div><div class="dur-nm">${d.label}</div><div class="dur-per">${d.per}${d.note?` · <em style="font-style:normal;color:var(--blue)">${d.note}</em>`:''}</div></div></div><div class="dur-right"><div class="dur-price">Rp${d.price.toLocaleString('id-ID')}</div>${d.save?`<div class="dur-save">${d.save}</div>`:''}</div></div>`).join('');
+  document.getElementById('modal-body').innerHTML=`
+    <div style="text-align:center;margin-bottom:18px"><div class="step-badge">🔥 Pilih Paketmu</div><div class="step-title">Mulai Lebih Sehat Hari Ini</div><div class="step-desc">Harga terjangkau, manfaat maksimal.</div></div>
+    <div class="pricing-tabs">${tabs}</div>
+    <div class="plan-card"><div class="plan-head"><h3>${plan.icon} ${plan.name}</h3><p>${plan.desc}</p></div><div class="dur-opts">${durs}</div></div>
+    <div><div class="voucher-lbl">🏷️ Kode Voucher (opsional)</div><div class="voucher-row"><input type="text" class="voucher-input" id="vi" placeholder="Masukkan kode voucher" oninput="document.getElementById('vm').innerHTML=''"/><button class="btn-voucher" onclick="applyVoucher()">Terapkan</button></div><div id="vm" class="voucher-msg"></div></div>
+    <div class="order-sum"><div class="order-row"><span>Paket ${plan.icon} ${plan.name} · ${dur.label}</span><span>Rp${price.toLocaleString('id-ID')}</span></div>${disc>0?`<div class="order-row" style="color:var(--green)"><span>Voucher ${activeVoucher} (${voucherDisc}%)</span><span>- Rp${disc.toLocaleString('id-ID')}</span></div>`:''}<div class="order-row total"><span>Total</span><span style="color:var(--blue)">Rp${final.toLocaleString('id-ID')}</span></div></div>
+    <div style="margin-top:18px"><button class="btn-stripe btn-stripe-lg btn-full" onclick="panel='wa';renderPanel()">Lanjut →</button></div>
+    <div style="text-align:center;margin-top:9px"><button style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--ink-400);text-decoration:underline" onclick="panel='outcomes';renderPanel()">← Lihat kembali hasil assessment</button></div>`;
+}
+function applyVoucher(){
+  const code=document.getElementById('vi').value.trim().toUpperCase();
+  const msg=document.getElementById('vm');
+  if(VOUCHERS[code]){voucherDisc=VOUCHERS[code];activeVoucher=code;msg.className='voucher-msg ok';msg.textContent='✅ Voucher berhasil! Diskon '+VOUCHERS[code]+'% diterapkan.';renderPricing();}
+  else{msg.className='voucher-msg err';msg.textContent='❌ Kode voucher tidak valid.';}
+}
+
+function renderWA(){
+  setTitle('📱 Nomor WhatsApp');
+  const plan=plans[selPlan],dur=plan.durations.find(d=>d.id===selDur);
+  const price=dur?.price||0,disc=Math.round(price*voucherDisc/100),final=price-disc;
+  const labels=['Kamu (Pengguna Utama)','Anggota 2','Anggota 3 (opsional)','Anggota 4 (opsional)','Anggota 5 (opsional)'];
+  const required=plan.members===5?2:plan.members;
+  let fields='';
+  for(let i=0;i<plan.members;i++){
+    const req=i<required;
+    fields+=`<div class="wa-field"><label>${labels[i]}${req?'<span style="color:var(--red)"> *</span>':''}</label>${i===0?'<div class="wa-hint">Akun utama yang menerima akses MIRA</div>':''}<div class="wa-ig" id="wa-w-${i}"><span class="wa-pfx">🇮🇩 +62</span><input type="tel" id="wa-i-${i}" placeholder="81234567890"/></div></div>`;
+  }
+  document.getElementById('modal-body').innerHTML=`
+    <div style="text-align:center;margin-bottom:22px"><div style="font-size:2.4rem;margin-bottom:8px">📱</div><div class="step-title">Daftarkan Nomor WhatsApp</div><div class="step-desc">${plan.members===1?'Nomor WhatsApp kamu':plan.members===2?'Nomor kamu & pasangan / teman':`Nomor untuk ${plan.members} anggota (min. 2)`}</div></div>
+    ${fields}
+    <div class="wa-note">ℹ️ MIRA akan menghubungi nomor-nomor ini via WhatsApp setelah pembayaran berhasil.</div>
+    <button class="btn-stripe btn-stripe-lg btn-full" onclick="processWA(${required},${plan.members},${final})">Bayar Sekarang →</button>
+    <div style="text-align:center;margin-top:9px"><button style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--ink-400);text-decoration:underline" onclick="panel='pricing';renderPanel()">← Kembali ke pilihan paket</button></div>`;
+}
+function processWA(req,members,final){
+  const nums=[];
+  for(let i=0;i<members;i++){
+    const v=(document.getElementById('wa-i-'+i)?.value||'').replace(/\D/g,'');
+    if(i<req&&(!v||v.length<9)){const w=document.getElementById('wa-w-'+i);if(w){w.style.borderColor='var(--red)';setTimeout(()=>w.style.borderColor='',2000);}return;}
+    if(v)nums.push('+62'+v);
+  }
+  const plan=plans[selPlan],dur=plan.durations.find(d=>d.id===selDur);
+  document.getElementById('modal-body').innerHTML=`
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:2.8rem;margin-bottom:14px">🚀</div>
+      <div class="step-title">Siap ke Pembayaran!</div>
+      <p style="font-size:.85rem;color:var(--ink-500);margin-top:5px;margin-bottom:4px">Paket: <strong>${plan.name} · ${dur?.label}</strong></p>
+      <p style="font-size:.85rem;color:var(--ink-500);margin-bottom:18px">Total: <strong style="color:var(--blue)">Rp${final.toLocaleString('id-ID')}</strong></p>
+      <div style="background:var(--ink-50);border-radius:8px;padding:10px 14px;font-size:.8rem;color:var(--ink-500);margin-bottom:22px">WhatsApp terdaftar:<br/><strong style="color:var(--ink-800)">${nums.join(' · ')}</strong></div>
+      <a href="https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira?plan=${selPlan}&duration=${selDur}&amount=${final}&wa=${encodeURIComponent(nums.join(','))}&voucher=${activeVoucher}" class="btn-stripe btn-stripe-lg btn-full" style="display:flex;justify-content:center;text-decoration:none">Bayar Sekarang →</a>
+      <div style="text-align:center;margin-top:9px"><button style="background:none;border:none;cursor:pointer;font-size:.78rem;color:var(--ink-400);text-decoration:underline" onclick="panel='wa';renderPanel()">← Kembali</button></div>
+    </div>`;
+}
+</script>
+</body>
+</html>

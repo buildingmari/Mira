@@ -1,0 +1,58 @@
+.compare-section {
+  background: var(--surface);
+}
+
+.compare-table {
+  max-width: 640px;
+  margin: 44px auto 0;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.compare-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  background: var(--blue-ultra);
+  padding: 13px 22px;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 0.84rem;
+}
+
+.compare-header .col-mira {
+  color: var(--blue);
+}
+
+.compare-header .col-other {
+  color: #94A3B8;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  font-size: 0.87rem;
+  align-items: center;
+}
+
+.compare-row:nth-child(even) {
+  background: var(--surface);
+}
+
+.compare-row .feature {
+  color: var(--text-body);
+}
+
+.compare-row .check {
+  color: var(--success);
+  text-align: center;
+}
+
+.compare-row .cross {
+  color: var(--error);
+  text-align: center;
+}

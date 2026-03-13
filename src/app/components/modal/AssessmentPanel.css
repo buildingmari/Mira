@@ -1,0 +1,148 @@
+.assess-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.progress-step {
+  flex: 1;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+
+.progress-step.done {
+  background: var(--gradient);
+}
+
+.progress-step.active {
+  background: var(--blue-light);
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  color: #94A3B8;
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.step-content {
+  margin-bottom: 22px;
+}
+
+.step-content.shake {
+  animation: shake 0.3s ease;
+}
+
+.step-header {
+  margin-bottom: 22px;
+}
+
+.step-header .step-tag {
+  display: inline-block;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-ultra);
+  padding: 3px 10px;
+  border-radius: 99px;
+  margin-bottom: 8px;
+}
+
+.step-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.step-header p {
+  font-size: 0.87rem;
+  color: #64748B;
+  margin-top: 4px;
+}
+
+.q-block {
+  margin-bottom: 22px;
+}
+
+.q-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.q-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--blue-ultra);
+  color: var(--blue);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 16px 0 20px;
+  border-top: 1px solid var(--border);
+  /* Sticky inside the scrollable modal-body */
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  z-index: 10;
+}
+
+/* When it's a radio question, the Lanjut button is hidden */
+.step-nav.nav-radio-mode {
+  border-top-color: transparent;
+}
+
+.step-counter {
+  font-size: 0.8rem;
+  color: #94A3B8;
+}
+
+/* Auto-advance hint text */
+.auto-advance-hint {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  margin-top: 12px;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+/* Fade out content while auto-advancing */
+.step-content.auto-advancing {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Safe area padding on mobile for nav */
+@media (max-width: 768px) {
+  .step-nav {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+}

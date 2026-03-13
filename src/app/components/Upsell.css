@@ -1,0 +1,17 @@
+.upsell2 {
+  background: var(--surface);
+  text-align: center;
+}
+
+.upsell2-inner {
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.upsell2 .section-title {
+  margin-top: 8px;
+}
+
+.upsell2 .section-desc {
+  margin: 12px auto 28px;
+}

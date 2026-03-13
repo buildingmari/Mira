@@ -1,0 +1,47 @@
+:root {
+  /* Colors */
+  --blue: #2D4BFF;
+  --blue-dark: #1F35B8;
+  --blue-light: #6C82FF;
+  --blue-ultra: #E9EDFF;
+  --cyan: #22D3EE;
+  --gradient: linear-gradient(135deg, #2D4BFF 0%, #22D3EE 100%);
+  
+  --success: #16A34A;
+  --success-bg: #DCFCE7;
+  --warning: #F59E0B;
+  --warning-bg: #FEF3C7;
+  --error: #DC2626;
+  --error-bg: #FEE2E2;
+  
+  --text-dark: #0F172A;
+  --text-body: #334155;
+  --border: #E2E8F0;
+  --surface: #F8FAFC;
+  --bg: #FFFFFF;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(45, 75, 255, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 20px 60px rgba(45, 75, 255, 0.14), 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Sora', sans-serif;
+  color: var(--text-dark);
+}

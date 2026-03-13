@@ -1,0 +1,285 @@
+.score-ring-wrap {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.score-ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 12px;
+}
+
+.score-ring svg {
+  transform: rotate(-90deg);
+}
+
+.score-ring .ring-bg {
+  fill: none;
+  stroke: #E2E8F0;
+  stroke-width: 10;
+}
+
+.score-ring .ring-fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.score-ring .ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.score-ring .ring-num {
+  font-family: 'Sora', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-ring .ring-label {
+  font-size: 0.7rem;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.score-cat {
+  font-family: 'Sora', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.daily-limit-box {
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  color: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin: 16px 0;
+  text-align: center;
+}
+
+.daily-limit-box .dl-label {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+.daily-limit-box .dl-amount {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.daily-limit-box .dl-value {
+  display: inline-block;
+}
+
+.daily-limit-box .dl-input {
+  background: rgba(255,255,255,0.2);
+  border: 2px solid rgba(255,255,255,0.6);
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Sora', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 2px 10px;
+  width: 180px;
+  outline: none;
+}
+
+.daily-limit-box .dl-input::placeholder {
+  color: rgba(255,255,255,0.5);
+}
+
+.daily-limit-box .dl-edit-btn {
+  background: rgba(255,255,255,0.25);
+  border: 1.5px solid rgba(255,255,255,0.6);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.daily-limit-box .dl-edit-btn:hover {
+  background: rgba(255,255,255,0.4);
+}
+
+.daily-limit-box .dl-sub {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin-top: 3px;
+}
+
+.outcome-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.oc {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.oc.ok {
+  border-left: 4px solid var(--success);
+}
+
+.oc.warn {
+  border-left: 4px solid var(--warning);
+}
+
+.oc.bad {
+  border-left: 4px solid var(--error);
+}
+
+.oc-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.oc-body {
+  font-size: 0.83rem;
+  color: var(--text-body);
+  line-height: 1.55;
+}
+
+.reco-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.reco-item {
+  background: var(--blue-ultra);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--text-body);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.reco-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── PROMINENT PRICING CTA ── */
+.pkg-cta-banner {
+  background: linear-gradient(135deg, #1E3AE0 0%, #2D4BFF 55%, #22D3EE 100%);
+  border-radius: 18px;
+  padding: 22px 22px 16px;
+  text-align: center;
+  color: #fff;
+  margin: 18px 0 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pkg-cta-banner::before {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.07);
+}
+
+.pkg-cta-badge {
+  display: inline-block;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 99px;
+  padding: 4px 14px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+  backdrop-filter: blur(6px);
+}
+
+.pkg-cta-headline {
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+  opacity: 0.95;
+}
+
+.pkg-cta-headline strong {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  display: inline-block;
+}
+
+.pkg-cta-per {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.pkg-cta-sub {
+  font-size: 0.79rem;
+  opacity: 0.75;
+  margin-bottom: 16px;
+}
+
+.pkg-cta-btn {
+  background: #fff !important;
+  color: #2D4BFF !important;
+  font-family: 'Sora', sans-serif !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,.15) !important;
+  animation: pkg-pulse 2.2s ease-in-out infinite;
+}
+
+.pkg-cta-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,.2) !important;
+}
+
+@keyframes pkg-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,.15), 0 0 0 0 rgba(255,255,255,.5); }
+  50% { box-shadow: 0 4px 20px rgba(0,0,0,.15), 0 0 0 8px rgba(255,255,255,0); }
+}
+
+.pkg-cta-badges {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.pkg-cta-badges span {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  font-weight: 500;
+}

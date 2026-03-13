@@ -1,0 +1,216 @@
+.pricing-tabs {
+  display: flex;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+
+.ptab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #64748B;
+  transition: background 0.2s, color 0.2s;
+}
+
+.ptab.active {
+  background: #fff;
+  color: var(--blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.plan-card {
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.plan-card.current-plan {
+  border-color: var(--blue);
+}
+
+.plan-card-header {
+  padding: 18px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.plan-card-header p {
+  font-size: 0.82rem;
+  color: #64748B;
+  margin-top: 3px;
+  margin-bottom: 0;
+}
+
+.duration-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.dur-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  gap: 12px;
+  user-select: none;
+}
+
+.dur-opt:hover {
+  border-color: var(--blue-light);
+  background: var(--blue-ultra);
+}
+
+.dur-opt.selected {
+  border-color: var(--blue);
+  background: var(--blue-ultra);
+}
+
+.dur-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dur-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dur-opt.selected .dur-check {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.dur-opt.selected .dur-check::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.dur-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+.dur-per {
+  font-size: 0.75rem;
+  color: #64748B;
+  margin-top: 1px;
+}
+
+.dur-right {
+  text-align: right;
+}
+
+.dur-price {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--text-dark);
+}
+
+.dur-save {
+  display: inline-block;
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-top: 3px;
+}
+
+.voucher-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.voucher-input {
+  flex: 1;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  /* ≥16px prevents iOS Safari zoom on focus */
+  font-size: 16px;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.voucher-input:focus {
+  border-color: var(--blue);
+}
+
+.voucher-msg {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.voucher-msg.ok {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.voucher-msg.err {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.order-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-top: 20px;
+  font-size: 0.88rem;
+}
+
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.order-row.total {
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+}

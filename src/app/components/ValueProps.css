@@ -1,0 +1,322 @@
+/* ─── KENAPA MIRA — matches HTML reference: bento-style product cards ─── */
+.kenapa-section {
+  background: var(--surface);
+  padding: 96px max(24px, 4%);
+  position: relative;
+  overflow: hidden;
+}
+
+.kenapa-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Scroll reveal ── */
+.vp-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.vp-reveal.vp-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Intro headline ── */
+.kenapa-intro {
+  margin-bottom: 48px;
+  max-width: 800px;
+}
+
+.kenapa-intro-hl {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-weight: 400;
+  color: var(--text-body);
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+
+.kenapa-intro-hl strong {
+  color: var(--text-dark);
+  font-weight: 700;
+}
+
+/* ── Grids ── */
+.kenapa-grid-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.kenapa-grid-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+/* ── Card base ── */
+.kcard {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.kcard:hover {
+  box-shadow: 0 8px 24px rgba(45, 75, 255, 0.09), 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+/* ── Card top visual area ── */
+.kcard-top {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  background: var(--surface);
+}
+
+.kcard-top-chat {
+  height: 240px;
+}
+
+.kcard-top-dash {
+  height: 200px;
+}
+
+.kcard-top-sm {
+  height: 140px;
+}
+
+/* Full-bleed gradient overlay */
+.kcard-grad {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ── Chat demo bubbles in Card 1 ── */
+.kcard-top-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 20px;
+}
+
+.kcard-chat-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kcd-bubble {
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  max-width: 85%;
+}
+
+.kcd-user {
+  background: var(--gradient);
+  color: #fff;
+  margin-left: auto;
+  border-bottom-right-radius: 3px;
+  box-shadow: 0 2px 8px rgba(45, 75, 255, 0.3);
+}
+
+.kcd-bot {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: var(--text-dark);
+  border-bottom-left-radius: 3px;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Dashboard mini in Card 2 ── */
+.kcard-dash-mini {
+  width: 100%;
+  padding: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.kdm-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kdm-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.kdm-lbl {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 3px;
+  color: var(--text-body);
+  opacity: 0.7;
+}
+
+.kdm-val {
+  font-family: 'Sora', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.kdm-green .kdm-val { color: #059669; }
+.kdm-red .kdm-val   { color: #DC2626; }
+.kdm-blue .kdm-val  { color: var(--blue); }
+
+.kdm-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.kdm-bar {
+  flex: 1;
+  background: rgba(45, 75, 255, 0.22);
+  border-radius: 2px 2px 0 0;
+}
+
+.kdm-bar-active {
+  background: var(--blue);
+  box-shadow: 0 2px 6px rgba(45, 75, 255, 0.4);
+}
+
+/* ── Card body ── */
+.kcard-body {
+  padding: 22px 24px 26px;
+  flex: 1;
+}
+
+.kcard-tag {
+  font-family: 'Sora', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.kcard-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  line-height: 1.3;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.kcard-desc {
+  font-size: 0.85rem;
+  color: var(--text-body);
+  line-height: 1.65;
+}
+
+/* ── Chips (AI categories & payment methods) ── */
+.kchips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.kchip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--border);
+  color: var(--text-body);
+}
+
+.kchip-green  { background: #D1FAE5; color: #065F46; }
+.kchip-blue   { background: var(--blue-ultra); color: var(--blue); }
+.kchip-orange { background: #FFEDD5; color: #9A3412; }
+.kchip-red    { background: #FEE2E2; color: #991B1B; }
+
+/* ── Excel mini table ── */
+.ke-table {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.ke-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.ke-cell {
+  flex: 1;
+  height: 20px;
+  border-radius: 3px;
+  background: #fff;
+  border: 1px solid var(--border);
+  font-size: 0.58rem;
+  color: var(--text-body);
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.ke-header .ke-cell {
+  background: var(--blue-ultra);
+  border-color: rgba(45, 75, 255, 0.25);
+  color: var(--blue);
+  font-weight: 700;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .kenapa-grid-top {
+    grid-template-columns: 1fr;
+  }
+
+  .kenapa-grid-bottom {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .kenapa-section {
+    padding: 72px 5%;
+  }
+
+  .kenapa-grid-bottom {
+    grid-template-columns: 1fr;
+  }
+}

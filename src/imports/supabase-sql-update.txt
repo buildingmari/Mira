@@ -1,0 +1,192 @@
+
+Supabase — jalankan SQL ini
+sql-- Tambah kolom registered_by
+ALTER TABLE users ADD COLUMN IF NOT EXISTS registered_by TEXT;
+
+-- Index biar query cepat
+CREATE INDEX IF NOT EXISTS idx_users_registered_by ON users(registered_by);
+
+-- Optional: lihat siapa aja yang pending assessment
+-- SELECT primary_phone, registered_by, plan_name, valid_to, account_status
+-- FROM users WHERE account_status = 'pending_assessment';
+```
+
+---
+
+## Prompt untuk AI Figma / website
+```
+Di app MIRA ada flow baru: user yang didaftarkan orang lain (paket Duo/Combo)
+akan masuk dengan account_status = 'pending_assessment'. Mereka belum punya nama
+dan belum isi assessment. Tambahkan handling berikut di sisi frontend/dashboard.
+Jangan ubah flow login, jangan ubah flow register primary user yang sudah ada.
+
+═══════════════════════════════════════════════
+BAGIAN 1 — DETEKSI SAAT LOGIN / LOAD DASHBOARD
+═══════════════════════════════════════════════
+
+Setelah fetch data user dari Supabase berdasarkan nomor HP yang login,
+tambahkan pengecekan SEBELUM render dashboard:
+
+async function checkUserStatus(userData) {
+  if (!userData) {
+    // user tidak ditemukan → arahkan ke halaman register
+    redirectTo('/register');
+    return;
+  }
+
+  if (userData.account_status === 'pending_assessment') {
+    // user terdaftar tapi belum isi assessment
+    // jangan tampilkan dashboard sama sekali
+    showPendingAssessmentPage(userData);
+    return;
+  }
+
+  // normal → tampilkan dashboard
+  showDashboard(userData);
+}
+
+═══════════════════════════════════════════════
+BAGIAN 2 — HALAMAN PENDING ASSESSMENT
+═══════════════════════════════════════════════
+
+Buat halaman/view khusus (bisa modal fullscreen atau page baru) yang tampil
+ketika account_status === 'pending_assessment'. Desain harus terasa welcoming,
+bukan seperti error. Isi halaman:
+
+- Header: logo MIRA
+- Ilustrasi atau icon keuangan (emoji atau SVG sederhana)
+- Judul: "Akun kamu sudah aktif! 🎉"
+- Subjudul: "Kamu didaftarkan ke MIRA. Lengkapi assessment singkat dulu
+  supaya MIRA bisa kasih rekomendasi keuangan yang tepat untukmu."
+- Info plan: tampilkan userData.plan_name dan userData.valid_to (format: "Aktif hingga [tanggal]")
+- Tombol CTA besar: "Mulai Assessment →"
+- Keterangan kecil di bawah: "Hanya butuh ~3 menit. Tidak bisa dilewati."
+
+Catatan styling: ikuti design system yang sudah ada di app (warna, font, border-radius).
+
+═══════════════════════════════════════════════
+BAGIAN 3 — FORM ASSESSMENT UNTUK ADDITIONAL USER
+═══════════════════════════════════════════════
+
+Saat user klik "Mulai Assessment →", tampilkan form assessment yang SAMA
+dengan form assessment biasa, TAPI dengan perbedaan berikut:
+
+TAMBAHKAN di awal form (step pertama, sebelum Q1):
+  - Field: Nama lengkap kamu
+    type: text input
+    placeholder: "Masukkan nama kamu"
+    required: true
+    disimpan ke: answers.name
+
+HILANGKAN dari form:
+  - Step pilih paket (tidak ada tab Personal/Duo/Combo)
+  - Step payment / Midtrans
+  - Semua UI yang berkaitan dengan harga dan voucher
+
+SEMUA PERTANYAAN ASSESSMENT (Q1–Q19) tetap sama persis.
+
+═══════════════════════════════════════════════
+BAGIAN 4 — SUBMIT ASSESSMENT ADDITIONAL USER
+═══════════════════════════════════════════════
+
+Saat additional user submit assessment, jangan INSERT row baru.
+Lakukan UPDATE pada row yang sudah ada berdasarkan primary_phone:
+
+const { error } = await supabase
+  .from('users')
+  .update({
+    // identitas
+    name:                     answers.name,
+    account_status:           'active',
+    submitted_at:             new Date().toISOString(),
+    updated_at:               new Date().toISOString(),
+
+    // skor
+    score_total,
+    score_income_stability,
+    score_expense_pressure,
+    score_spending_control,
+    score_saving_discipline,
+    score_emergency_fund,
+    score_investment,
+    score_debt,
+    score_behavior,
+
+    // semua field assessment (sama persis seperti primary user)
+    income_range,             income_range_raw,
+    income_estimated_idr,
+    income_type,              income_type_raw,
+    payday_pattern,           payday_pattern_raw,
+    mandatory_expenses,       mandatory_expenses_raw,
+    mandatory_expense_count,
+    biggest_spend_category,   biggest_spend_raw,
+    impulse_buy_frequency,    impulse_buy_raw,
+    expense_allocation_pct,   saving_allocation_pct,
+    saving_goals,             saving_goals_raw,
+    emergency_fund_duration,  emergency_fund_raw,
+    investment_status,        investment_status_raw,
+    investment_instruments,   investment_instruments_raw,
+    debt_status,              debt_status_raw,
+    paylater_habit,           paylater_habit_raw,
+    banks_used,               banks_used_raw,
+    ewallets_used,            ewallets_used_raw,
+    paylater_active,          paylater_active_raw,
+    payment_method_ranking,
+    limit_nominal,
+  })
+  .eq('primary_phone', currentUserPhone);
+
+if (error) {
+  showToast('Gagal menyimpan. Coba lagi.', 'error');
+  return;
+}
+
+// Setelah berhasil:
+// 1. Generate affiliate_code untuk user ini (sama seperti primary)
+//    format: 4 huruf dari nama + 4 digit terakhir nomor HP
+const name4  = answers.name.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,4).padEnd(4,'X');
+const phone4 = currentUserPhone.replace(/\D/g,'').slice(-4);
+const affiliate_code = name4 + phone4;
+
+await supabase
+  .from('users')
+  .update({ affiliate_code })
+  .eq('primary_phone', currentUserPhone);
+
+// 2. Reload userData dari Supabase (biar dapat data terbaru)
+// 3. Redirect ke dashboard normal
+redirectTo('/dashboard');
+
+═══════════════════════════════════════════════
+BAGIAN 5 — HIDE FITUR BILLING DI DASHBOARD
+═══════════════════════════════════════════════
+
+Di halaman dashboard (settings, profil, atau billing section),
+tambahkan pengecekan: apakah userData.registered_by terisi?
+
+Jika userData.registered_by !== null && userData.registered_by !== undefined:
+  → SEMBUNYIKAN:
+    - Tombol "Upgrade Plan" / "Ganti Paket"
+    - Section invoice / riwayat pembayaran
+    - Info harga dan voucher
+
+  → TAMPILKAN sebagai gantinya:
+    <div style="font-size: 0.82rem; color: #64748B; margin-top: 8px;">
+      Plan kamu dikelola oleh pendaftar utama.
+    </div>
+
+Semua fitur lain (catat pengeluaran, lihat transaksi, goals, aset, dll)
+tetap bisa diakses normal.
+
+═══════════════════════════════════════════════
+CATATAN PENTING
+═══════════════════════════════════════════════
+
+- currentUserPhone didapat dari session login yang sudah ada (jangan buat
+  sistem auth baru)
+- Supabase client (SB atau supabase) gunakan yang sudah ada di app
+- Jangan ubah cara app handle user dengan account_status = 'active' (flow normal)
+- Jangan ubah cara app handle user yang tidak ditemukan di database
+- Field registered_by sudah ada di tabel users (TEXT, nullable)
+- Untuk cek: jika userData.registered_by ada isinya = user ini adalah
+  additional user yang didaftarkan orang lain

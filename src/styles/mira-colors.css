@@ -1,0 +1,59 @@
+/**
+ * MIRA Brand Colors Override
+ * These CSS custom properties ensure consistent brand colors across the entire app
+ * Based on MIRA logo: Blue #2D5BFF + Yellow #FFD23F
+ */
+
+:root {
+  /* MIRA Brand Colors */
+  --mira-blue: #2D5BFF;
+  --mira-yellow: #FFD23F;
+  --mira-dark: #1a1a2e;
+  --mira-light: #FAFAF8;
+  
+  /* Override legacy brown colors with brand blue */
+  --legacy-dark: var(--mira-blue);
+}
+
+/* Utility classes for MIRA brand colors */
+@layer utilities {
+  .bg-mira-blue {
+    background-color: var(--mira-blue);
+  }
+  
+  .bg-mira-yellow {
+    background-color: var(--mira-yellow);
+  }
+  
+  .bg-mira-dark {
+    background-color: var(--mira-dark);
+  }
+  
+  .bg-mira-light {
+    background-color: var(--mira-light);
+  }
+  
+  .text-mira-blue {
+    color: var(--mira-blue);
+  }
+  
+  .text-mira-yellow {
+    color: var(--mira-yellow);
+  }
+  
+  .text-mira-dark {
+    color: var(--mira-dark);
+  }
+  
+  .text-mira-light {
+    color: var(--mira-light);
+  }
+  
+  .border-mira-blue {
+    border-color: var(--mira-blue);
+  }
+  
+  .border-mira-yellow {
+    border-color: var(--mira-yellow);
+  }
+}

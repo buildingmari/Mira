@@ -1,0 +1,63 @@
+Di halaman Affiliate, section "Riwayat Referral" selalu tampil "Belum ada referral"
+padahal data sudah ada di tabel affiliate_referrals di Supabase.
+Tolong debug dan fix fetch datanya.
+
+═══ MASALAH YANG HARUS DICEK ═══
+
+1. CARI kode yang fetch data affiliate/referral — tunjukkan kode persis yang ada sekarang
+
+2. PASTIKAN query ke tabel yang benar:
+
+const { data, error } = await SB
+  .from('affiliate_referrals')        // pastikan nama tabel ini persis
+  .select('*')
+  .eq('referrer_phone', currentUser.primary_phone)  // filter by referrer, bukan referee
+  .order('created_at', { ascending: false });
+
+console.log('affiliate data:', data);
+console.log('affiliate error:', error);
+console.log('referrer_phone used:', currentUser.primary_phone);
+
+Tambahkan log ini dulu untuk confirm apakah data keluar atau tidak.
+
+3. PASTIKAN field yang ditampilkan di tabel sesuai kolom Supabase:
+
+Kolom di tabel affiliate_referrals:
+  - created_at       → kolom TANGGAL
+  - referee_name     → kolom PENGGUNA
+  - plan_name        → kolom PAKET
+  - transaction_value → kolom NILAI
+  - commission_amount → kolom KOMISI (10%)
+  - status           → kolom STATUS
+
+4. PASTIKAN summary cards dihitung dari data yang sama:
+
+const totalReferral   = data.length;
+const totalKomisi     = data.reduce((s, r) => s + Number(r.commission_amount || 0), 0);
+const belumDicairkan  = data
+  .filter(r => r.status === 'pending')
+  .reduce((s, r) => s + Number(r.commission_amount || 0), 0);
+
+// Update ke UI:
+// "0 Referral"      → totalReferral
+// "Rp0 Total Komisi" → totalKomisi
+// "Rp0 Belum Dicairkan" → belumDicairkan
+
+5. PASTIKAN fetch dipanggil saat halaman Affiliate dibuka:
+
+Kalau pakai kondisi seperti ini:
+  if (page === 'affiliate') initAffiliatePage();
+
+Pastikan initAffiliatePage() berisi await fetch ke Supabase,
+bukan hanya render UI dengan data kosong/dummy.
+
+6. FORMAT tanggal di kolom TANGGAL:
+
+new Date(r.created_at).toLocaleDateString('id-ID', {
+  day: 'numeric', month: 'short', year: 'numeric'
+})
+
+7. FORMAT status badge:
+  'pending'  → badge kuning  "Menunggu"
+  'settled'  → badge hijau   "Lunas"
+  default    → badge abu     status apa adanya

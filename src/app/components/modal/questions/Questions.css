@@ -1,0 +1,344 @@
+/* Radio and Checkbox Options */
+.opts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.opt:hover {
+  border-color: var(--blue-light);
+  background: var(--blue-ultra);
+}
+
+.opt.selected {
+  border-color: var(--blue);
+  background: var(--blue-ultra);
+}
+
+.opt-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.opt.selected .opt-check {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.opt.selected .opt-check::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.opt-cb-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.opt.selected .opt-cb-check {
+  border-color: var(--blue);
+  background: var(--blue);
+}
+
+.opt.selected .opt-cb-check::after {
+  content: '✓';
+  color: #fff;
+}
+
+.opt-text {
+  font-size: 0.88rem;
+  color: var(--text-body);
+}
+
+/* Ratio Slider */
+.ratio-slider-wrap {
+  margin-top: 6px;
+}
+
+.ratio-track {
+  position: relative;
+  height: 44px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--border);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  margin: 12px 0;
+}
+
+.ratio-fill-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #EF4444, #F97316);
+  transition: width 0.05s;
+}
+
+.ratio-fill-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #22C55E, #16A34A);
+  transition: width 0.05s;
+}
+
+.ratio-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  z-index: 2;
+  transition: box-shadow 0.15s;
+}
+
+.ratio-handle:active {
+  cursor: grabbing;
+  box-shadow: 0 4px 16px rgba(45, 75, 255, 0.4);
+}
+
+.ratio-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ratio-label-spend {
+  color: #EF4444;
+}
+
+.ratio-label-save {
+  color: #16A34A;
+}
+
+.ratio-center-label {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #64748B;
+  margin-top: 4px;
+}
+
+.ratio-values {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.ratio-val {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+
+.ratio-val.spend {
+  color: #EF4444;
+}
+
+.ratio-val.save {
+  color: #16A34A;
+}
+
+/* Checkbox Grouped */
+.cbg-group {
+  margin-bottom: 14px;
+}
+
+.cbg-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #64748B;
+  margin-bottom: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cbg-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cbg-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--text-body);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.cbg-opt:hover {
+  border-color: var(--blue-light);
+  background: var(--blue-ultra);
+  color: var(--blue);
+}
+
+.cbg-opt.selected {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: #fff;
+}
+
+.cbg-opt.selected .cbg-check {
+  background: #fff;
+  border-color: #fff;
+}
+
+.cbg-check {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.cbg-opt.selected .cbg-check::after {
+  content: '✓';
+  color: var(--blue);
+}
+
+/* Ranking / Sort with buttons */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.2s;
+  user-select: none;
+}
+
+.rank-item.rank-moved {
+  border-color: var(--blue);
+  background: var(--blue-ultra);
+  transform: scale(1.01);
+}
+
+.rank-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rank-text {
+  font-size: 0.88rem;
+  color: var(--text-body);
+  flex: 1;
+}
+
+.rank-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.rank-btn {
+  width: 30px;
+  height: 26px;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--blue);
+  font-size: 0.62rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+
+.rank-btn:hover:not(:disabled) {
+  background: var(--blue-ultra);
+  border-color: var(--blue);
+  transform: scale(1.1);
+}
+
+.rank-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.rank-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.rank-hint {
+  font-size: 0.78rem;
+  color: #94A3B8;
+  margin-top: 8px;
+}

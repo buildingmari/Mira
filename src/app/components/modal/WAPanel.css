@@ -1,0 +1,61 @@
+.wa-field {
+  margin-bottom: 16px;
+}
+
+.wa-field label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-dark);
+  margin-bottom: 7px;
+}
+
+.wa-field .wa-hint {
+  font-size: 0.76rem;
+  color: #94A3B8;
+  margin-bottom: 7px;
+}
+
+.wa-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.wa-input-wrap:focus-within {
+  border-color: var(--blue);
+}
+
+.wa-prefix {
+  padding: 11px 13px;
+  background: var(--surface);
+  font-size: 0.88rem;
+  color: #64748B;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.wa-input-wrap input {
+  flex: 1;
+  padding: 11px 13px;
+  border: none;
+  /* Must be ≥16px to prevent iOS Safari auto-zoom on focus */
+  font-size: 16px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  color: var(--text-dark);
+  background: transparent;
+}
+
+.wa-input-wrap input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes wa-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

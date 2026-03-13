@@ -1,0 +1,145 @@
+Perbaiki logika perhitungan skor assessment. Jangan ubah cara store, jangan ubah
+struktur form, jangan ubah flow — hanya fix kalkulasi skor dan output kartu hasil.
+
+═══ DIMENSI 1 — Income Stability · Maks: 20 ═══
+
+Q1 base score:
+  lt-3jt→1, 3-5jt→4, 5-10jt→8, 10-20jt→11, 20-30jt→13, 30-50jt→14, gt-50jt→15
+
+Q2 bonus: tetap→+3, campuran→+1, freelance→+0
+Q3 bonus: tanggal-tetap→+2, bervariasi→+1, harian→+0
+
+═══ DIMENSI 2 — Expense Pressure · hanya penalti ═══
+
+Hitung dari jumlah item Q4 (multi-select):
+  ≥5 item → -3 | 3–4 item → -1 | ≤2 item → 0
+
+═══ DIMENSI 3 — Spending Control · Maks: 15 ═══
+
+Q5 base score:
+  makan-jajan→12, kebutuhan-keluarga→11, nongkrong-lifestyle→6,
+  belanja-online→5, tidak-terasa→3
+
+Q6 bonus: hampir-tidak-pernah→+3, kadang-kadang→+1, sering→+0
+
+═══ DIMENSI 4 — Saving Discipline · Maks: 15 ═══
+
+Q7 (slider pengeluaran / expense_allocation_pct) base score:
+  <30%→12, 30-49%→9, 50-69%→5, ≥70%→2
+
+Q8 (slider tabungan / saving_allocation_pct) bonus:
+  ≥30%→+3, ≥20%→+2, ≥10%→+1, <10%→+0
+
+PENTING: Q9 (saving_goals) TIDAK ada efek skor — hanya dipakai di blok prediksi
+
+═══ DIMENSI 5 — Emergency Resilience · Maks: 10 ═══
+
+Q10 langsung jadi skor:
+  tidak-punya→0, lt-1bln→1, 1-3bln→4, 3-6bln→7, gt-6bln→10
+
+═══ DIMENSI 6 — Investment Readiness · Maks: 10 ═══
+
+Q11 base: tidak→0, ya-sesekali→4, ya-rutin→8
+Q15 bonus: jarang→+2, diskon-menarik→+1, saldo-menipis→0, sehari-hari→-1
+score_investment = Math.min(10, base + bonus)
+Q12 (instrumen) = kontekstual, tidak ada efek skor
+
+═══ DIMENSI 7 — Debt Risk · Maks: 13 · Floor: 0 ═══
+
+RUMUS WAJIB: max(0, min(13, debtBase - (4 - plMap) + trigMap))
+
+debtBase dari Q13: tidak-ada→13, ya-ringan→6, ya-cukup-besar→2
+
+plMap dari Q14: tidak-pernah→4, sesekali→3, rutin-terkontrol→2, sering-menumpuk→0
+penalti = 4 - plMap[Q14]
+
+trigMap dari Q15: jarang→+2, diskon-menarik→+1, saldo-menipis→0, sehari-hari→-1
+
+Contoh: Q13=ya-ringan(6), Q14=sesekali(plMap=3), Q15=jarang(+2)
+  → 6 - (4-3) + 2 = 6 - 1 + 2 = 7
+
+═══ DIMENSI 8 — Behavioral Risk · hanya penalti ═══
+
+Q18 (paylater_active multi-select): -2 jika ada item selain 'tidak-ada'
+Q16, Q17, Q19 = kontekstual, tidak ada efek skor
+
+═══ TOTAL SCORE ═══
+
+score_total = income + expense + spending + saving + emergency + investment + debt + behavior
+
+═══ 6 OUTCOME CARDS ═══
+
+Card 1 — Pemasukan (dari score_income):
+  ≥12 → ✅ Pemasukan Stabil — Arus kas cukup stabil dan konsisten.
+  7–11 → 🟡 Pemasukan Perlu Diperhatikan — Ketidakstabilan penghasilan bisa mempersulit perencanaan keuangan.
+  <7 → 🔴 Pemasukan Tidak Menentu — Penghasilan tidak tetap meningkatkan risiko cashflow. MIRA bisa bantu pantau.
+
+Card 2 — Beban Wajib (dari COUNT ITEM Q4, BUKAN score_expense):
+  ≤2 item → ✅ Beban Pengeluaran Ringan — Pengeluaran wajibmu proporsional dengan penghasilan.
+  3–4 item → 🟡 Beban Moderat — Cukup besar. Waspadai pengeluaran di luar pos wajib.
+  ≥5 item → 🔴 Beban Tinggi — Lebih dari separuh penghasilan habis untuk kewajiban. Risiko cashflow tinggi.
+
+Card 3 — Kontrol Belanja — ADA FLAG OVERRIDE:
+  PERTAMA cek: if (Q6==='sering' || Q5==='tidak-terasa') → langsung BAD, skip threshold
+  Baru kalau tidak ada flag: ≥12→OK, <12→WARN
+  OK:   ✅ Pengeluaran Terkontrol — Kamu relatif disiplin dalam berbelanja. Pertahankan!
+  WARN: 🟡 Pengeluaran Perlu Dijaga — Ada potensi kebocoran kecil yang perlu dipantau.
+  BAD:  ⚠️ Risiko Impulsif Terdeteksi — Pola belanja impulsif atau micro-spending tanpa sadar terdeteksi.
+
+Card 4 — Disiplin Nabung (dari score_saving):
+  ≥12 → ✅ Disiplin Menabung — Kamu punya kebiasaan menabung yang baik. Lanjutkan!
+  6–11 → 🟡 Tabungan Perlu Ditingkatkan — Menabung ada tapi kurang konsisten. MIRA bisa kirim pengingat nabung.
+  <6 → 🔴 Belum Rutin Menabung — Tanpa tabungan rutin, sulit membangun keamanan finansial jangka panjang.
+
+Card 5 — Dana Darurat (dari score_emergency):
+  ≥7 → ✅ Dana Darurat Aman — Dana darurat cukup menanggung risiko jangka pendek. (≥ 3 bulan)
+  4–6 → 🟡 Dana Darurat Perlu Ditambah — 1–3 bulan masih kurang ideal. Target minimal 3–6 bulan pengeluaran.
+  <4 → 🔴 Tidak Ada Dana Darurat — Risiko terbesar. Satu masalah bisa bikin kondisi finansial ambruk.
+
+Card 6 — Risiko Kredit (dari score_debt):
+  ≥8 → ✅ Risiko Kredit Rendah — Penggunaan kredit & PayLater kamu terkontrol.
+  5–7 → 🟡 Perhatikan Penggunaan Kredit — PayLater atau cicilan perlu dipantau agar tidak menumpuk.
+  <5 → 🔴 Risiko Kredit Tinggi — Penggunaan PayLater/kredit berisiko menimbulkan stres finansial. MIRA bisa bantu monitor.
+
+═══ BLOK PREDIKSI — Tampil jika score_total ≤ 60 ═══
+
+Setiap bullet muncul INDEPENDEN:
+  Q6==='sering' → 💸 Pengeluaran impulsif bisa menyebabkan uang habis sebelum gajian
+  Q14==='sering-menumpuk' || Q15==='sehari-hari' → 💳 Ketergantungan kredit bisa terus meningkat jika tidak dikontrol
+  Q9==='tidak' || Q9==='jarang' → 🏦 Tanpa tabungan, satu kejadian darurat bisa mengacaukan keuangan
+
+Jika score_total > 60 (tidak ada bullet), tampilkan:
+  ✅ Kamu di jalur yang tepat! Pertahankan kebiasaan baik dan tingkatkan area yang masih kurang optimal.
+
+═══ REKOMENDASI PRIORITAS — 3 dimensi rasio terendah ═══
+
+Pool 5 dimensi (income & expense TIDAK masuk):
+  spending (max 15), saving (max 15), emergency (max 10), debt (max 10), investment (max 10)
+
+Urutkan rasio = score/max dari terkecil, ambil 3 teratas:
+  spending  → 🛒 Spending Alert di MIRA — notifikasi tiap kali pengeluaran mendekati batas harian.
+  saving    → 💰 Gunakan fitur Saving Nudge MIRA — pengingat otomatis menyisihkan uang tiap gajian.
+  emergency → 🚨 Mulai dana darurat sekarang. Target minimal 1 bulan dulu, naikkan bertahap. MIRA bantu lacak.
+  debt      → 💳 Monitor PayLater & cicilan — MIRA bisa deteksi pola penggunaan kredit berisiko.
+  investment→ 📈 Mulai investasi meski kecil — reksa dana mulai Rp10.000/hari. MIRA bantu lacak alokasi.
+
+═══ BATAS AMAN PENGELUARAN HARIAN ═══
+
+Estimasi income dari Q1:
+  lt-3jt→2.5jt, 3-5jt→4jt, 5-10jt→7.5jt, 10-20jt→15jt, 20-30jt→25jt, 30-50jt→40jt, gt-50jt→60jt
+
+expenseRatio dari Q7: <30%→0.25, <50%→0.40, <70%→0.60, ≥70%→0.75
+savingRatio dari Q8: langsung Q8/100 (bukan (100-Q8)/100)
+
+dailyLimit = max(0, round(income × (1 - expenseRatio - savingRatio) / 20))
+Contoh: 7.5jt × (1-0.40-0.20) / 20 = Rp150.000/hari ✅
+
+═══ 7 BUG YANG HARUS DIFIX ═══
+
+1. Card 2 pakai score_expense untuk threshold → harusnya COUNT item Q4
+2. Card 3 tidak ada flag override Q6/Q5 → override harus dicek sebelum threshold
+3. Dimensi 7 formula salah → wajib: max(0, min(13, base - (4-plMap) + trigMap))
+4. savingRatio = (100-slider)/100 → harusnya slider/100
+5. Q9 dihitung sebagai skor → hanya trigger teks prediksi
+6. score_investment tidak di-clamp → wajib Math.min(10, base+bonus)
+7. Rekomendasi prioritas include income/expense → keduanya harus dibuang dari pool
