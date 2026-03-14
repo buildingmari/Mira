@@ -145,17 +145,9 @@
 
 /* Saat scrolled (bg putih) — sama, tetap gradient fill */
 .nav-desktop.scrolled .nav-cta {
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
   background: var(--gradient);
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  border-color: transparent;
-}
-
-.nav-desktop.scrolled .nav-cta:hover {
-  opacity: 0.88;
-  box-shadow: 0 4px 16px rgba(45, 75, 255, 0.35);
+  -webkit-text-fill-color: #ffffff;
+  color: #ffffff;
 }
 
 /* ─── MOBILE FLOATING PILL ─── */

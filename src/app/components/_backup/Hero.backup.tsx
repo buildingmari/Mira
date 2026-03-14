@@ -1,6 +1,12 @@
+// ═══════════════════════════════════════════════════════════
+// BACKUP — Hero.tsx (sebelum WebGL wave animation)
+// Tanggal backup: 14 Maret 2026
+// Untuk revert, copy isi file ini ke /src/app/components/Hero.tsx
+// ═══════════════════════════════════════════════════════════
+
 import { useEffect, useState } from 'react';
 import './Hero.css';
-import { HeroWave } from './HeroWave';
+import { HeroGradient } from './HeroGradient';
 
 interface HeroProps {
   onCTAClick: () => void;
@@ -97,7 +103,7 @@ function IPhoneMockup() {
             {/* Outgoing 1 */}
             <div className="wa-bubble-row wa-outgoing">
               <div className="wa-bubble wa-bubble-out">
-                <span>Belanja supermarket Rp185.000, Debit BCA 🛒</span>
+                <span>Belanja supermarket Rp185.000, Debit BCA</span>
                 <div className="wa-bubble-meta">
                   <span className="wa-bubble-time">09:32</span>
                   <svg className="wa-check" width="14" height="9" viewBox="0 0 16 11">
@@ -111,8 +117,8 @@ function IPhoneMockup() {
             {/* Incoming 1 */}
             <div className="wa-bubble-row wa-incoming">
               <div className="wa-bubble wa-bubble-in">
-                <div className="wa-bot-header">✅ Dicatat!</div>
-                <div className="wa-bot-item"><span className="wa-label">Kategori</span> Belanja · Kebutuhan Rumah</div>
+                <div className="wa-bot-header">Dicatat!</div>
+                <div className="wa-bot-item"><span className="wa-label">Kategori</span> Belanja Kebutuhan Rumah</div>
                 <div className="wa-bot-item"><span className="wa-label">Nominal</span> Rp185.000</div>
                 <div className="wa-bot-item"><span className="wa-label">Metode</span> Debit BCA</div>
                 <div className="wa-bubble-meta"><span className="wa-bubble-time">09:32</span></div>
@@ -122,7 +128,7 @@ function IPhoneMockup() {
             {/* Outgoing 2 */}
             <div className="wa-bubble-row wa-outgoing">
               <div className="wa-bubble wa-bubble-out">
-                <span>Bayar listrik 250rb 💡</span>
+                <span>Bayar listrik 250rb</span>
                 <div className="wa-bubble-meta">
                   <span className="wa-bubble-time">09:38</span>
                   <svg className="wa-check" width="14" height="9" viewBox="0 0 16 11">
@@ -136,7 +142,7 @@ function IPhoneMockup() {
             {/* Incoming 2 */}
             <div className="wa-bubble-row wa-incoming">
               <div className="wa-bubble wa-bubble-in">
-                <div className="wa-bot-header">✅ Masuk!</div>
+                <div className="wa-bot-header">Masuk!</div>
                 <div className="wa-bot-item"><span className="wa-label">Kategori</span> Tagihan Listrik</div>
                 <div className="wa-bot-item"><span className="wa-label">Nominal</span> Rp250.000</div>
                 <div className="wa-today-total">
@@ -186,15 +192,12 @@ export function Hero({ onCTAClick }: HeroProps) {
   }, []);
 
   return (
-    <div
-      className="hero-wrap"
-      style={{ background: 'linear-gradient(135deg, #ffffff 40%, #E6F3FF 70%, #B3D9FF 100%)' }}
-    >
-      <HeroWave />
+    <div className="hero-wrap">
+      <HeroGradient />
 
       <div className="hero" id="home">
-        {/* ── Left: text content ── */}
-        <div className="hero-left relative z-10">
+        {/* -- Left: text content -- */}
+        <div className="hero-left">
           <div className="hero-supertitle">
             <span className="supertitle-dot" />
             Asisten Keuangan AI via WhatsApp
@@ -210,11 +213,11 @@ export function Hero({ onCTAClick }: HeroProps) {
             keuangan terkendali.
           </h1>
 
-          <p className="hero-sub relative z-10">
+          <p className="hero-sub">
             Catat pengeluaran tanpa ribet — 24/7. Cukup kirim lewat WhatsApp, sisanya MIRA yang urus.
           </p>
 
-          <div className="hero-cta-row relative z-10">
+          <div className="hero-cta-row">
             <button className="btn-hero" onClick={onCTAClick}>
               Mulai sekarang
             </button>
@@ -223,13 +226,13 @@ export function Hero({ onCTAClick }: HeroProps) {
             </a>
           </div>
 
-          <p className="hero-trust relative z-10">
+          <p className="hero-trust">
             Tanpa download aplikasi baru · Langsung aktif di WhatsApp
           </p>
         </div>
 
-        {/* ── Right: iPhone mockup ── */}
-        <div className="hero-right relative z-10">
+        {/* -- Right: iPhone mockup -- */}
+        <div className="hero-right">
           <IPhoneMockup />
         </div>
       </div>

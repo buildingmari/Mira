@@ -1,0 +1,18 @@
+/* ═══════════════════════════════════════════════════════════
+   BACKUP — Navigation.css (sebelum dark hero nav overrides)
+   Tanggal backup: 14 Maret 2026
+   ═══════════════════════════════════════════════════════════ */
+
+/* Saat scrolled (bg putih) — sama, tetap gradient fill */
+.nav-desktop.scrolled .nav-cta {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  background: var(--gradient);
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  border-color: transparent;
+}
+
+/* NOTE: Sebelum wave update, TIDAK ada .nav-desktop:not(.scrolled) overrides.
+   Nav links menggunakan color: var(--text-body) (dark) karena hero bg putih.
+   Untuk revert: hapus semua rule .nav-desktop:not(.scrolled) dari Navigation.css */
