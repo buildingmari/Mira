@@ -5,6 +5,9 @@ import { RootLayout, RootErrorBoundary, NotFound } from './pages/RootLayout';
 import { PaymentSuccessPage } from './pages/payment-success';
 import { PaymentPendingPage } from './pages/payment-pending';
 import { PaymentFailedPage }  from './pages/payment-failed';
+import { PrivacyPolicy }      from './pages/PrivacyPolicy';
+import { TermsOfService }     from './pages/TermsOfService';
+import { RefundPolicy }       from './pages/RefundPolicy';
 
 // Lazy-load the heavy dashboard to keep initial bundle small
 const MiraDashboard = lazy(() =>
@@ -30,6 +33,9 @@ export const router = createBrowserRouter([
       { path: 'payment-success',  Component: PaymentSuccessPage },
       { path: 'payment-pending',  Component: PaymentPendingPage },
       { path: 'payment-failed',   Component: PaymentFailedPage },
+      { path: 'privacy-policy',   Component: PrivacyPolicy },
+      { path: 'terms-of-service', Component: TermsOfService },
+      { path: 'refund-policy',    Component: RefundPolicy },
       { path: '*',                Component: NotFound },
     ],
   },

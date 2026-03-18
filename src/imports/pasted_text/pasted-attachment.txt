@@ -1,0 +1,718 @@
+# MIRA — Implementasi Stripe-Style Rainbow Ribbon Effect
+
+> **Prompt siap pakai** untuk developer / AI coding assistant.  
+> Copy seluruh isi ini dan paste langsung ke Cursor / Claude / ChatGPT / Copilot.
+
+---
+
+## CONTEXT
+
+Website **MIRA** (https://github.com/buildingmari/Mira) saat ini punya hero section dengan background gradient biru yang flat.  
+Tujuan: **menambahkan efek ribbon/wave pelangi animasi seperti Stripe.com** di sisi kanan hero section.
+
+Setelah analisis mendalam source code Stripe (bundle JS + GLSL shaders), ditemukan bahwa Stripe menggunakan:
+- **Three.js** (r3f atau vanilla) untuk 3D scene
+- **Custom GLSL vertex & fragment shaders** untuk mesh ribbon
+- **Simplex noise** untuk gerakan organik
+- **WebGL** untuk rendering
+
+---
+
+## WHAT TO BUILD
+
+Buat sebuah React component bernama `HeroRibbon` yang:
+
+1. Me-render `<canvas>` WebGL di hero section (posisi: **kanan atas, absolute, overflow visible ke tepi layar**)
+2. Efek visual: **pita/ribbon 3D yang melengkung mengalir**, berwarna **pelangi semi-transparan** (ungu → biru → oranye/coral → pink), bergerak perlahan secara organik
+3. Tidak block text/CTA di sebelah kiri
+4. Performa: pakai `requestAnimationFrame`, stop animasi saat tab tidak aktif, cleanup saat component unmount
+5. Fallback: jika WebGL tidak tersedia, tampilkan static gradient PNG
+
+---
+
+## STRIPE SOURCE CODE FINDINGS (hasil reverse engineering)
+
+### Parameter eksak dari Stripe homepage (light theme - ribbon pelangi):
+
+```javascript
+// Config yang dipakai Stripe di homepage hero-nya
+const STRIPE_HOMEPAGE_CONFIG = {
+  // Camera
+  cameraDistance: 14,
+  cameraAngle: 0,
+  cameraHeight: 0,
+
+  // Ribbon geometry
+  numLines: 600,           // jumlah garis paralel dalam ribbon
+  lineSpacing: 0.15,
+  pathWidth: 17.5,
+  pathHeight: 6,
+
+  // Oscillation / gelombang
+  numOscillations: 4,
+  oscillationSharpness: 1e-5,
+  oscillationRoundness: 1.7,
+  oscillationStart: 0,
+  oscillationEnd: 1,
+  oscillationPhaseOffset: -0.05,
+
+  // Path bounds
+  pathWidthStart: 0.9,
+  pathWidthEnd: 0.9,
+  pathXStart: 0,
+  pathXEnd: 6,
+  yStartOffset: -4.9,
+  yRiseAmount: 15,
+
+  // Material / transform
+  positionX: 380,
+  positionY: -301.7,
+  positionZ: -11.1,
+  rotationX: -0.449592653589793,
+  rotationY: -0.117592653589793,
+  rotationZ: 1.87440734641021,
+  scaleX: 9,
+  scaleY: 8,
+  scaleZ: 5,
+
+  // Color & shading
+  colorContrast: 1,
+  colorSaturation: 1.0,
+  colorHueShift: -0.00159265358979299,   // slight hue rotation
+  glowRamp: 0.834,
+  glowAmount: 1.98,
+  glowPower: 0.806,
+
+  // Twist (inilah yang bikin bentuk ribbon)
+  twistFrequencyX: -0.649999999999999,
+  twistFrequencyY: 0.41,
+  twistFrequencyZ: -0.58,
+  twistPowerX: 3.63,
+  twistPowerY: 0.7,
+  twistPowerZ: 3.95,
+
+  // Displacement / deformasi
+  displaceFrequencyX: 0.005831,
+  displaceFrequencyZ: 0.016001,
+  displaceAmount: -7.821,
+
+  // Lines
+  lineThickness: 1,
+  lineAmount: 425,
+  lineDerivativePower: 0.95,
+
+  // Animation
+  speed: 4e-5,
+  timeOffset: 17500,
+
+  // Depth fade
+  depthFadeStart: 0,
+  depthFadeEnd: 0.7,
+  depthFadeIntensity: 1,
+  lineFadeBottom: 0,
+  lineFadeTop: 1,
+
+  // Noise (organic movement)
+  noiseScale: 10,
+  noiseSpeed: 0.08,
+  noiseIntensity: 0.3,
+  noiseOffset: 0,
+  noiseWidth: 0.07,
+
+  // Post-processing
+  blurAmount: 0.02,
+  grainAmount: 1.1,
+
+  // Mouse interaction
+  mouseInfluenceRadius: 2.2,
+  mouseRepulsionStrength: 0.2,
+  springStrength: 0.075,
+  damping: 0.825,
+};
+```
+
+### Colors Stripe (dari shader uniforms):
+Stripe menggunakan gradient 2-color per-screen-position di fragment shader:
+```glsl
+// Fragment shader pattern Stripe:
+vec3 gradientColor = mix(gradientColorBottom, gradientColorTop, 
+  smoothstep(gradientColorStop.x, gradientColorStop.y, st.y));
+```
+
+Color palette yang digunakan (diambil dari visual analysis + shader):
+- **Top**: `#7B61FF` (ungu/violet)
+- **Middle-top**: `#4FC3F7` (biru muda)  
+- **Middle-bottom**: `#FF7043` (oranye/coral)
+- **Bottom**: `#EC407A` (pink/rose)
+
+---
+
+## IMPLEMENTATION INSTRUCTIONS
+
+### Step 1: Install dependencies
+
+```bash
+npm install three
+# atau kalau pakai yarn:
+yarn add three
+```
+
+### Step 2: Buat file `components/HeroRibbon.tsx`
+
+Implementasikan component berikut dengan **persis spesifikasi ini**:
+
+```tsx
+'use client'; // jika Next.js App Router
+
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+// ============================================================
+// STRIPE-ACCURATE VERTEX SHADER
+// Diambil dari reverse engineering bundle Stripe (index-c32230ae.js)
+// ============================================================
+const VERTEX_SHADER = `
+  uniform float time;
+  uniform float speed;
+  uniform float timeOffset;
+  uniform float displaceFrequencyX;
+  uniform float displaceFrequencyZ;
+  uniform float displaceAmount;
+  uniform float twistFrequencyX;
+  uniform float twistFrequencyY;
+  uniform float twistFrequencyZ;
+  uniform float twistPowerX;
+  uniform float twistPowerY;
+  uniform float twistPowerZ;
+  uniform float colorHueShift;
+  uniform float colorSaturation;
+  uniform float colorContrast;
+  uniform float lineFadeBottom;
+  uniform float lineFadeTop;
+  uniform float glowRamp;
+  uniform float glowAmount;
+  uniform float glowPower;
+  uniform float opacity;
+  uniform vec2 resolution;
+  uniform float animValue;
+
+  attribute float lineId;
+  attribute float linePercent;
+  attribute float linePosition;
+  attribute float lineCount;
+  attribute float noiseValue;
+  attribute float lineOpacity;
+
+  varying vec3 vPosition;
+  varying vec3 vWorldPosition;
+  varying float vLineId;
+  varying float vLinePosition;
+  varying float vNoiseValue;
+  varying float vLinePercent;
+  varying float vLineCount;
+  varying float vLineOpacity;
+  varying vec2 vResolution;
+  varying float vAnimValue;
+
+  void main() {
+    vec3 pos = position;
+
+    vPosition = pos;
+    vLineId = lineId;
+    vLinePosition = linePosition;
+    vNoiseValue = noiseValue;
+    vLinePercent = linePercent;
+    vLineCount = lineCount;
+    vResolution = resolution;
+    vAnimValue = animValue;
+    vLineOpacity = lineOpacity;
+
+    float t = time * speed + timeOffset;
+
+    // Twist deformation
+    float txAngle = sin(pos.x * twistFrequencyX + t) * twistPowerX;
+    float tyAngle = sin(pos.y * twistFrequencyY + t * 0.7) * twistPowerY;
+    float tzAngle = sin(pos.z * twistFrequencyZ + t * 0.5) * twistPowerZ;
+
+    mat2 rotX = mat2(cos(txAngle), -sin(txAngle), sin(txAngle), cos(txAngle));
+    mat2 rotZ = mat2(cos(tzAngle), -sin(tzAngle), sin(tzAngle), cos(tzAngle));
+
+    vec2 yz = rotX * pos.yz;
+    pos.y = yz.x;
+    pos.z = yz.y;
+
+    vec2 xy = rotZ * pos.xy;
+    pos.x = xy.x;
+    pos.y = xy.y;
+
+    // Displacement
+    pos.x += sin(pos.z * displaceFrequencyX + t) * displaceAmount * 0.3;
+    pos.z += sin(pos.x * displaceFrequencyZ + t) * displaceAmount * 0.5;
+
+    // Animation entrance
+    float animProgress = 1.0 - smoothstep(vLinePercent, min(vLinePercent + 0.5, 1.0), animValue);
+    pos.y -= animProgress * 4.0;
+    pos.y -= linePosition * 0.025;
+
+    vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
+    vWorldPosition = worldPosition.xyz;
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+  }
+`;
+
+// ============================================================
+// STRIPE-ACCURATE FRAGMENT SHADER
+// Gradient berdasarkan screen Y coordinate (bukan object space)
+// ============================================================
+const FRAGMENT_SHADER = `
+  uniform vec3 gradientColorTop;
+  uniform vec3 gradientColorBottom;
+  uniform vec2 gradientColorStop;
+  uniform float opacity;
+  uniform float lineFadeBottom;
+  uniform float lineFadeTop;
+  uniform float noiseIntensity;
+  uniform float colorHueShift;
+  uniform float colorSaturation;
+  uniform float colorContrast;
+
+  varying vec3 vPosition;
+  varying vec3 vWorldPosition;
+  varying float vLineId;
+  varying float vLinePosition;
+  varying float vNoiseValue;
+  varying float vLinePercent;
+  varying float vLineCount;
+  varying float vLineOpacity;
+  varying vec2 vResolution;
+  varying float vAnimValue;
+
+  vec3 rgb2hsl(vec3 c) {
+    float maxC = max(c.r, max(c.g, c.b));
+    float minC = min(c.r, min(c.g, c.b));
+    float l = (maxC + minC) / 2.0;
+    float h = 0.0;
+    float s = 0.0;
+    if (maxC != minC) {
+      float d = maxC - minC;
+      s = l > 0.5 ? d / (2.0 - maxC - minC) : d / (maxC + minC);
+      if (maxC == c.r) h = (c.g - c.b) / d + (c.g < c.b ? 6.0 : 0.0);
+      else if (maxC == c.g) h = (c.b - c.r) / d + 2.0;
+      else h = (c.r - c.g) / d + 4.0;
+      h /= 6.0;
+    }
+    return vec3(h, s, l);
+  }
+
+  float hue2rgb(float p, float q, float t) {
+    if (t < 0.0) t += 1.0;
+    if (t > 1.0) t -= 1.0;
+    if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+    if (t < 1.0/2.0) return q;
+    if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+    return p;
+  }
+
+  vec3 hsl2rgb(vec3 hsl) {
+    float h = hsl.x; float s = hsl.y; float l = hsl.z;
+    if (s == 0.0) return vec3(l);
+    float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+    float p = 2.0 * l - q;
+    return vec3(hue2rgb(p, q, h + 1.0/3.0), hue2rgb(p, q, h), hue2rgb(p, q, h - 1.0/3.0));
+  }
+
+  void main() {
+    vec2 pixel = 1.0 / vResolution;
+    vec2 st = gl_FragCoord.xy * pixel;
+
+    // Base gradient (screen-space Y)
+    vec3 gradientColor = mix(
+      gradientColorBottom, 
+      gradientColorTop, 
+      smoothstep(gradientColorStop.x, gradientColorStop.y, st.y)
+    );
+
+    // Hue shift + saturation boost (Stripe's colorHueShift & colorSaturation)
+    vec3 hsl = rgb2hsl(gradientColor);
+    hsl.x = fract(hsl.x + colorHueShift);
+    hsl.y = clamp(hsl.y * colorSaturation, 0.0, 1.0);
+    // Contrast
+    hsl.z = clamp(0.5 + (hsl.z - 0.5) * colorContrast, 0.0, 1.0);
+    gradientColor = hsl2rgb(hsl);
+
+    // Distance fade from screen edges
+    float distanceFade = 1.0 - smoothstep(8.0, 16.0, abs(vWorldPosition.x));
+    // Vertical fade
+    float verticalFade = mix(lineFadeBottom, lineFadeTop, vLinePosition);
+    // Noise modulation
+    float noiseModulation = 1.0 - (vNoiseValue * noiseIntensity);
+
+    float baseOpacity = opacity * distanceFade * verticalFade * noiseModulation * vLineOpacity;
+
+    // Fade bottom of screen
+    baseOpacity *= smoothstep(0.0, 0.08, st.y);
+
+    gl_FragColor = vec4(gradientColor, baseOpacity);
+  }
+`;
+
+// ============================================================
+// SIMPLEX NOISE (Stefan Gustavson's implementation — same as Stripe)
+// ============================================================
+function createSimplexNoise() {
+  const F2 = 0.5 * (Math.sqrt(3) - 1);
+  const G2 = (3 - Math.sqrt(3)) / 6;
+  const grad3 = [
+    [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+    [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
+    [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
+  ];
+  const p = Array.from({length: 256}, (_, i) => i);
+  for (let i = 255; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  const perm = [...p, ...p];
+
+  return function noise2D(xin: number, yin: number): number {
+    let n0, n1, n2;
+    const s = (xin + yin) * F2;
+    const i = Math.floor(xin + s), j = Math.floor(yin + s);
+    const t = (i + j) * G2;
+    const X0 = i - t, Y0 = j - t;
+    const x0 = xin - X0, y0 = yin - Y0;
+    const i1 = x0 > y0 ? 1 : 0, j1 = x0 > y0 ? 0 : 1;
+    const x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+    const x2 = x0 - 1 + 2 * G2, y2 = y0 - 1 + 2 * G2;
+    const ii = i & 255, jj = j & 255;
+    const gi0 = perm[ii + perm[jj]] % 12;
+    const gi1 = perm[ii + i1 + perm[jj + j1]] % 12;
+    const gi2 = perm[ii + 1 + perm[jj + 1]] % 12;
+    let t0 = 0.5 - x0*x0 - y0*y0;
+    n0 = t0 < 0 ? 0 : (t0 *= t0, t0 * t0 * (grad3[gi0][0]*x0 + grad3[gi0][1]*y0));
+    let t1 = 0.5 - x1*x1 - y1*y1;
+    n1 = t1 < 0 ? 0 : (t1 *= t1, t1 * t1 * (grad3[gi1][0]*x1 + grad3[gi1][1]*y1));
+    let t2 = 0.5 - x2*x2 - y2*y2;
+    n2 = t2 < 0 ? 0 : (t2 *= t2, t2 * t2 * (grad3[gi2][0]*x2 + grad3[gi2][1]*y2));
+    return 70 * (n0 + n1 + n2);
+  };
+}
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+export function HeroRibbon() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // ---- Scene Setup ----
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+    camera.position.set(0, 0, 14);
+
+    // ---- Stripe-Exact Config ----
+    const CONFIG = {
+      numLines: 600,
+      lineSpacing: 0.15,
+      pathWidth: 17.5,
+      pathHeight: 6,
+      numOscillations: 4,
+      oscRoundness: 1.7,
+      speed: 4e-5,
+      timeOffset: 17500,
+      noiseScale: 10,
+      noiseSpeed: 0.08,
+      noiseIntensity: 0.3,
+    };
+
+    const noise2D = createSimplexNoise();
+
+    // ---- Build Ribbon Geometry ----
+    // Ribbon = many parallel lines following a curved path
+    const SEGMENTS = 200; // vertices per line
+    const positions: number[] = [];
+    const lineIds: number[] = [];
+    const linePercents: number[] = [];
+    const linePositions: number[] = [];
+    const lineCounts: number[] = [];
+    const noiseValues: number[] = [];
+    const lineOpacities: number[] = [];
+    const indices: number[] = [];
+
+    for (let l = 0; l < CONFIG.numLines; l++) {
+      const lt = l / (CONFIG.numLines - 1); // 0 to 1
+      const lx = (lt - 0.5) * CONFIG.pathWidth * CONFIG.lineSpacing * CONFIG.numLines;
+      const noiseV = noise2D(lt * CONFIG.noiseScale, 0);
+
+      for (let s = 0; s <= SEGMENTS; s++) {
+        const st = s / SEGMENTS;
+        // Path shape: sinusoidal oscillation
+        const angle = st * Math.PI * 2 * CONFIG.numOscillations;
+        const py = Math.sin(angle) * CONFIG.pathHeight * Math.pow(Math.sin(st * Math.PI), CONFIG.oscRoundness);
+        const px = st * 12 - 6; // -6 to 6
+        const pz = lx;
+
+        positions.push(px, py + lt * 2 - 1, pz);
+        lineIds.push(l);
+        linePercents.push(st);
+        linePositions.push(lt);
+        lineCounts.push(CONFIG.numLines);
+        noiseValues.push(noiseV * 0.5 + 0.5);
+        lineOpacities.push(0.6 + Math.random() * 0.4);
+      }
+
+      // Line segments (draw each line as connected line strip)
+      if (l < CONFIG.numLines - 1) {
+        for (let s = 0; s < SEGMENTS; s++) {
+          const a = l * (SEGMENTS + 1) + s;
+          const b = a + 1;
+          const c = (l + 1) * (SEGMENTS + 1) + s;
+          const d = c + 1;
+          indices.push(a, b, c, b, d, c);
+        }
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('lineId', new THREE.Float32BufferAttribute(lineIds, 1));
+    geometry.setAttribute('linePercent', new THREE.Float32BufferAttribute(linePercents, 1));
+    geometry.setAttribute('linePosition', new THREE.Float32BufferAttribute(linePositions, 1));
+    geometry.setAttribute('lineCount', new THREE.Float32BufferAttribute(lineCounts, 1));
+    geometry.setAttribute('noiseValue', new THREE.Float32BufferAttribute(noiseValues, 1));
+    geometry.setAttribute('lineOpacity', new THREE.Float32BufferAttribute(lineOpacities, 1));
+    geometry.setIndex(indices);
+
+    // ---- Material with Stripe shaders ----
+    const material = new THREE.ShaderMaterial({
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      uniforms: {
+        // Animation
+        time: { value: 0 },
+        speed: { value: CONFIG.speed },
+        timeOffset: { value: CONFIG.timeOffset },
+        animValue: { value: 1.0 },
+        resolution: { value: new THREE.Vector2(canvas.clientWidth, canvas.clientHeight) },
+
+        // Twist (key to ribbon shape — Stripe exact values)
+        twistFrequencyX: { value: -0.65 },
+        twistFrequencyY: { value: 0.41 },
+        twistFrequencyZ: { value: -0.58 },
+        twistPowerX: { value: 3.63 },
+        twistPowerY: { value: 0.7 },
+        twistPowerZ: { value: 3.95 },
+
+        // Displacement
+        displaceFrequencyX: { value: 0.005831 },
+        displaceFrequencyZ: { value: 0.016001 },
+        displaceAmount: { value: -7.821 },
+
+        // Color (screen-space gradient — inilah rainbow Stripe)
+        // Untuk MIRA yang dark, adjust warna ini:
+        gradientColorTop: { value: new THREE.Color('#8B5CF6') },     // violet
+        gradientColorBottom: { value: new THREE.Color('#FF6B35') },  // orange/coral
+        gradientColorStop: { value: new THREE.Vector2(0.1, 0.9) },
+
+        // Color processing (Stripe exact)
+        colorHueShift: { value: -0.00159 },
+        colorSaturation: { value: 1.15 },
+        colorContrast: { value: 1.0 },
+
+        // Glow & fade
+        glowRamp: { value: 0.834 },
+        glowAmount: { value: 1.98 },
+        glowPower: { value: 0.806 },
+        opacity: { value: 0.65 },
+        lineFadeBottom: { value: 0.0 },
+        lineFadeTop: { value: 1.0 },
+        noiseIntensity: { value: 0.3 },
+      },
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+
+    // ---- Stripe exact transform for homepage ----
+    // Adjusted for dark background + right-side positioning
+    mesh.position.set(3.8, -3.0, -11.1);
+    mesh.rotation.set(-0.449, -0.117, 1.874);
+    mesh.scale.set(9, 8, 5);
+
+    scene.add(mesh);
+
+    // ---- Resize handler ----
+    const handleResize = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      material.uniforms.resolution.value.set(w, h);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    // ---- Animation loop ----
+    let rafId: number;
+    let startTime = performance.now();
+    let paused = false;
+
+    const handleVisibilityChange = () => {
+      paused = document.hidden;
+      if (!paused) startTime = performance.now() - material.uniforms.time.value / CONFIG.speed;
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const animate = (now: number) => {
+      rafId = requestAnimationFrame(animate);
+      if (paused) return;
+      material.uniforms.time.value = now - startTime;
+      renderer.render(scene, camera);
+    };
+    rafId = requestAnimationFrame(animate);
+
+    // ---- Cleanup ----
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+      scene.remove(mesh);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: '60%',
+        height: '100%',
+        pointerEvents: 'none',
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+```
+
+### Step 3: Integrasikan ke Hero Section
+
+Di file hero section MIRA kamu (cari file yang ada "Pengeluaran terpantau"), tambahkan:
+
+```tsx
+// Di bagian import
+import { HeroRibbon } from '@/components/HeroRibbon';
+
+// Di JSX — wrapper hero harus `position: relative`
+<section className="hero" style={{ position: 'relative', overflow: 'hidden' }}>
+  {/* Ribbon WebGL canvas — Stripe-style rainbow */}
+  <HeroRibbon />
+
+  {/* Konten existing MIRA tetap di sini */}
+  <div className="hero-content">
+    {/* ... existing text, CTA, dll */}
+  </div>
+</section>
+```
+
+---
+
+## COLOR PALETTE VARIANTS
+
+### Opsi A: Stripe Original (white bg — sama persis Stripe)
+```javascript
+gradientColorTop: new THREE.Color('#6772E5'),     // Stripe purple
+gradientColorBottom: new THREE.Color('#FF6B35'),  // coral
+```
+
+### Opsi B: MIRA Dark (cocok untuk bg biru MIRA — RECOMMENDED)
+```javascript
+gradientColorTop: new THREE.Color('#A78BFA'),     // violet muda
+gradientColorBottom: new THREE.Color('#FB923C'),  // orange
+// + opacity: 0.55 supaya tidak terlalu dominan di dark bg
+```
+
+### Opsi C: Full Rainbow (paling mirip Stripe secara visual)
+```javascript
+// Gunakan multiple mesh dengan hue offset berbeda:
+// mesh1: violet → blue (hueShift: 0.0)
+// mesh2: blue → cyan (hueShift: 0.16)  
+// mesh3: orange → pink (hueShift: 0.5)
+```
+
+---
+
+## POSITIONING: MIRIP STRIPE EXACT
+
+Di Stripe, ribbon ada di **kanan canvas** dan menjorok keluar:
+
+```css
+/* Wrapper hero section */
+.hero {
+  position: relative;
+  overflow: hidden;   /* important! */
+  min-height: 100vh;
+}
+
+/* Canvas ribbon */
+canvas.hero-ribbon {
+  position: absolute;
+  top: -10%;
+  right: -5%;         /* biar ujungnya keluar ke kanan */
+  width: 55%;
+  height: 120%;       /* lebih tinggi dari section */
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Content harus di atas canvas */
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+```
+
+---
+
+## TROUBLESHOOTING
+
+| Problem | Fix |
+|---------|-----|
+| Ribbon tidak kelihatan | Cek `opacity` uniform, pastikan `alpha: true` di WebGLRenderer |
+| Ribbon terlalu kaku/flat | Naikkan `twistPowerX/Y/Z`, turunkan `numOscillations` |
+| Terlalu cepat | Turunkan `speed` dari `4e-5` ke `2e-5` |
+| Colors terlalu tua/gelap | Naikkan `colorSaturation` ke `1.5` |
+| Ribbon di tengah, bukan kanan | Ubah `mesh.position.x` lebih tinggi (e.g., `5.5`) |
+| WebGL error di Safari | Tambahkan `precision mediump float;` di awal fragment shader |
+| Performa lambat | Turunkan `numLines` dari 600 ke 300 |
+
+---
+
+## TECHNICAL NOTES
+
+- Stripe menggunakan **Three.js r3f** internally tapi vanilla Three.js juga works
+- The "rainbow" effect berasal dari **screen-space gradient** di fragment shader, bukan dari vertex colors
+- Stripe's real implementation punya post-processing (blur + grain) yang di-apply via EffectComposer — untuk simplifikasi, kita skip ini dulu
+- Mouse interaction bisa ditambah nanti dengan raycaster + force spring
+- Stripe juga punya fallback static PNG: `developer-wave-wide_2x.png` jika WebGL fail
+
+---
+
+*Generated from deep analysis of Stripe homepage bundle `index-c32230ae175427b0.js` dan GLSL shader extraction.*

@@ -1,4 +1,5 @@
 import './Footer.css';
+import { Link } from 'react-router';
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -45,9 +46,9 @@ export function Footer() {
           <ul className="footer-col-links">
             <li><a href="#faq">FAQ</a></li>
             <li><a href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer">Chat Support WA</a></li>
-            <li><a href="#">Kebijakan Privasi</a></li>
-            <li><a href="#">Syarat & Ketentuan</a></li>
-            <li><a href="#">Refund Policy</a></li>
+            <li><Link to="/privacy-policy">Kebijakan Privasi</Link></li>
+            <li><Link to="/terms-of-service">Syarat & Ketentuan</Link></li>
+            <li><Link to="/refund-policy">Refund Policy</Link></li>
           </ul>
         </div>
 
@@ -75,9 +76,11 @@ export function Footer() {
       <div className="footer-bottom">
         <span>© {year} MIRA · PT. Mira Teknologi Indonesia</span>
         <div className="footer-bottom-right">
-          <a href="#">Kebijakan Privasi</a>
+          <Link to="/privacy-policy">Kebijakan Privasi</Link>
           <span className="footer-sep">·</span>
-          <a href="#">Syarat & Ketentuan</a>
+          <Link to="/terms-of-service">Syarat & Ketentuan</Link>
+          <span className="footer-sep">·</span>
+          <Link to="/refund-policy">Refund</Link>
         </div>
       </div>
     </footer>

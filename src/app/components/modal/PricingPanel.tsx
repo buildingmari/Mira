@@ -97,7 +97,7 @@ export function PricingPanel({
       </div>
 
       <div className="pricing-tabs">
-        {Object.keys(plans).map((key) => (
+        {Object.keys(plans).filter((key) => key === 'personal').map((key) => (
           <button
             key={key}
             className={`ptab ${selectedPlan === key ? 'active' : ''}`}

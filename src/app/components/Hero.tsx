@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import './Hero.css';
-import { HeroWave } from './HeroWave';
+import { HeroGradient } from './HeroGradient';
 
 interface HeroProps {
   onCTAClick: () => void;
@@ -186,15 +186,12 @@ export function Hero({ onCTAClick }: HeroProps) {
   }, []);
 
   return (
-    <div
-      className="hero-wrap"
-      style={{ background: 'linear-gradient(135deg, #ffffff 40%, #E6F3FF 70%, #B3D9FF 100%)' }}
-    >
-      <HeroWave />
+    <div className="hero-wrap">
+      <HeroGradient />
 
       <div className="hero" id="home">
         {/* ── Left: text content ── */}
-        <div className="hero-left relative z-10">
+        <div className="hero-left">
           <div className="hero-supertitle">
             <span className="supertitle-dot" />
             Asisten Keuangan AI via WhatsApp
@@ -210,11 +207,11 @@ export function Hero({ onCTAClick }: HeroProps) {
             keuangan terkendali.
           </h1>
 
-          <p className="hero-sub relative z-10">
+          <p className="hero-sub">
             Catat pengeluaran tanpa ribet — 24/7. Cukup kirim lewat WhatsApp, sisanya MIRA yang urus.
           </p>
 
-          <div className="hero-cta-row relative z-10">
+          <div className="hero-cta-row">
             <button className="btn-hero" onClick={onCTAClick}>
               Mulai sekarang
             </button>
@@ -223,13 +220,13 @@ export function Hero({ onCTAClick }: HeroProps) {
             </a>
           </div>
 
-          <p className="hero-trust relative z-10">
+          <p className="hero-trust">
             Tanpa download aplikasi baru · Langsung aktif di WhatsApp
           </p>
         </div>
 
         {/* ── Right: iPhone mockup ── */}
-        <div className="hero-right relative z-10">
+        <div className="hero-right">
           <IPhoneMockup />
         </div>
       </div>
