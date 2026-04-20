@@ -4,8 +4,7 @@ import {
   TrendingDown,
   Target,
   AlertCircle,
-  ArrowUp,
-  ArrowDown,
+  ArrowRight,
 } from "lucide-react";
 import {
   LineChart,
@@ -21,28 +20,27 @@ import {
   Bar,
 } from "recharts";
 import { formatCurrency } from "../../lib/utils";
-import { motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useUserSession } from "../../context/user-session-context";
 
 const CATEGORY_COLORS: { [key: string]: string } = {
-  Food: "#00ff88",
-  Transport: "#3b82f6",
-  Shopping: "#8b5cf6",
+  Food: "#3b82f6",
+  Transport: "#8b5cf6",
+  Shopping: "#ec4899",
   Entertainment: "#f59e0b",
   Health: "#10b981",
-  Education: "#ec4899",
+  Education: "#6366f1",
   Bills: "#ef4444",
-  Other: "#6b7280",
+  Other: "#94a3b8",
 };
 
-// Helper functions
+// ── Helpers (logic unchanged) ────────────────────────────────────────────────
+
 const getCurrentMonthTransactions = (transactions: any[]) => {
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
-  
   return transactions.filter((t) => {
     const date = new Date(t.date);
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
@@ -52,16 +50,14 @@ const getCurrentMonthTransactions = (transactions: any[]) => {
 const getLast7DaysTransactions = (transactions: any[]) => {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  
   return transactions.filter((t) => {
     const date = new Date(t.date);
     return date >= sevenDaysAgo && date <= now;
   });
 };
 
-const sumTransactions = (transactions: any[]) => {
-  return transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-};
+const sumTransactions = (transactions: any[]) =>
+  transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
 
 const groupByCategory = (transactions: any[]) => {
   const grouped: { [key: string]: number } = {};
@@ -83,9 +79,6 @@ const groupByWallet = (transactions: any[]) => {
 
 const groupByDate = (transactions: any[]) => {
   const grouped: { [key: string]: number } = {};
-  
-  // Get last 7 days
-  const dates = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
@@ -93,10 +86,8 @@ const groupByDate = (transactions: any[]) => {
       day: "numeric",
       month: "short",
     });
-    dates.push(dateStr);
     grouped[dateStr] = 0;
   }
-  
   transactions.forEach((t) => {
     const date = new Date(t.date).toLocaleDateString("id-ID", {
       day: "numeric",
@@ -106,46 +97,51 @@ const groupByDate = (transactions: any[]) => {
       grouped[date] += t.amount || 0;
     }
   });
-  
   return grouped;
 };
+
+// ── Greeting helper ──────────────────────────────────────────────────────────
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Selamat pagi";
+  if (hour < 17) return "Selamat siang";
+  return "Selamat malam";
+};
+
+const getTodayLabel = () =>
+  new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function DashboardOverview() {
   const navigate = useNavigate();
   const { userSession } = useUserSession();
 
-  // Calculate all data from userSession.transactions
   const dashboardData = useMemo(() => {
-    if (!userSession || !userSession.transactions || !userSession.user) {
-      return null;
-    }
+    if (!userSession || !userSession.transactions || !userSession.user) return null;
 
     const transactions = userSession.transactions;
     const user = userSession.user;
     const currentMonthTxns = getCurrentMonthTransactions(transactions);
     const last7DaysTxns = getLast7DaysTransactions(transactions);
 
-    // Get user settings
-    const monthlyLimit = user.monthly_limit || 5000000; // Fallback if not set
-    const savingsGoal = user.savings_goal || 2000000; // Fallback if not set
-    const mainWallet = user.main_wallet || ""; // Main wallet preference
+    const monthlyLimit = user.monthly_limit || 5000000;
+    const savingsGoal = user.savings_goal || 2000000;
+    const mainWallet = user.main_wallet || "";
 
-    // 1. Total Bulan Ini
     const totalBulanIni = sumTransactions(currentMonthTxns);
-
-    // 2. Sisa Limit (monthly_limit - Total Bulan Ini)
     const sisaLimit = monthlyLimit - totalBulanIni;
-
-    // 3. Goal Progress (Total saved / savings_goal)
-    // Use 30% of spending as temporary savings calculation
     const currentSaved = totalBulanIni * 0.3;
     const goalProgress = (currentSaved / savingsGoal) * 100;
-
-    // 4. Status
     const status = totalBulanIni <= monthlyLimit ? "On Track" : "Over Budget";
     const percentageUsed = (totalBulanIni / monthlyLimit) * 100;
 
-    // 5. Pengeluaran terbesar minggu ini (highest category in last 7 days)
     const categoryLast7Days = groupByCategory(last7DaysTxns);
     let highestCategory = "";
     let highestAmount = 0;
@@ -156,22 +152,19 @@ export function DashboardOverview() {
       }
     });
 
-    // 6. 7-Day Spending Trend
     const dateData = groupByDate(last7DaysTxns);
     const spendingTrendData = Object.keys(dateData).map((date) => ({
       date,
       amount: dateData[date],
     }));
 
-    // 7. Category Breakdown
     const categoryData = groupByCategory(currentMonthTxns);
     const categoryChartData = Object.keys(categoryData).map((cat) => ({
       name: cat,
       value: categoryData[cat],
-      color: CATEGORY_COLORS[cat] || "#6b7280",
+      color: CATEGORY_COLORS[cat] || "#94a3b8",
     }));
 
-    // 8. Wallet Usage
     const walletData = groupByWallet(currentMonthTxns);
     const walletChartData = Object.keys(walletData).map((wallet) => ({
       name: wallet,
@@ -196,36 +189,33 @@ export function DashboardOverview() {
     };
   }, [userSession]);
 
-  // Redirect to login if no session
   useEffect(() => {
-    if (!userSession) {
-      navigate("/login");
-    }
+    if (!userSession) navigate("/login");
   }, [userSession, navigate]);
 
-  // Show loading/empty state if no userSession or transactions
+  const userName = (userSession?.user as any)?.name;
+  const greeting = `${getGreeting()}${userName ? ", " + userName.split(" ")[0] : ""}`;
+
+  // ── Loading state ──
   if (!userSession || !userSession.transactions || !dashboardData) {
     return (
-      <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Loading...</h2>
-          <p className="text-muted-foreground">
-            Memuat data dashboard
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-6">
+        <Wallet className="h-10 w-10 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">Memuat data dashboard…</p>
       </div>
     );
   }
 
-  // Show empty state if no transactions
+  // ── Empty state ──
   if (userSession.transactions.length === 0) {
     return (
-      <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <Wallet className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Belum ada transaksi</h2>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
+        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
+          <Wallet className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold mb-1">Belum ada transaksi</h2>
+          <p className="text-sm text-muted-foreground">
             Mulai catat pengeluaran kamu via WhatsApp
           </p>
         </div>
@@ -233,307 +223,263 @@ export function DashboardOverview() {
     );
   }
 
+  const isOnTrack = dashboardData.status === "On Track";
+
   return (
-    <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-      {/* Header */}
+    <div className="max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pb-8 space-y-8">
+
+      {/* ── Page Header ─────────────────────────────────── */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">Overview</h1>
-        <p className="text-muted-foreground">
-          Ringkasan keuangan kamu bulan ini
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{greeting} 👋</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{getTodayLabel()}</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Bulan Ini
-              </CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(dashboardData.totalBulanIni)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                dari limit {formatCurrency(dashboardData.monthlyLimit)}
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* ── Stats Grid ──────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Bulan Ini */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-1">
+          <p className="text-xs text-muted-foreground">Total Bulan Ini</p>
+          <p className="text-xl font-bold tracking-tight">
+            {formatCurrency(dashboardData.totalBulanIni)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            dari {formatCurrency(dashboardData.monthlyLimit)}
+          </p>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Sisa Limit</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(dashboardData.sisaLimit)}
-              </div>
-              <div className="mt-2">
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all duration-500"
-                    style={{ width: `${Math.min(dashboardData.percentageUsed, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {dashboardData.percentageUsed.toFixed(0)}% dari limit
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Goal Progress
-              </CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(dashboardData.currentSaved)}
-              </div>
-              <div className="mt-2">
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all duration-500"
-                    style={{ width: `${Math.min(dashboardData.goalProgress, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {dashboardData.goalProgress.toFixed(0)}% dari target
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Card className={dashboardData.status === "On Track" ? "border-accent/50" : "border-destructive/50"}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Status</CardTitle>
-              <AlertCircle className={`h-4 w-4 ${dashboardData.status === "On Track" ? "text-accent" : "text-destructive"}`} />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-lg font-bold ${dashboardData.status === "On Track" ? "text-accent" : "text-destructive"}`}>
-                {dashboardData.status}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {dashboardData.status === "On Track" 
-                  ? "Pengeluaran masih sesuai budget"
-                  : "Pengeluaran melebihi budget"}
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Alert Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-accent/30 bg-accent/5">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-accent/10 p-2">
-                <TrendingDown className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">
-                  Pengeluaran terbesar minggu ini
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {dashboardData.highestCategory ? (
-                    <>
-                      Kategori{" "}
-                      <span className="font-semibold text-accent">
-                        {dashboardData.highestCategory}
-                      </span>{" "}
-                      dengan total {formatCurrency(dashboardData.highestAmount)}
-                    </>
-                  ) : (
-                    "Belum ada data minggu ini"
-                  )}
-                </p>
-              </div>
+        {/* Sisa Limit */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+          <p className="text-xs text-muted-foreground">Sisa Limit</p>
+          <p className="text-xl font-bold tracking-tight">
+            {formatCurrency(dashboardData.sisaLimit)}
+          </p>
+          <div className="space-y-1">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(dashboardData.percentageUsed, 100)}%` }}
+              />
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-[10px] text-muted-foreground">
+              {dashboardData.percentageUsed.toFixed(0)}% digunakan
+            </p>
+          </div>
+        </div>
 
-        <Card className="border-border bg-card">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-accent/10 p-2">
-                <Target className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-semibold mb-1">Tips hemat bulan ini</h3>
-                <p className="text-sm text-muted-foreground">
-                  {dashboardData.highestCategory
-                    ? `Kurangi pengeluaran ${dashboardData.highestCategory} sebesar 15% untuk mencapai goal saving`
-                    : "Mulai catat pengeluaran untuk mendapat tips"}
-                </p>
-              </div>
+        {/* Goal Progress */}
+        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+          <p className="text-xs text-muted-foreground">Goal Progress</p>
+          <p className="text-xl font-bold tracking-tight">
+            {formatCurrency(dashboardData.currentSaved)}
+          </p>
+          <div className="space-y-1">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(dashboardData.goalProgress, 100)}%` }}
+              />
             </div>
-          </CardContent>
-        </Card>
+            <p className="text-[10px] text-muted-foreground">
+              {dashboardData.goalProgress.toFixed(0)}% dari target
+            </p>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div
+          className={`bg-card border rounded-xl p-4 space-y-1 ${
+            isOnTrack ? "border-emerald-200 dark:border-emerald-900" : "border-red-200 dark:border-red-900"
+          }`}
+        >
+          <p className="text-xs text-muted-foreground">Status</p>
+          <div className="flex items-center gap-1.5">
+            <div
+              className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                isOnTrack ? "bg-emerald-500" : "bg-red-500"
+              }`}
+            />
+            <p
+              className={`text-sm font-semibold ${
+                isOnTrack ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {dashboardData.status}
+            </p>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            {isOnTrack
+              ? "Pengeluaran sesuai budget"
+              : "Pengeluaran melebihi budget"}
+          </p>
+        </div>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* ── Insight Cards ───────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="flex items-start gap-3 bg-card border border-border rounded-xl p-4">
+          <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
+            <TrendingDown className="h-4 w-4 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Pengeluaran terbesar minggu ini</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {dashboardData.highestCategory ? (
+                <>
+                  Kategori{" "}
+                  <span className="font-medium text-foreground">
+                    {dashboardData.highestCategory}
+                  </span>{" "}
+                  sebesar {formatCurrency(dashboardData.highestAmount)}
+                </>
+              ) : (
+                "Belum ada data minggu ini"
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 bg-card border border-border rounded-xl p-4">
+          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
+            <Target className="h-4 w-4 text-amber-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Tips hemat bulan ini</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {dashboardData.highestCategory
+                ? `Kurangi ${dashboardData.highestCategory} 15% untuk capai saving goal`
+                : "Mulai catat pengeluaran untuk mendapat tips"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Charts ──────────────────────────────────────── */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Spending Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle>7-Day Spending Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={dashboardData.spendingTrendData}>
-                <XAxis
-                  dataKey="date"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value / 1000}k`}
-                />
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "12px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#00ff88"
-                  strokeWidth={3}
-                  dot={{ fill: "#00ff88", r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm font-semibold mb-4">Tren 7 Hari Terakhir</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={dashboardData.spendingTrendData}>
+              <XAxis
+                dataKey="date"
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value / 1000}k`}
+              />
+              <Tooltip
+                formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  backgroundColor: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="amount"
+                stroke="#2D5BFF"
+                strokeWidth={2}
+                dot={{ fill: "#2D5BFF", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
         {/* Category Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={dashboardData.categoryChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {dashboardData.categoryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "12px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              {dashboardData.categoryChartData.map((category) => (
-                <div key={category.name} className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {category.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(category.value)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Wallet Usage */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Wallet Usage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dashboardData.walletChartData}>
-                <XAxis
-                  dataKey="name"
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#888888"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value / 1000}k`}
-                />
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm font-semibold mb-4">Kategori Pengeluaran</p>
+          <div className="flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={dashboardData.categoryChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {dashboardData.categoryChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
                 <Tooltip
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{
                     backgroundColor: "var(--color-card)",
                     border: "1px solid var(--color-border)",
-                    borderRadius: "12px",
+                    borderRadius: "10px",
+                    fontSize: "12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                   }}
                 />
-                <Bar dataKey="amount" fill="#00ff88" radius={[8, 8, 0, 0]} />
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {dashboardData.categoryChartData.map((category) => (
+              <div key={category.name} className="flex items-center gap-2">
+                <div
+                  className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: category.color }}
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">{category.name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {formatCurrency(category.value)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Wallet Usage */}
+        <div className="bg-card border border-border rounded-xl p-4 lg:col-span-2">
+          <p className="text-sm font-semibold mb-4">Penggunaan per Dompet</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={dashboardData.walletChartData} barSize={32}>
+              <XAxis
+                dataKey="name"
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value / 1000}k`}
+              />
+              <Tooltip
+                formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  backgroundColor: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                }}
+                cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
+              />
+              <Bar dataKey="amount" fill="#2D5BFF" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
