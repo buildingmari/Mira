@@ -74,14 +74,45 @@ export function DashboardLayout() {
 
  // TEMP FIX: bypass auth & assessment gate
 
+// ==============================
+// TEMP FIX: bypass auth & assessment gate
+// ==============================
+
 const userObj = userSession?.user as any;
 
-// Optional: kalau mau tetep ada loading dikit
+// Jangan block render lagi
 if (!userSession) {
-  return <div>Loading...</div>;
+  return (
+    <div style={{ padding: "20px", textAlign: "center" }}>
+      Loading dashboard...
+    </div>
+  );
 }
 
-// LANGSUNG LANJUT RENDER (NO GATE)
+// ⛔ DISABLE assessment gate sementara
+// if (userObj?.account_status === "pending_assessment") {
+//   return (
+//     <PendingAssessmentGate
+//       phone={userObj?.phone ?? ""}
+//       user={
+//         userObj
+//           ? { plan_name: userObj.plan_name, expiry: userObj.expiry }
+//           : null
+//       }
+//       onComplete={() => {
+//         try {
+//           const raw = sessionStorage.getItem("mira_user");
+//           if (raw) {
+//             const cached = JSON.parse(raw);
+//             cached.account_status = "active";
+//             sessionStorage.setItem("mira_user", JSON.stringify(cached));
+//           }
+//         } catch {}
+//         window.location.reload();
+//       }}
+//     />
+//   );
+// }
   const handleLogout = () => { logout(); navigate("/"); };
 
   const userName    = userObj?.name || "User";
