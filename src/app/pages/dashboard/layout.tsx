@@ -72,30 +72,16 @@ export function DashboardLayout() {
     if (!userSession) navigate("/");
   }, [userSession, navigate]);
 
-  if (!userSession) return null;
+ // TEMP FIX: bypass auth & assessment gate
 
-  // Assessment gate: show onboarding if account_status === 'pending_assessment'
-  const userObj = userSession.user as any;
-  if (userObj?.account_status === "pending_assessment") {
-    return (
-      <PendingAssessmentGate
-        phone={userObj?.phone ?? ""}
-        user={userObj ? { plan_name: userObj.plan_name, expiry: userObj.expiry } : null}
-        onComplete={() => {
-          try {
-            const raw = sessionStorage.getItem("mira_user");
-            if (raw) {
-              const cached = JSON.parse(raw);
-              cached.account_status = "active";
-              sessionStorage.setItem("mira_user", JSON.stringify(cached));
-            }
-          } catch {}
-          window.location.reload();
-        }}
-      />
-    );
-  }
+const userObj = userSession?.user as any;
 
+// Optional: kalau mau tetep ada loading dikit
+if (!userSession) {
+  return <div>Loading...</div>;
+}
+
+// LANGSUNG LANJUT RENDER (NO GATE)
   const handleLogout = () => { logout(); navigate("/"); };
 
   const userName    = userObj?.name || "User";
