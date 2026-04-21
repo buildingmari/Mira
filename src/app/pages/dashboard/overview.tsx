@@ -1,11 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/card";
-import {
-  Wallet,
-  TrendingDown,
-  Target,
-  AlertCircle,
-  ArrowRight,
-} from "lucide-react";
 import {
   LineChart,
   Line,
@@ -23,169 +15,154 @@ import { formatCurrency } from "../../lib/utils";
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useUserSession } from "../../context/user-session-context";
+import { Wallet, TrendingDown, Target, ArrowRight } from "lucide-react";
 
-const CATEGORY_COLORS: { [key: string]: string } = {
-  Food: "#3b82f6",
-  Transport: "#8b5cf6",
-  Shopping: "#ec4899",
-  Entertainment: "#f59e0b",
-  Health: "#10b981",
-  Education: "#6366f1",
-  Bills: "#ef4444",
-  Other: "#94a3b8",
+// ── Category config ───────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+  Food: "#2563EB",
+  Transport: "#10B981",
+  Shopping: "#8B5CF6",
+  Entertainment: "#F59E0B",
+  Health: "#EF4444",
+  Education: "#6366F1",
+  Bills: "#EC4899",
+  Other: "#6B7280",
 };
 
-// ── Helpers (logic unchanged) ────────────────────────────────────────────────
+const CATEGORY_EMOJI: Record<string, string> = {
+  Food: "🍜",
+  Transport: "🚗",
+  Shopping: "🛒",
+  Entertainment: "📱",
+  Health: "❤️",
+  Education: "🎓",
+  Bills: "💳",
+  Other: "✨",
+};
 
-const getCurrentMonthTransactions = (transactions: any[]) => {
+const CATEGORY_BG: Record<string, string> = {
+  Food: "#FEE2E2",
+  Transport: "#EDE9FE",
+  Shopping: "#FEF3C7",
+  Entertainment: "#EFF6FF",
+  Health: "#D1FAE5",
+  Education: "#DBEAFE",
+  Bills: "#FCE7F3",
+  Other: "#F1F4F8",
+};
+
+// ── Helpers (logic unchanged) ─────────────────────────────────────
+const getCurrentMonthTransactions = (txns: any[]) => {
   const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  return transactions.filter((t) => {
-    const date = new Date(t.date);
-    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  return txns.filter((t) => {
+    const d = new Date(t.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
 };
 
-const getLast7DaysTransactions = (transactions: any[]) => {
+const getLast7DaysTransactions = (txns: any[]) => {
   const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return transactions.filter((t) => {
-    const date = new Date(t.date);
-    return date >= sevenDaysAgo && date <= now;
+  const ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return txns.filter((t) => {
+    const d = new Date(t.date);
+    return d >= ago && d <= now;
   });
 };
 
-const sumTransactions = (transactions: any[]) =>
-  transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+const sumTransactions = (txns: any[]) =>
+  txns.reduce((s, t) => s + (t.amount || 0), 0);
 
-const groupByCategory = (transactions: any[]) => {
-  const grouped: { [key: string]: number } = {};
-  transactions.forEach((t) => {
-    const category = t.category || "Other";
-    grouped[category] = (grouped[category] || 0) + (t.amount || 0);
+const groupByCategory = (txns: any[]) => {
+  const g: Record<string, number> = {};
+  txns.forEach((t) => {
+    const c = t.category || "Other";
+    g[c] = (g[c] || 0) + (t.amount || 0);
   });
-  return grouped;
+  return g;
 };
 
-const groupByWallet = (transactions: any[]) => {
-  const grouped: { [key: string]: number } = {};
-  transactions.forEach((t) => {
-    const wallet = t.wallet || "Unknown";
-    grouped[wallet] = (grouped[wallet] || 0) + (t.amount || 0);
+const groupByWallet = (txns: any[]) => {
+  const g: Record<string, number> = {};
+  txns.forEach((t) => {
+    const w = t.wallet || "Unknown";
+    g[w] = (g[w] || 0) + (t.amount || 0);
   });
-  return grouped;
+  return g;
 };
 
-const groupByDate = (transactions: any[]) => {
-  const grouped: { [key: string]: number } = {};
+const groupByDate = (txns: any[]) => {
+  const g: Record<string, number> = {};
   for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-    });
-    grouped[dateStr] = 0;
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    g[key] = 0;
   }
-  transactions.forEach((t) => {
-    const date = new Date(t.date).toLocaleDateString("id-ID", {
-      day: "numeric",
-      month: "short",
-    });
-    if (grouped[date] !== undefined) {
-      grouped[date] += t.amount || 0;
-    }
+  txns.forEach((t) => {
+    const key = new Date(t.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+    if (key in g) g[key] += t.amount || 0;
   });
-  return grouped;
+  return g;
 };
-
-// ── Greeting helper ──────────────────────────────────────────────────────────
 
 const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Selamat pagi";
-  if (hour < 17) return "Selamat siang";
+  const h = new Date().getHours();
+  if (h < 12) return "Selamat pagi";
+  if (h < 17) return "Selamat siang";
   return "Selamat malam";
 };
 
-const getTodayLabel = () =>
-  new Date().toLocaleDateString("id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
-// ── Component ────────────────────────────────────────────────────────────────
-
+// ── Component ─────────────────────────────────────────────────────
 export function DashboardOverview() {
   const navigate = useNavigate();
   const { userSession } = useUserSession();
 
-  const dashboardData = useMemo(() => {
-    if (!userSession || !userSession.transactions || !userSession.user) return null;
-
-    const transactions = userSession.transactions;
-    const user = userSession.user;
-    const currentMonthTxns = getCurrentMonthTransactions(transactions);
-    const last7DaysTxns = getLast7DaysTransactions(transactions);
+  const data = useMemo(() => {
+    if (!userSession?.transactions || !userSession?.user) return null;
+    const txns = userSession.transactions;
+    const user = userSession.user as any;
+    const monthTxns = getCurrentMonthTransactions(txns);
+    const last7 = getLast7DaysTransactions(txns);
 
     const monthlyLimit = user.monthly_limit || 5000000;
     const savingsGoal = user.savings_goal || 2000000;
-    const mainWallet = user.main_wallet || "";
-
-    const totalBulanIni = sumTransactions(currentMonthTxns);
+    const totalBulanIni = sumTransactions(monthTxns);
     const sisaLimit = monthlyLimit - totalBulanIni;
     const currentSaved = totalBulanIni * 0.3;
     const goalProgress = (currentSaved / savingsGoal) * 100;
-    const status = totalBulanIni <= monthlyLimit ? "On Track" : "Over Budget";
     const percentageUsed = (totalBulanIni / monthlyLimit) * 100;
+    const status = totalBulanIni <= monthlyLimit ? "On Track" : "Over Budget";
 
-    const categoryLast7Days = groupByCategory(last7DaysTxns);
+    const catLast7 = groupByCategory(last7);
     let highestCategory = "";
     let highestAmount = 0;
-    Object.keys(categoryLast7Days).forEach((cat) => {
-      if (categoryLast7Days[cat] > highestAmount) {
-        highestAmount = categoryLast7Days[cat];
-        highestCategory = cat;
-      }
+    Object.entries(catLast7).forEach(([cat, amt]) => {
+      if (amt > highestAmount) { highestAmount = amt; highestCategory = cat; }
     });
 
-    const dateData = groupByDate(last7DaysTxns);
-    const spendingTrendData = Object.keys(dateData).map((date) => ({
-      date,
-      amount: dateData[date],
+    const dateData = groupByDate(last7);
+    const spendingTrendData = Object.entries(dateData).map(([date, amount]) => ({ date, amount }));
+
+    const catData = groupByCategory(monthTxns);
+    const categoryChartData = Object.entries(catData).map(([name, value]) => ({
+      name,
+      value,
+      color: CATEGORY_COLORS[name] || "#6B7280",
     }));
 
-    const categoryData = groupByCategory(currentMonthTxns);
-    const categoryChartData = Object.keys(categoryData).map((cat) => ({
-      name: cat,
-      value: categoryData[cat],
-      color: CATEGORY_COLORS[cat] || "#94a3b8",
-    }));
+    const walletData = groupByWallet(monthTxns);
+    const walletChartData = Object.entries(walletData).map(([name, amount]) => ({ name, amount }));
 
-    const walletData = groupByWallet(currentMonthTxns);
-    const walletChartData = Object.keys(walletData).map((wallet) => ({
-      name: wallet,
-      amount: walletData[wallet],
-    }));
+    // Recent 5 transactions sorted newest first
+    const recentTxns = [...txns]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
 
     return {
-      totalBulanIni,
-      sisaLimit,
-      currentSaved,
-      goalProgress,
-      status,
-      percentageUsed,
-      highestCategory,
-      highestAmount,
-      spendingTrendData,
-      categoryChartData,
-      walletChartData,
-      monthlyLimit,
-      savingsGoal,
-      mainWallet,
+      totalBulanIni, sisaLimit, currentSaved, goalProgress,
+      percentageUsed, status, highestCategory, highestAmount,
+      spendingTrendData, categoryChartData, walletChartData,
+      monthlyLimit, savingsGoal, recentTxns,
     };
   }, [userSession]);
 
@@ -194,293 +171,398 @@ export function DashboardOverview() {
   }, [userSession, navigate]);
 
   const userName = (userSession?.user as any)?.name;
-  const greeting = `${getGreeting()}${userName ? ", " + userName.split(" ")[0] : ""}`;
+  const firstName = userName ? userName.split(" ")[0] : null;
 
-  // ── Loading state ──
-  if (!userSession || !userSession.transactions || !dashboardData) {
+  // Loading
+  if (!userSession?.transactions || !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-6">
-        <Wallet className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground">Memuat data dashboard…</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <Wallet className="h-10 w-10" style={{ color: "#9CA3AF" }} />
+        <p style={{ fontSize: 14, color: "#6B7280" }}>Memuat data…</p>
       </div>
     );
   }
 
-  // ── Empty state ──
+  // Empty state
   if (userSession.transactions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-6">
-        <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
-          <Wallet className="h-8 w-8 text-muted-foreground" />
+        <div
+          style={{
+            width: 64, height: 64, borderRadius: 20,
+            background: "#EFF6FF",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <Wallet className="h-8 w-8" style={{ color: "#2563EB" }} />
         </div>
         <div>
-          <h2 className="text-lg font-semibold mb-1">Belum ada transaksi</h2>
-          <p className="text-sm text-muted-foreground">
-            Mulai catat pengeluaran kamu via WhatsApp
-          </p>
+          <h2 style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 600, marginBottom: 4 }}>Belum ada transaksi</h2>
+          <p style={{ fontSize: 13, color: "#6B7280" }}>Mulai catat pengeluaran kamu via WhatsApp</p>
         </div>
       </div>
     );
   }
 
-  const isOnTrack = dashboardData.status === "On Track";
+  const isOnTrack = data.status === "On Track";
+
+  // ── Tooltip styles ──
+  const tooltipStyle = {
+    backgroundColor: "var(--color-card)",
+    border: "1px solid var(--color-border)",
+    borderRadius: 10,
+    fontSize: 12,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-8 pb-8 space-y-8">
+    <div
+      style={{
+        padding: "28px 32px 40px",
+        maxWidth: 960,
+        margin: "0 auto",
+      }}
+      className="dashboard-content"
+    >
+      <style>{`
+        @media (max-width: 900px) {
+          .dashboard-content { padding: 20px 16px 24px !important; }
+          .hero-stats-right { display: none !important; }
+          .two-col { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 600px) {
+          .stats-row { grid-template-columns: repeat(3, minmax(0,1fr)) !important; gap: 8px !important; }
+          .stat-card-val { font-size: 15px !important; letter-spacing: -0.5px !important; }
+          .stat-card-lbl { font-size: 11px !important; }
+          .hero-amount { font-size: 26px !important; }
+        }
+      `}</style>
 
-      {/* ── Page Header ─────────────────────────────────── */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{greeting} 👋</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{getTodayLabel()}</p>
+      {/* ── Hero Card ───────────────────────────────────────────── */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, #1D4ED8 0%, #2563EB 60%, #3B82F6 100%)",
+          borderRadius: 20,
+          padding: "28px 32px",
+          color: "#fff",
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: 20,
+          alignItems: "flex-end",
+          marginBottom: 20,
+          position: "relative",
+          overflow: "hidden",
+          cursor: "default",
+        }}
+      >
+        {/* Decorative circles */}
+        <div style={{ position:"absolute", right:-40, top:-60, width:220, height:220, borderRadius:"50%", background:"rgba(255,255,255,0.06)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", right:60, bottom:-80, width:160, height:160, borderRadius:"50%", background:"rgba(255,255,255,0.04)", pointerEvents:"none" }} />
+
+        <div>
+          <div style={{ fontSize: 12, opacity: 0.75, letterSpacing: 0.3, marginBottom: 6 }}>Pengeluaran Bulan Ini</div>
+          <div className="hero-amount" style={{ fontFamily:"'Sora',sans-serif", fontSize:36, fontWeight:600, letterSpacing:-1.5, lineHeight:1 }}>
+            {formatCurrency(data.totalBulanIni)}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6, display:"flex", alignItems:"center", gap: 4 }}>
+            <span style={{ color: isOnTrack ? "#6EE7B7" : "#FCA5A5", fontWeight: 500 }}>
+              {isOnTrack ? "✓" : "!"} {isOnTrack ? "On Track" : "Over Budget"}
+            </span>
+            <span>dari {formatCurrency(data.monthlyLimit)}</span>
+          </div>
+        </div>
+
+        <div className="hero-stats-right" style={{ display:"flex", gap:28 }}>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:600, letterSpacing:-0.5 }}>
+              {formatCurrency(data.sisaLimit)}
+            </div>
+            <div style={{ fontSize:11, opacity:0.65, marginTop:2 }}>Sisa limit</div>
+          </div>
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:600, letterSpacing:-0.5 }}>
+              {data.goalProgress.toFixed(0)}%
+            </div>
+            <div style={{ fontSize:11, opacity:0.65, marginTop:2 }}>Goal progress</div>
+          </div>
+        </div>
       </div>
 
-      {/* ── Stats Grid ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Bulan Ini */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-1">
-          <p className="text-xs text-muted-foreground">Total Bulan Ini</p>
-          <p className="text-xl font-bold tracking-tight">
-            {formatCurrency(dashboardData.totalBulanIni)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            dari {formatCurrency(dashboardData.monthlyLimit)}
-          </p>
+      {/* ── Stats Row ───────────────────────────────────────────── */}
+      <div
+        className="stats-row"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 14,
+          marginBottom: 20,
+        }}
+      >
+        {/* Spending */}
+        <div
+          style={{
+            background:"var(--color-card)",
+            border:"1px solid var(--color-border)",
+            borderRadius:16,
+            padding:"18px 20px",
+          }}
+        >
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:12 }}>
+            <div style={{ width:36, height:36, borderRadius:8, background:"#EFF6FF", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <TrendingDown style={{ width:17, height:17, stroke:"#2563EB" }} strokeWidth={1.8} />
+            </div>
+            <span
+              style={{
+                fontSize:12, padding:"3px 8px", borderRadius:20, fontWeight:500,
+                background: isOnTrack ? "#D1FAE5" : "#FEE2E2",
+                color: isOnTrack ? "#065F46" : "#991B1B",
+              }}
+            >
+              {isOnTrack ? "▼" : "▲"} {data.percentageUsed.toFixed(0)}%
+            </span>
+          </div>
+          <div className="stat-card-val" style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:600, letterSpacing:-0.8, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {formatCurrency(data.totalBulanIni)}
+          </div>
+          <div className="stat-card-lbl" style={{ fontSize:12, color:"#6B7280" }}>Pengeluaran</div>
         </div>
 
-        {/* Sisa Limit */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-          <p className="text-xs text-muted-foreground">Sisa Limit</p>
-          <p className="text-xl font-bold tracking-tight">
-            {formatCurrency(dashboardData.sisaLimit)}
-          </p>
-          <div className="space-y-1">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-700"
-                style={{ width: `${Math.min(dashboardData.percentageUsed, 100)}%` }}
-              />
+        {/* Savings */}
+        <div
+          style={{
+            background:"var(--color-card)",
+            border:"1px solid var(--color-border)",
+            borderRadius:16,
+            padding:"18px 20px",
+          }}
+        >
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:12 }}>
+            <div style={{ width:36, height:36, borderRadius:8, background:"#D1FAE5", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <Target style={{ width:17, height:17, stroke:"#059669" }} strokeWidth={1.8} />
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              {dashboardData.percentageUsed.toFixed(0)}% digunakan
-            </p>
+            <span style={{ fontSize:12, padding:"3px 8px", borderRadius:20, fontWeight:500, background:"#D1FAE5", color:"#065F46" }}>
+              ▲ {data.goalProgress.toFixed(0)}%
+            </span>
           </div>
-        </div>
-
-        {/* Goal Progress */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-          <p className="text-xs text-muted-foreground">Goal Progress</p>
-          <p className="text-xl font-bold tracking-tight">
-            {formatCurrency(dashboardData.currentSaved)}
-          </p>
-          <div className="space-y-1">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-                style={{ width: `${Math.min(dashboardData.goalProgress, 100)}%` }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              {dashboardData.goalProgress.toFixed(0)}% dari target
-            </p>
+          <div className="stat-card-val" style={{ fontFamily:"'Sora',sans-serif", fontSize:22, fontWeight:600, letterSpacing:-0.8, marginBottom:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {formatCurrency(data.currentSaved)}
           </div>
+          <div className="stat-card-lbl" style={{ fontSize:12, color:"#6B7280" }}>Tabungan</div>
         </div>
 
         {/* Status */}
         <div
-          className={`bg-card border rounded-xl p-4 space-y-1 ${
-            isOnTrack ? "border-emerald-200 dark:border-emerald-900" : "border-red-200 dark:border-red-900"
-          }`}
+          style={{
+            background:"var(--color-card)",
+            border: `1px solid ${isOnTrack ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+            borderRadius:16,
+            padding:"18px 20px",
+          }}
         >
-          <p className="text-xs text-muted-foreground">Status</p>
-          <div className="flex items-center gap-1.5">
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:12 }}>
             <div
-              className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                isOnTrack ? "bg-emerald-500" : "bg-red-500"
-              }`}
-            />
-            <p
-              className={`text-sm font-semibold ${
-                isOnTrack ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-              }`}
+              style={{
+                width:36, height:36, borderRadius:8,
+                background: isOnTrack ? "#D1FAE5" : "#FEE2E2",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}
             >
-              {dashboardData.status}
-            </p>
+              <span style={{ fontSize:18 }}>{isOnTrack ? "✅" : "⚠️"}</span>
+            </div>
           </div>
-          <p className="text-[11px] text-muted-foreground leading-snug">
-            {isOnTrack
-              ? "Pengeluaran sesuai budget"
-              : "Pengeluaran melebihi budget"}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Insight Cards ───────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="flex items-start gap-3 bg-card border border-border rounded-xl p-4">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-            <TrendingDown className="h-4 w-4 text-blue-500" />
+          <div
+            className="stat-card-val"
+            style={{
+              fontFamily:"'Sora',sans-serif", fontSize:16, fontWeight:600, marginBottom:2,
+              color: isOnTrack ? "#065F46" : "#991B1B",
+            }}
+          >
+            {data.status}
           </div>
-          <div>
-            <p className="text-sm font-medium">Pengeluaran terbesar minggu ini</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {dashboardData.highestCategory ? (
-                <>
-                  Kategori{" "}
-                  <span className="font-medium text-foreground">
-                    {dashboardData.highestCategory}
-                  </span>{" "}
-                  sebesar {formatCurrency(dashboardData.highestAmount)}
-                </>
-              ) : (
-                "Belum ada data minggu ini"
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-3 bg-card border border-border rounded-xl p-4">
-          <div className="h-8 w-8 rounded-lg bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center flex-shrink-0">
-            <Target className="h-4 w-4 text-amber-500" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Tips hemat bulan ini</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {dashboardData.highestCategory
-                ? `Kurangi ${dashboardData.highestCategory} 15% untuk capai saving goal`
-                : "Mulai catat pengeluaran untuk mendapat tips"}
-            </p>
+          <div className="stat-card-lbl" style={{ fontSize:12, color:"#6B7280" }}>
+            {isOnTrack ? "Sesuai budget" : "Melebihi budget"}
           </div>
         </div>
       </div>
 
-      {/* ── Charts ──────────────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* ── Two-col: Spending Trend + Category Breakdown ────────── */}
+      <div
+        className="two-col"
+        style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}
+      >
         {/* Spending Trend */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-sm font-semibold mb-4">Tren 7 Hari Terakhir</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={dashboardData.spendingTrendData}>
-              <XAxis
-                dataKey="date"
-                stroke="#94a3b8"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#94a3b8"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value / 1000}k`}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="amount"
-                stroke="#2D5BFF"
-                strokeWidth={2}
-                dot={{ fill: "#2D5BFF", r: 3, strokeWidth: 0 }}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Category Breakdown */}
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-sm font-semibold mb-4">Kategori Pengeluaran</p>
-          <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={dashboardData.categoryChartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {dashboardData.categoryChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                    borderRadius: "10px",
-                    fontSize: "12px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                  }}
+        <div style={{ background:"var(--color-card)", border:"1px solid var(--color-border)", borderRadius:16, overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--color-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, letterSpacing:-0.3 }}>Tren 7 Hari</h3>
+          </div>
+          <div style={{ padding:"12px 20px 20px" }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={data.spendingTrendData}>
+                <defs>
+                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} />
+                <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2}
+                  dot={{ fill:"#fff", stroke:"#2563EB", r:3, strokeWidth:2 }}
+                  activeDot={{ fill:"#2563EB", r:5, strokeWidth:0 }}
                 />
-              </PieChart>
+              </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {dashboardData.categoryChartData.map((category) => (
-              <div key={category.name} className="flex items-center gap-2">
-                <div
-                  className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: category.color }}
-                />
-                <div className="min-w-0">
-                  <p className="text-xs font-medium truncate">{category.name}</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    {formatCurrency(category.value)}
-                  </p>
-                </div>
-              </div>
-            ))}
+        </div>
+
+        {/* Category/Budget Breakdown */}
+        <div style={{ background:"var(--color-card)", border:"1px solid var(--color-border)", borderRadius:16, overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--color-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, letterSpacing:-0.3 }}>Budget Bulan Ini</h3>
+          </div>
+          <div style={{ padding:"8px 20px 16px", display:"flex", flexDirection:"column", gap:14 }}>
+            {data.categoryChartData.length === 0 ? (
+              <p style={{ fontSize:13, color:"#9CA3AF", padding:"12px 0" }}>Belum ada data</p>
+            ) : (
+              data.categoryChartData.slice(0, 5).map(({ name, value, color }) => {
+                const pct = data.totalBulanIni > 0 ? (value / data.totalBulanIni) * 100 : 0;
+                return (
+                  <div key={name}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:13, fontWeight:500 }}>
+                        <div style={{ width:7, height:7, borderRadius:"50%", background:color, flexShrink:0 }} />
+                        {name}
+                      </div>
+                      <div style={{ fontSize:12, color:"#6B7280" }}>
+                        <strong style={{ fontWeight:500, color:"var(--color-foreground)" }}>{formatCurrency(value)}</strong>
+                      </div>
+                    </div>
+                    <div style={{ height:5, background:"#F1F4F8", borderRadius:99, overflow:"hidden" }}>
+                      <div
+                        style={{
+                          height:"100%", borderRadius:99,
+                          background:color,
+                          width:`${Math.min(pct, 100)}%`,
+                          transition:"width 0.8s cubic-bezier(.4,0,.2,1)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Two-col: Recent Transactions + Wallet Usage ─────────── */}
+      <div
+        className="two-col"
+        style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:20 }}
+      >
+        {/* Recent Transactions */}
+        <div style={{ background:"var(--color-card)", border:"1px solid var(--color-border)", borderRadius:16, overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--color-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, letterSpacing:-0.3 }}>Transaksi Terbaru</h3>
+            <button
+              onClick={() => { const nav = document.querySelector("[data-navigate]"); window.location.hash = ""; (window as any).__navigate?.("/dashboard/transactions"); }}
+              style={{ fontSize:12, color:"#6B7280", cursor:"pointer", background:"none", border:"none", padding:"4px 8px", borderRadius:6, display:"flex", alignItems:"center", gap:4 }}
+              className="hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            >
+              Lihat semua <ArrowRight style={{ width:12, height:12 }} />
+            </button>
+          </div>
+          <div style={{ padding:"4px 0" }}>
+            {data.recentTxns.length === 0 ? (
+              <div style={{ padding:"20px", textAlign:"center", color:"#9CA3AF", fontSize:13 }}>Belum ada transaksi</div>
+            ) : (
+              data.recentTxns.map((t: any, i: number) => {
+                const cat = t.category || "Other";
+                const emoji = CATEGORY_EMOJI[cat] || "✨";
+                const bg = CATEGORY_BG[cat] || "#F1F4F8";
+                const dateStr = new Date(t.date).toLocaleDateString("id-ID", { day:"numeric", month:"short" });
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display:"flex", alignItems:"center", gap:12,
+                      padding:"12px 20px",
+                      borderBottom: i < data.recentTxns.length - 1 ? "1px solid var(--color-border)" : "none",
+                    }}
+                  >
+                    <div style={{ width:40, height:40, borderRadius:8, background:bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>
+                      {emoji}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {t.description || t.name || cat}
+                      </div>
+                      <div style={{ fontSize:11, color:"#9CA3AF", marginTop:2, display:"flex", alignItems:"center", gap:4 }}>
+                        <span
+                          style={{
+                            fontSize:11, padding:"2px 7px", borderRadius:20,
+                            background: CATEGORY_BG[cat] || "#F1F4F8",
+                            color: CATEGORY_COLORS[cat] || "#6B7280",
+                          }}
+                        >
+                          {cat}
+                        </span>
+                        {dateStr}
+                      </div>
+                    </div>
+                    <div style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:500, textAlign:"right", flexShrink:0, color:"var(--color-foreground)" }}>
+                      − {formatCurrency(t.amount)}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
         {/* Wallet Usage */}
-        <div className="bg-card border border-border rounded-xl p-4 lg:col-span-2">
-          <p className="text-sm font-semibold mb-4">Penggunaan per Dompet</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={dashboardData.walletChartData} barSize={32}>
-              <XAxis
-                dataKey="name"
-                stroke="#94a3b8"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#94a3b8"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${value / 1000}k`}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{
-                  backgroundColor: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-                cursor={{ fill: "var(--color-muted)", opacity: 0.4 }}
-              />
-              <Bar dataKey="amount" fill="#2D5BFF" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div style={{ background:"var(--color-card)", border:"1px solid var(--color-border)", borderRadius:16, overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--color-border)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, letterSpacing:-0.3 }}>Penggunaan Dompet</h3>
+          </div>
+          <div style={{ padding:"12px 20px 20px" }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={data.walletChartData} barSize={28}>
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={v => `${v/1000}k`} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={tooltipStyle} cursor={{ fill:"#F1F4F8" }} />
+                <Bar dataKey="amount" fill="#2563EB" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
+
+      {/* ── Insight Alert ────────────────────────────────────────── */}
+      {data.highestCategory && (
+        <div
+          style={{
+            background:"var(--color-card)",
+            border:"1px solid var(--color-border)",
+            borderRadius:16,
+            padding:"16px 20px",
+            display:"flex", alignItems:"flex-start", gap:12,
+          }}
+        >
+          <div style={{ width:36, height:36, borderRadius:8, background:"#FEF3C7", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <span style={{ fontSize:18 }}>💡</span>
+          </div>
+          <div>
+            <p style={{ fontSize:13, fontWeight:500, marginBottom:4 }}>Tips hemat minggu ini</p>
+            <p style={{ fontSize:13, color:"#6B7280" }}>
+              Kategori terbesar minggu ini adalah{" "}
+              <strong style={{ color:"var(--color-foreground)" }}>{data.highestCategory}</strong>{" "}
+              ({formatCurrency(data.highestAmount)}). Coba kurangi 15% untuk mencapai saving goal kamu.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
