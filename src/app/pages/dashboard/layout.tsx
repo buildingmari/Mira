@@ -10,17 +10,16 @@ import {
   Moon,
   Sun,
   Menu,
-  Bell,
   Plus,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "../../components/theme-provider";
 import { motion, AnimatePresence } from "motion/react";
-import logo from "figma:asset/8799174486cc1173a37d30ea2d006df3d31bf14e.png";
 import { useUserSession } from "../../context/user-session-context";
+import { PendingAssessmentGate } from "../../components/PendingAssessmentGate";
 
-// ── Nav config ────────────────────────────────────────────────────
+// ── Nav config ──────────────────────────────────────────────────
 const SIDEBAR_SECTIONS = [
   {
     label: "Overview",
@@ -45,7 +44,6 @@ const SIDEBAR_SECTIONS = [
   },
 ];
 
-// Bottom nav (mobile) — 4 items + 1 center button = 5 slots
 const MOBILE_NAV = [
   { path: "/dashboard", label: "Home", Icon: LayoutDashboard },
   { path: "/dashboard/transactions", label: "Transaksi", Icon: Receipt },
@@ -53,47 +51,69 @@ const MOBILE_NAV = [
   { path: "/dashboard/insights", label: "Insight", Icon: TrendingUp },
 ];
 
-// Page title/subtitle map
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-  "/dashboard": { title: "Dashboard", sub: "" },
-  "/dashboard/transactions": { title: "Transaksi", sub: "Riwayat pengeluaran" },
-  "/dashboard/insights": { title: "Insight", sub: "Analisis keuangan" },
-  "/dashboard/goals": { title: "Target", sub: "Progress goal kamu" },
-  "/dashboard/export": { title: "Export Data", sub: "Unduh data transaksi" },
-  "/dashboard/settings": { title: "Pengaturan", sub: "Preferensi akun" },
+  "/dashboard":               { title: "Dashboard",    sub: "" },
+  "/dashboard/transactions":  { title: "Transaksi",    sub: "Riwayat pengeluaran" },
+  "/dashboard/insights":      { title: "Insight",      sub: "Analisis keuangan" },
+  "/dashboard/goals":         { title: "Target",       sub: "Progress goal kamu" },
+  "/dashboard/export":        { title: "Export Data",  sub: "Unduh data transaksi" },
+  "/dashboard/settings":      { title: "Pengaturan",   sub: "Preferensi akun" },
 };
 
-const monthSub = () =>
-  new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }) +
-  " \u00B7 Personal";
-
 export function DashboardLayout() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate    = useNavigate();
+  const location    = useLocation();
   const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { logout, userSession } = useUserSession();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  // Auth guard: redirect to landing (login modal) if no session
+  useEffect(() => {
+    if (!userSession) navigate("/");
+  }, [userSession, navigate]);
 
-  const userName = (userSession?.user as any)?.name || "User";
+  if (!userSession) return null;
+
+  // Assessment gate: show onboarding if account_status === 'pending_assessment'
+  const userObj = userSession.user as any;
+  if (userObj?.account_status === "pending_assessment") {
+    return (
+      <PendingAssessmentGate
+        phone={userObj?.phone ?? ""}
+        user={userObj ? { plan_name: userObj.plan_name, expiry: userObj.expiry } : null}
+        onComplete={() => {
+          try {
+            const raw = sessionStorage.getItem("mira_user");
+            if (raw) {
+              const cached = JSON.parse(raw);
+              cached.account_status = "active";
+              sessionStorage.setItem("mira_user", JSON.stringify(cached));
+            }
+          } catch {}
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+  const handleLogout = () => { logout(); navigate("/"); };
+
+  const userName    = userObj?.name || "User";
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const meta = PAGE_META[location.pathname] || {
-    title: "MIRA",
-    sub: "",
-  };
-  if (meta.title === "Dashboard") meta.sub = monthSub();
+  const meta = { ...(PAGE_META[location.pathname] ?? { title: "MIRA", sub: "" }) };
+  if (meta.title === "Dashboard") {
+    meta.sub = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" }) + " \u00B7 Personal";
+  }
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (p: string) => location.pathname === p;
 
   return (
-    <div className="min-h-screen bg-background flex" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-
-      {/* ── SIDEBAR OVERLAY (mobile) ─────────────────────────────── */}
+    <div
+      className="min-h-screen bg-background flex"
+      style={{ fontFamily: "'DM Sans', sans-serif" }}
+    >
+      {/* ── SIDEBAR OVERLAY (mobile) */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -107,75 +127,59 @@ export function DashboardLayout() {
         )}
       </AnimatePresence>
 
-      {/* ── SIDEBAR ──────────────────────────────────────────────── */}
+      {/* ── SIDEBAR */}
       <aside
-        className={`
-          fixed top-0 left-0 bottom-0 z-[300] flex flex-col
-          w-[220px] bg-sidebar border-r border-sidebar-border
-          transition-transform duration-[280ms] ease-[cubic-bezier(.4,0,.2,1)]
-          lg:translate-x-0
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        `}
+        style={{
+          width: 220,
+          background: "var(--color-sidebar)",
+          borderRight: "1px solid var(--color-sidebar-border)",
+          position: "fixed", top: 0, left: 0, bottom: 0,
+          display: "flex", flexDirection: "column",
+          zIndex: 300,
+          transition: "transform .28s cubic-bezier(.4,0,.2,1)",
+          transform: sidebarOpen ? "translateX(0)" : undefined,
+        }}
+        className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="px-5 py-[22px] pb-[18px] border-b border-sidebar-border flex items-center gap-[10px]">
-          <div
-            style={{
-              width: 32, height: 32,
-              background: "#2563EB",
-              borderRadius: 9,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
+        <div style={{ padding: "22px 20px 18px", borderBottom: "1px solid var(--color-sidebar-border)", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, background: "#2563EB", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <span style={{ color: "#fff", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: -0.5 }}>M</span>
           </div>
-          <div>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: -0.5 }} className="text-sidebar-foreground">
-              MIRA
-            </div>
-            <div style={{ fontWeight: 300, fontSize: 10, letterSpacing: 0.5, marginTop: -1 }} className="text-muted-foreground">
-              FINANCE
-            </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: -0.5, color: "var(--color-sidebar-foreground)" }}>MIRA</div>
+            <div style={{ fontWeight: 300, fontSize: 10, letterSpacing: 0.5, color: "var(--color-muted-foreground)" }}>FINANCE</div>
           </div>
-          {/* Close on mobile */}
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="ml-auto lg:hidden p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors"
-          >
-            <X className="h-4 w-4" />
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, color: "var(--color-muted-foreground)" }}>
+            <X style={{ width: 16, height: 16 }} />
           </button>
         </div>
 
-        {/* Nav sections */}
-        <nav className="flex-1 overflow-y-auto py-2">
+        {/* Nav */}
+        <nav style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
           {SIDEBAR_SECTIONS.map((section) => (
-            <div key={section.label} className="px-3 py-5 pb-1">
-              <div
-                style={{
-                  fontSize: 10, fontWeight: 500, letterSpacing: "0.8px",
-                  textTransform: "uppercase", marginBottom: 4, padding: "0 8px",
-                }}
-                className="text-muted-foreground"
-              >
+            <div key={section.label} style={{ padding: "14px 12px 4px" }}>
+              <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.8px", textTransform: "uppercase", color: "var(--color-muted-foreground)", padding: "0 8px", marginBottom: 4 }}>
                 {section.label}
               </div>
               {section.items.map(({ path, label, Icon }) => (
                 <button
                   key={path}
                   onClick={() => { navigate(path); setSidebarOpen(false); }}
-                  className={`
-                    w-full flex items-center gap-[10px] px-[10px] py-[9px]
-                    rounded-[8px] text-[14px] transition-all duration-150
-                    cursor-pointer select-none
-                    ${
-                      isActive(path)
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                    }
-                  `}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                    fontSize: 14, fontWeight: isActive(path) ? 600 : 400,
+                    fontFamily: "'DM Sans', sans-serif",
+                    background: isActive(path) ? "#EFF6FF" : "transparent",
+                    color: isActive(path) ? "#1D4ED8" : "var(--color-muted-foreground)",
+                    transition: "background .15s, color .15s",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={e => { if (!isActive(path)) { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-sidebar-accent)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--color-sidebar-foreground)"; } }}
+                  onMouseLeave={e => { if (!isActive(path)) { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "var(--color-muted-foreground)"; } }}
                 >
-                  <Icon className="h-[17px] w-[17px] flex-shrink-0" strokeWidth={isActive(path) ? 2.2 : 1.8} />
+                  <Icon style={{ width: 17, height: 17, flexShrink: 0 }} strokeWidth={isActive(path) ? 2.2 : 1.8} />
                   {label}
                 </button>
               ))}
@@ -183,95 +187,64 @@ export function DashboardLayout() {
           ))}
         </nav>
 
-        {/* Footer: theme + user */}
-        <div className="border-t border-sidebar-border">
-          <div className="px-3 py-3">
+        {/* Footer */}
+        <div style={{ borderTop: "1px solid var(--color-sidebar-border)" }}>
+          <div style={{ padding: "10px 12px" }}>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-full flex items-center gap-[10px] px-[10px] py-[9px] rounded-[8px] text-[14px] text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors cursor-pointer"
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 14, background: "transparent", color: "var(--color-muted-foreground)", fontFamily: "'DM Sans',sans-serif", textAlign: "left" }}
             >
-              {theme === "dark"
-                ? <Sun className="h-[17px] w-[17px] flex-shrink-0" strokeWidth={1.8} />
-                : <Moon className="h-[17px] w-[17px] flex-shrink-0" strokeWidth={1.8} />}
+              {theme === "dark" ? <Sun style={{ width: 17, height: 17 }} strokeWidth={1.8} /> : <Moon style={{ width: 17, height: 17 }} strokeWidth={1.8} />}
               {theme === "dark" ? "Mode Terang" : "Mode Gelap"}
             </button>
           </div>
-          <div className="px-5 py-[14px] border-t border-sidebar-border flex items-center gap-[10px]">
-            <div
-              style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: "#DBEAFE",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 600, color: "#1D4ED8",
-                flexShrink: 0,
-              }}
-            >
+          <div style={{ padding: "14px 20px", borderTop: "1px solid var(--color-sidebar-border)", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#DBEAFE", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 600, color: "#1D4ED8", flexShrink: 0 }}>
               {userInitial}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-sidebar-foreground truncate">{userName}</p>
-              <span className="text-[11px] text-muted-foreground">Personal</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--color-sidebar-foreground)", margin: 0 }}>{userName}</p>
+              <span style={{ fontSize: 11, color: "var(--color-muted-foreground)" }}>Personal</span>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              title="Logout"
-            >
-              <LogOut className="h-4 w-4" strokeWidth={1.8} />
+            <button onClick={handleLogout} title="Logout" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, color: "var(--color-muted-foreground)" }}>
+              <LogOut style={{ width: 16, height: 16 }} strokeWidth={1.8} />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* ── MAIN ─────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-[220px]">
+      {/* ── MAIN CONTENT */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", marginLeft: 0 }} className="lg:ml-[220px]">
 
         {/* Desktop topbar */}
         <div
-          className="hidden lg:flex sticky top-0 z-50 items-center justify-between"
+          className="hidden lg:flex"
           style={{
+            position: "sticky", top: 0, zIndex: 50,
             background: "rgba(248,249,251,0.92)",
             backdropFilter: "blur(16px)",
             borderBottom: "1px solid var(--color-border)",
             padding: "14px 32px",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
           <div>
-            <h1
-              style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 600 }}
-              className="text-foreground"
-            >
-              {meta.title}
-            </h1>
-            <p className="text-[12px] text-muted-foreground mt-[1px]">{meta.sub}</p>
+            <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 600, margin: 0, color: "var(--color-foreground)" }}>{meta.title}</h1>
+            <p style={{ fontSize: 12, color: "var(--color-muted-foreground)", margin: 0, marginTop: 1 }}>{meta.sub}</p>
           </div>
-          <div className="flex items-center gap-[10px]">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              style={{
-                width: 36, height: 36, borderRadius: 8,
-                border: "1px solid var(--color-border-md, rgba(0,0,0,0.12))",
-                background: "var(--color-card)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer",
-              }}
-              className="hover:bg-muted transition-colors"
+              style={{ width: 36, height: 36, borderRadius: 8, border: "1px solid rgba(0,0,0,0.12)", background: "var(--color-card)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              {theme === "dark"
-                ? <Sun className="h-4 w-4 text-foreground" />
-                : <Moon className="h-4 w-4 text-foreground" />}
+              {theme === "dark" ? <Sun style={{ width: 16, height: 16 }} /> : <Moon style={{ width: 16, height: 16 }} />}
             </button>
             <button
               onClick={handleLogout}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                background: "#2563EB", color: "#fff",
-                border: "none", borderRadius: 8,
-                padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer",
-              }}
-              className="hover:opacity-90 transition-opacity active:scale-95"
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
             >
-              <LogOut className="h-[14px] w-[14px]" strokeWidth={2} />
+              <LogOut style={{ width: 14, height: 14 }} strokeWidth={2} />
               Logout
             </button>
           </div>
@@ -279,154 +252,76 @@ export function DashboardLayout() {
 
         {/* Mobile topbar */}
         <div
-          className="lg:hidden sticky top-0 z-[100]"
+          className="lg:hidden"
           style={{
+            position: "sticky", top: 0, zIndex: 100,
             background: "rgba(248,249,251,0.96)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid var(--color-border)",
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)",
-            paddingBottom: 12,
-            paddingLeft: 20,
-            paddingRight: 20,
+            paddingBottom: 12, paddingLeft: 20, paddingRight: 20,
           }}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                style={{ border: "none", background: "transparent", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                className="text-foreground"
-              >
-                <Menu className="h-[22px] w-[22px]" strokeWidth={1.8} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-foreground)" }}>
+                <Menu style={{ width: 22, height: 22 }} strokeWidth={1.8} />
               </button>
-              <div
-                style={{
-                  width: 28, height: 28, background: "#2563EB",
-                  borderRadius: 8,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
+              <div style={{ width: 28, height: 28, background: "#2563EB", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <span style={{ color: "#fff", fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 12 }}>M</span>
               </div>
-              <span
-                style={{ fontFamily: "'Sora',sans-serif", fontSize: 17, fontWeight: 600, letterSpacing: -0.5 }}
-                className="text-foreground"
-              >
-                MIRA
-              </span>
+              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 17, fontWeight: 600, letterSpacing: -0.5, color: "var(--color-foreground)" }}>MIRA</span>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                style={{
-                  width: 36, height: 36, borderRadius: 8,
-                  border: "1px solid var(--color-border-md, rgba(0,0,0,0.12))",
-                  background: "var(--color-card)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  cursor: "pointer",
-                }}
-                className="text-foreground hover:bg-muted transition-colors"
-              >
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-            </div>
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              style={{ width: 36, height: 36, borderRadius: 8, border: "1px solid rgba(0,0,0,0.12)", background: "var(--color-card)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-foreground)" }}
+            >
+              {theme === "dark" ? <Sun style={{ width: 16, height: 16 }} /> : <Moon style={{ width: 16, height: 16 }} />}
+            </button>
           </div>
         </div>
 
-        {/* Page content */}
-        <main
-          style={{
-            flex: 1,
-            paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))",
-          }}
-          className="lg:pb-0"
-        >
+        {/* Page */}
+        <main style={{ flex: 1, paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))" }} className="lg:pb-0">
           <Outlet />
         </main>
       </div>
 
-      {/* ── MOBILE BOTTOM NAV ────────────────────────────────────── */}
+      {/* ── MOBILE BOTTOM NAV */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-[200]"
+        className="lg:hidden"
         style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
           background: "rgba(255,255,255,0.94)",
           backdropFilter: "blur(24px) saturate(1.8)",
           borderTop: "1px solid var(--color-border)",
-          paddingTop: 8,
-          paddingLeft: 8,
-          paddingRight: 8,
+          paddingTop: 8, paddingLeft: 8, paddingRight: 8,
           paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <div className="flex items-center">
-          {/* Home */}
+        <div style={{ display: "flex", alignItems: "center" }}>
           {MOBILE_NAV.slice(0, 2).map(({ path, label, Icon }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              style={{
-                flex: 1, display: "flex", flexDirection: "column",
-                alignItems: "center", gap: 3,
-                padding: "6px 4px",
-                borderRadius: 8, border: "none", background: "transparent",
-                cursor: "pointer",
-                fontSize: 10, fontWeight: 400,
-                color: isActive(path) ? "#2563EB" : "#9CA3AF",
-                transition: "color 0.15s",
-                userSelect: "none",
-              }}
-            >
-              <Icon
-                style={{ width: 22, height: 22, stroke: isActive(path) ? "#2563EB" : "#9CA3AF" }}
-                strokeWidth={isActive(path) ? 2.2 : 1.7}
-              />
+            <button key={path} onClick={() => navigate(path)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 4px", border: "none", background: "transparent", cursor: "pointer", fontSize: 10, fontWeight: isActive(path) ? 600 : 400, color: isActive(path) ? "#2563EB" : "#9CA3AF", transition: "color 0.15s", userSelect: "none", fontFamily: "'DM Sans',sans-serif" }}>
+              <Icon style={{ width: 22, height: 22, stroke: isActive(path) ? "#2563EB" : "#9CA3AF" }} strokeWidth={isActive(path) ? 2.2 : 1.7} />
               {label}
             </button>
           ))}
 
-          {/* Center Add Button */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          {/* Center FAB */}
+          <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
             <button
               onClick={() => navigate("/dashboard/transactions")}
-              style={{
-                width: 50, height: 50,
-                background: "#2563EB",
-                borderRadius: 16,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                border: "none", cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(37,99,235,0.45)",
-                transition: "transform 0.15s, box-shadow 0.15s",
-              }}
-              onMouseDown={e => (e.currentTarget.style.transform = "scale(0.9)")}
-              onMouseUp={e => (e.currentTarget.style.transform = "")}
-              onTouchStart={e => (e.currentTarget.style.transform = "scale(0.9)")}
-              onTouchEnd={e => (e.currentTarget.style.transform = "")}
+              style={{ width: 50, height: 50, background: "#2563EB", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(37,99,235,0.45)", transition: "transform 0.15s" }}
+              onTouchStart={e => { (e.currentTarget as HTMLButtonElement).style.transform = "scale(0.9)"; }}
+              onTouchEnd={e => { (e.currentTarget as HTMLButtonElement).style.transform = ""; }}
             >
               <Plus style={{ width: 22, height: 22, stroke: "#fff" }} strokeWidth={2.5} />
             </button>
           </div>
 
-          {/* Goals + Insight */}
           {MOBILE_NAV.slice(2).map(({ path, label, Icon }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              style={{
-                flex: 1, display: "flex", flexDirection: "column",
-                alignItems: "center", gap: 3,
-                padding: "6px 4px",
-                borderRadius: 8, border: "none", background: "transparent",
-                cursor: "pointer",
-                fontSize: 10, fontWeight: 400,
-                color: isActive(path) ? "#2563EB" : "#9CA3AF",
-                transition: "color 0.15s",
-                userSelect: "none",
-              }}
-            >
-              <Icon
-                style={{ width: 22, height: 22, stroke: isActive(path) ? "#2563EB" : "#9CA3AF" }}
-                strokeWidth={isActive(path) ? 2.2 : 1.7}
-              />
+            <button key={path} onClick={() => navigate(path)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "6px 4px", border: "none", background: "transparent", cursor: "pointer", fontSize: 10, fontWeight: isActive(path) ? 600 : 400, color: isActive(path) ? "#2563EB" : "#9CA3AF", transition: "color 0.15s", userSelect: "none", fontFamily: "'DM Sans',sans-serif" }}>
+              <Icon style={{ width: 22, height: 22, stroke: isActive(path) ? "#2563EB" : "#9CA3AF" }} strokeWidth={isActive(path) ? 2.2 : 1.7} />
               {label}
             </button>
           ))}
