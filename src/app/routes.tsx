@@ -9,18 +9,14 @@ import { PrivacyPolicy }      from './pages/PrivacyPolicy';
 import { TermsOfService }     from './pages/TermsOfService';
 import { RefundPolicy }       from './pages/RefundPolicy';
 
-// Lazy-load the heavy dashboard to keep initial bundle small
-const MiraDashboard = lazy(() =>
-  import('./pages/MiraDashboard').then((m) => ({ default: m.MiraDashboard }))
-);
-
-function DashboardPage() {
-  return (
-    <Suspense fallback={<div style={{height:'100vh',background:'#F8FAFC'}} />}>
-      <MiraDashboard />
-    </Suspense>
-  );
-}
+// Dashboard layout + sub-pages
+import { DashboardLayout }       from './pages/dashboard/layout';
+import { DashboardOverview }     from './pages/dashboard/overview';
+import { DashboardTransactions } from './pages/dashboard/transactions';
+import { DashboardGoals }        from './pages/dashboard/goals';
+import { DashboardInsights }     from './pages/dashboard/insights';
+import { DashboardSettings }     from './pages/dashboard/settings';
+import { DashboardExport }       from './pages/dashboard/export';
 
 export const router = createBrowserRouter([
   {
@@ -29,7 +25,21 @@ export const router = createBrowserRouter([
     ErrorBoundary: RootErrorBoundary,
     children: [
       { index: true, Component: LandingWrapper },
-      { path: 'dashboard',        Component: DashboardPage },
+
+      // Dashboard — nested routes, DashboardLayout renders <Outlet />
+      {
+        path: 'dashboard',
+        Component: DashboardLayout,
+        children: [
+          { index: true,                Component: DashboardOverview },
+          { path: 'transactions',       Component: DashboardTransactions },
+          { path: 'goals',              Component: DashboardGoals },
+          { path: 'insights',           Component: DashboardInsights },
+          { path: 'settings',           Component: DashboardSettings },
+          { path: 'export',             Component: DashboardExport },
+        ],
+      },
+
       { path: 'payment-success',  Component: PaymentSuccessPage },
       { path: 'payment-pending',  Component: PaymentPendingPage },
       { path: 'payment-failed',   Component: PaymentFailedPage },
