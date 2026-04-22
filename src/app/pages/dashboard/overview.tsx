@@ -97,26 +97,37 @@ export function DashboardOverview() {
     return () => { document.getElementById('mira-ov-css')?.remove(); };
   }, []);
 
-  useEffect(() => {
-    const ph = sessionStorage.getItem('mira_phone');
-    if (!ph) { navigate('/',{replace:true}); return; }
-    try { const r=sessionStorage.getItem('mira_user'); if(r) setUser(JSON.parse(r)); } catch {}
+  const fetchData = async (ph: string) => {
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,{headers:H});
+      if (r.ok) { const a=await r.json(); if(Array.isArray(a)&&a.length>0){localStorage.setItem('mira_user',JSON.stringify(a[0]));setUser(a[0]);}}
+    } catch {}
+    try {
+      const from = new Date(); from.setDate(from.getDate()-90);
+      const r = await fetch(
+        `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${from.toISOString().split('T')[0]}&order=date.desc,created_at.desc&limit=500`,
+        {headers:H}
+      );
+      if (r.ok) { const a=await r.json(); if(Array.isArray(a)) setTxns(a); }
+    } catch {}
+    setLoad(false);
+  };
 
-    (async () => {
-      try {
-        const r = await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,{headers:H});
-        if (r.ok) { const a=await r.json(); if(Array.isArray(a)&&a.length>0){sessionStorage.setItem('mira_user',JSON.stringify(a[0]));setUser(a[0]);}}
-      } catch {}
-      try {
-        const from = new Date(); from.setDate(from.getDate()-90);
-        const r = await fetch(
-          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${from.toISOString().split('T')[0]}&order=date.desc,created_at.desc&limit=500`,
-          {headers:H}
-        );
-        if (r.ok) { const a=await r.json(); if(Array.isArray(a)) setTxns(a); }
-      } catch {}
-      setLoad(false);
-    })();
+  useEffect(() => {
+    const ph = localStorage.getItem('mira_phone');
+    if (!ph) { navigate('/',{replace:true}); return; }
+    try { const r=localStorage.getItem('mira_user'); if(r) setUser(JSON.parse(r)); } catch {}
+    fetchData(ph);
+  }, []);
+
+  // Refresh on new transaction
+  useEffect(() => {
+    const handler = () => {
+      const ph = localStorage.getItem('mira_phone');
+      if (ph) fetchData(ph);
+    };
+    window.addEventListener('mira:tx-added', handler);
+    return () => window.removeEventListener('mira:tx-added', handler);
   }, []);
 
   const s = useMemo(() => {
@@ -169,7 +180,7 @@ export function DashboardOverview() {
       <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} \uD83D\uDC4B</h1>
       <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
         <div style={{fontSize:48,marginBottom:16}}>\uD83D\uDCB0</div>
-        <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat via WhatsApp.</p>
+        <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat via WhatsApp atau tombol Catat.</p>
       </div>
     </div>
   );
@@ -245,7 +256,7 @@ export function DashboardOverview() {
         </div>
       </div>
 
-      {/* charts: trend + category */}
+      {/* charts */}
       <div className="ov-two-col">
         <div style={CARD}>
           <div style={CARD_HDR}>
@@ -293,7 +304,7 @@ export function DashboardOverview() {
         </div>
       </div>
 
-      {/* recent txns + wallet */}
+      {/* recent + wallet */}
       <div className="ov-two-col">
         <div style={CARD}>
           <div style={CARD_HDR}>
@@ -359,7 +370,6 @@ export function DashboardOverview() {
         </div>
       </div>
 
-      {/* insight tip */}
       {s.topCat && (
         <div style={{...CARD,padding:'16px 20px',display:'flex',alignItems:'flex-start',gap:12}}>
           <div style={{width:36,height:36,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>\uD83D\uDCA1</div>

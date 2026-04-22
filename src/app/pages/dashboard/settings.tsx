@@ -74,7 +74,6 @@ export function DashboardSettings() {
   const [saved,         setSaved]         = useState(false);
   const [err,           setErr]           = useState<string | null>(null);
 
-  // Inject page CSS
   useEffect(() => {
     const id = 'mira-set-css';
     if (!document.getElementById(id)) {
@@ -85,24 +84,21 @@ export function DashboardSettings() {
     return () => { document.getElementById('mira-set-css')?.remove(); };
   }, []);
 
-  // Auth guard + load user profile
   useEffect(() => {
-    const ph = sessionStorage.getItem('mira_phone');
+    const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
 
-    // Hydrate from cached session first for instant display
     try {
-      const raw = sessionStorage.getItem('mira_user');
+      const raw = localStorage.getItem('mira_user');
       if (raw) {
         const u = JSON.parse(raw);
         if (u.name)           setName(u.name);
         if (u.primary_wallet) setPrimaryWallet(u.primary_wallet);
         if (u.monthly_limit)  setMonthlyLimit(String(u.monthly_limit));
       }
-    } catch { /* ignore */ }
+    } catch {}
 
-    // Then fetch fresh data from API
     (async () => {
       try {
         const r = await fetch(
@@ -116,10 +112,10 @@ export function DashboardSettings() {
             setName(u.name || '');
             setPrimaryWallet(u.primary_wallet || 'GoPay');
             setMonthlyLimit(String(u.monthly_limit || 5000000));
-            sessionStorage.setItem('mira_user', JSON.stringify(u));
+            localStorage.setItem('mira_user', JSON.stringify(u));
           }
         }
-      } catch { /* network error — keep cached values */ }
+      } catch {}
     })();
   }, []);
 
@@ -139,13 +135,12 @@ export function DashboardSettings() {
         const text = await r.text().catch(() => 'Gagal menyimpan');
         throw new Error(text || 'Gagal menyimpan');
       }
-      // Update session cache
       try {
-        const raw = sessionStorage.getItem('mira_user');
+        const raw = localStorage.getItem('mira_user');
         if (raw) {
-          sessionStorage.setItem('mira_user', JSON.stringify({ ...JSON.parse(raw), ...payload }));
+          localStorage.setItem('mira_user', JSON.stringify({ ...JSON.parse(raw), ...payload }));
         }
-      } catch { /* ignore */ }
+      } catch {}
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e: any) {
@@ -164,12 +159,12 @@ export function DashboardSettings() {
         fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,    { method: 'DELETE', headers: HW }),
         fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${phone}`, { method: 'DELETE', headers: HW }),
       ]);
-    } catch { /* best-effort delete */ }
-    sessionStorage.clear();
+    } catch {}
+    localStorage.removeItem('mira_phone');
+    localStorage.removeItem('mira_user');
     navigate('/');
   };
 
-  // Reusable inline toggle component
   function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
     return (
       <button
@@ -191,8 +186,6 @@ export function DashboardSettings() {
 
   return (
     <div className="set-wrap">
-
-      {/* Profile */}
       <div className="set-card">
         <div className="set-card-hdr">
           <User style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -216,7 +209,6 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Wallet & Payment */}
       <div className="set-card">
         <div className="set-card-hdr">
           <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -249,7 +241,6 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Notifications */}
       <div className="set-card">
         <div className="set-card-hdr">
           <Bell style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -272,7 +263,6 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Security */}
       <div className="set-card">
         <div className="set-card-hdr">
           <Shield style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -291,7 +281,6 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Save button */}
       {err && <div className="set-err">{err}</div>}
       <button
         className={`set-save-btn${saved ? ' ok' : ''}`}
@@ -307,17 +296,13 @@ export function DashboardSettings() {
         )}
       </button>
 
-      {/* Danger Zone */}
       <div className="set-card" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="set-card-hdr">
           <AlertTriangle style={{ width: 15, height: 15, color: '#EF4444', flexShrink: 0 }} />
           <h3 style={{ color: '#EF4444' }}>Danger Zone</h3>
         </div>
         <div className="set-card-body">
-          <div style={{
-            background: '#FEF2F2', borderRadius: 10,
-            padding: '12px 14px', marginBottom: 14,
-          }}>
+          <div style={{ background: '#FEF2F2', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#EF4444' }}>Hapus Akun</p>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B7280' }}>
               Aksi ini tidak bisa dibatalkan. Semua data akan dihapus permanen.
@@ -329,7 +314,6 @@ export function DashboardSettings() {
           </button>
         </div>
       </div>
-
     </div>
   );
 }

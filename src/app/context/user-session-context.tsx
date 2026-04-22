@@ -22,10 +22,10 @@ export function UserSessionProvider({ children }: { children: ReactNode }) {
   const [userSession, _setUserSession] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Hydrate from sessionStorage on first mount
+  // Hydrate from localStorage on first mount
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
+      const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         _setUserSession(parsed);
@@ -41,9 +41,14 @@ export function UserSessionProvider({ children }: { children: ReactNode }) {
     _setUserSession(session);
     try {
       if (session) {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        // Also persist phone for dashboard auth guard
+        if (session.phone_number || session.primary_phone) {
+          localStorage.setItem('mira_phone', session.phone_number || session.primary_phone);
+        }
       } else {
-        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem('mira_phone');
       }
     } catch {
       // ignore storage errors

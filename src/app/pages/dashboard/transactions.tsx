@@ -72,7 +72,6 @@ export function DashboardTransactions() {
   const [catF,    setCatF]    = useState('all');
   const [walletF, setWalletF] = useState('all');
 
-  // Inject page-scoped CSS
   useEffect(() => {
     const id = 'mira-txn-css';
     if (!document.getElementById(id)) {
@@ -83,24 +82,34 @@ export function DashboardTransactions() {
     return () => { document.getElementById('mira-txn-css')?.remove(); };
   }, []);
 
-  // Auth guard + data fetch
-  useEffect(() => {
-    const ph = sessionStorage.getItem('mira_phone');
-    if (!ph) { navigate('/', { replace: true }); return; }
+  const loadTxns = async (ph: string) => {
+    try {
+      const r = await fetch(
+        `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&order=date.desc,created_at.desc&limit=1000`,
+        { headers: H }
+      );
+      if (r.ok) {
+        const a = await r.json();
+        if (Array.isArray(a)) setTxns(a);
+      }
+    } catch {}
+    setLoading(false);
+  };
 
-    (async () => {
-      try {
-        const r = await fetch(
-          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&order=date.desc,created_at.desc&limit=1000`,
-          { headers: H }
-        );
-        if (r.ok) {
-          const a = await r.json();
-          if (Array.isArray(a)) setTxns(a);
-        }
-      } catch { /* network error — show empty state */ }
-      setLoading(false);
-    })();
+  useEffect(() => {
+    const ph = localStorage.getItem('mira_phone');
+    if (!ph) { navigate('/', { replace: true }); return; }
+    loadTxns(ph);
+  }, []);
+
+  // Refresh after new transaction added
+  useEffect(() => {
+    const handler = () => {
+      const ph = localStorage.getItem('mira_phone');
+      if (ph) loadTxns(ph);
+    };
+    window.addEventListener('mira:tx-added', handler);
+    return () => window.removeEventListener('mira:tx-added', handler);
   }, []);
 
   const filtered = useMemo(() => txns.filter(t => {
@@ -127,14 +136,12 @@ export function DashboardTransactions() {
   if (txns.length === 0) return (
     <div className="txn-wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>\uD83D\uDCB8</div>
-      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada transaksi. Mulai catat via WhatsApp.</p>
+      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada transaksi. Mulai catat via WhatsApp atau tombol Catat.</p>
     </div>
   );
 
   return (
     <div className="txn-wrap">
-
-      {/* Filters */}
       <div className="txn-filters">
         <input
           className="txn-ctrl"
@@ -152,7 +159,6 @@ export function DashboardTransactions() {
         </select>
       </div>
 
-      {/* List */}
       <div className="txn-card">
         <div className="txn-hdr">
           <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>
