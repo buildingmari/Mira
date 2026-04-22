@@ -11,7 +11,6 @@ export function OTPVerificationPage() {
   const location = useLocation();
   const { setUserSession } = useUserSession();
   
-  // Get phone number and registration data from navigation state
   const phoneNumber = location.state?.phoneNumber || "";
   const registrationData = location.state?.registrationData || null;
 
@@ -25,14 +24,12 @@ export function OTPVerificationPage() {
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Redirect if no phone number
   useEffect(() => {
     if (!phoneNumber) {
       navigate("/register", { replace: true });
     }
   }, [phoneNumber, navigate]);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -42,37 +39,28 @@ export function OTPVerificationPage() {
     }
   }, [countdown]);
 
-  // Auto focus first input on mount
   useEffect(() => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
   }, []);
 
-  // Mask phone number (show first 4 and last 4 digits)
   const maskPhoneNumber = (phone: string) => {
     if (!phone || phone.length < 8) return phone;
     const start = phone.slice(0, 4);
     const end = phone.slice(-4);
-    const masked = "\u2022\u2022\u2022\u2022";
-    return `+${start}${masked}${end}`;
+    return `+${start}••••${end}`;
   };
 
   const handleOtpChange = (index: number, value: string) => {
-    // Only allow numbers
     if (value && !/^\d$/.test(value)) return;
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
     setError("");
-
-    // Auto focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-
-    // Auto submit when all 6 digits are filled
     if (index === 5 && value && newOtp.every((digit) => digit !== "")) {
       handleVerify(newOtp.join(""));
     }
@@ -87,17 +75,13 @@ export function OTPVerificationPage() {
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").slice(0, 6);
-    
     if (!/^\d+$/.test(pastedData)) return;
-
     const newOtp = [...otp];
     for (let i = 0; i < pastedData.length && i < 6; i++) {
       newOtp[i] = pastedData[i];
     }
     setOtp(newOtp);
     setError("");
-
-    // Focus last filled input or trigger submit
     if (pastedData.length === 6) {
       handleVerify(pastedData);
     } else {
@@ -107,83 +91,57 @@ export function OTPVerificationPage() {
 
   const handleVerify = async (otpCode?: string) => {
     const otpToVerify = otpCode || otp.join("");
-    
     if (otpToVerify.length !== 6) {
       setError("Masukkan 6 digit kode OTP");
       return;
     }
-
     setLoading(true);
     setError("");
 
     try {
-      // STEP 2: Verify OTP
       const verifyResponse = await fetch(
         "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/verify-otp",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone_number: phoneNumber,
-            otp: otpToVerify,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: phoneNumber, otp: otpToVerify }),
         }
       );
-
       const verifyData = await verifyResponse.json();
 
       if (verifyResponse.ok && verifyData.status === "verified") {
-        // OTP verified successfully, now create account
         if (registrationData) {
           try {
             const createAccountResponse = await fetch(
               "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira",
               {
                 method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  phone_number: phoneNumber,
-                  ...registrationData,
-                }),
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone_number: phoneNumber, ...registrationData }),
               }
             );
-
             if (createAccountResponse.ok) {
               const accountData = await createAccountResponse.json();
-              
-              // Always persist phone so dashboard auth guard can find it
               localStorage.setItem("mira_phone", phoneNumber);
-              // Save user session (also persists mira_user)
               setUserSession(accountData);
-              
-              // Show success and redirect
               setShowSuccess(true);
-              setTimeout(() => {
-                navigate("/dashboard", { replace: true });
-              }, 1500);
+              setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
             } else {
               setError("Gagal membuat akun. Coba lagi.");
               setLoading(false);
               setOtp(["", "", "", "", "", ""]);
               inputRefs.current[0]?.focus();
             }
-          } catch (err) {
+          } catch {
             setError("Gagal membuat akun. Coba lagi.");
             setLoading(false);
             setOtp(["", "", "", "", "", ""]);
             inputRefs.current[0]?.focus();
           }
         } else {
-          // No registration data — persist phone and show success
           localStorage.setItem("mira_phone", phoneNumber);
           setShowSuccess(true);
-          setTimeout(() => {
-            navigate("/dashboard", { replace: true });
-          }, 1500);
+          setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
         }
       } else if (verifyData.status === "invalid_otp") {
         setError("Kode OTP salah. Coba lagi.");
@@ -196,7 +154,7 @@ export function OTPVerificationPage() {
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
       }
-    } catch (err) {
+    } catch {
       setError("Verifikasi gagal. Coba lagi.");
       setLoading(false);
       setOtp(["", "", "", "", "", ""]);
@@ -207,33 +165,21 @@ export function OTPVerificationPage() {
   const handleResend = async () => {
     setResendLoading(true);
     setError("");
-
     try {
-      // Call register endpoint again to resend OTP
       const response = await fetch(
         "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone_number: phoneNumber,
-            resend_otp: true,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: phoneNumber, resend_otp: true }),
         }
       );
-
       if (response.ok) {
-        // Reset countdown and clear OTP
         setCountdown(60);
         setCanResend(false);
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
         setResendLoading(false);
-        
-        // Show success message briefly
-        setError("");
         const successMsg = document.createElement("div");
         successMsg.className = "success-toast";
         successMsg.textContent = "Kode baru telah dikirim!";
@@ -243,14 +189,10 @@ export function OTPVerificationPage() {
         setError("Gagal mengirim ulang kode. Coba lagi.");
         setResendLoading(false);
       }
-    } catch (err) {
+    } catch {
       setError("Gagal mengirim ulang kode. Coba lagi.");
       setResendLoading(false);
     }
-  };
-
-  const handleChangeNumber = () => {
-    navigate("/register", { replace: true });
   };
 
   if (showSuccess) {
@@ -270,9 +212,8 @@ export function OTPVerificationPage() {
             >
               <Check className="w-10 h-10 text-white" strokeWidth={3} />
             </motion.div>
-
             <h1 className="text-[32px] sm:text-[40px] font-black mb-4 tracking-tight text-[#0F172A]">
-              Verifikasi Berhasil! \uD83C\uDF89
+              Verifikasi Berhasil! 🎉
             </h1>
             <p className="text-[15px] sm:text-base text-black/60 leading-relaxed font-light">
               Akun Anda telah aktif. Redirecting...
@@ -295,7 +236,6 @@ export function OTPVerificationPage() {
             <ArrowLeft className="h-4 w-4" />
             Kembali
           </button>
-
           <div className="mb-16">
             <h1 className="text-[56px] xl:text-[64px] font-black leading-[0.95] tracking-tight mb-6 text-[#0F172A]">
               Verifikasi
@@ -306,7 +246,6 @@ export function OTPVerificationPage() {
               Kami telah mengirim kode verifikasi 6 digit ke nomor WhatsApp Anda.
             </p>
           </div>
-
           <div className="flex items-center gap-2">
             <img src={logo} alt="MIRA" className="h-8 w-8" />
             <span className="text-sm font-semibold text-[#0F172A]">MIRA</span>
@@ -321,7 +260,6 @@ export function OTPVerificationPage() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          {/* Mobile Back Button */}
           <button
             onClick={() => navigate("/register")}
             className="lg:hidden inline-flex items-center gap-2 text-sm text-black/60 hover:text-black mb-3 transition-colors font-medium"
@@ -330,7 +268,6 @@ export function OTPVerificationPage() {
             Kembali
           </button>
 
-          {/* Mobile Header */}
           <div className="lg:hidden text-center mb-4">
             <div className="flex items-center justify-center mb-3">
               <img src={logo} alt="MIRA" className="h-8 w-8" />
@@ -340,23 +277,20 @@ export function OTPVerificationPage() {
             </h1>
           </div>
 
-          {/* OTP Card */}
           <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 sm:p-8">
             <div className="text-center mb-8">
               <h2 className="text-[28px] sm:text-[32px] font-black mb-3 text-[#0F172A] tracking-tight">
-                Cek WhatsApp Anda \uD83D\uDCF2
+                Cek WhatsApp Anda 📲
               </h2>
               <p className="text-[15px] text-black/60 mb-6 font-light leading-relaxed">
                 Kami sudah mengirim kode verifikasi ke nomor WhatsApp Anda.
               </p>
-
-              {/* Phone Number Display */}
               <div className="inline-flex items-center gap-3 bg-black/[0.02] border border-black/5 rounded-lg px-4 py-3">
                 <span className="text-[17px] font-bold text-[#0F172A] tracking-tight">
                   {maskPhoneNumber(phoneNumber)}
                 </span>
                 <button
-                  onClick={handleChangeNumber}
+                  onClick={() => navigate("/register", { replace: true })}
                   className="text-[13px] text-blue-600 hover:text-blue-700 font-medium transition-colors"
                 >
                   Ubah
@@ -364,7 +298,6 @@ export function OTPVerificationPage() {
               </div>
             </div>
 
-            {/* OTP Input */}
             <div className="mb-6">
               <label className="block text-[14px] font-medium mb-4 text-center text-[#0F172A]">
                 Masukkan Kode Verifikasi
@@ -392,7 +325,6 @@ export function OTPVerificationPage() {
                 ))}
               </div>
 
-              {/* Error Message */}
               <AnimatePresence mode="wait">
                 {error && (
                   <motion.div
@@ -407,7 +339,6 @@ export function OTPVerificationPage() {
                 )}
               </AnimatePresence>
 
-              {/* Countdown / Resend */}
               <div className="text-center">
                 {!canResend ? (
                   <p className="text-[13px] text-black/50 font-light">
@@ -428,7 +359,6 @@ export function OTPVerificationPage() {
               </div>
             </div>
 
-            {/* Verify Button */}
             <Button
               onClick={() => handleVerify()}
               disabled={otp.some((digit) => !digit) || loading}
@@ -444,25 +374,17 @@ export function OTPVerificationPage() {
               )}
             </Button>
 
-            {/* Help Text */}
             <p className="text-[12px] text-center text-black/50 font-light mt-6 leading-relaxed">
               Tidak menerima kode? Pastikan nomor WhatsApp Anda aktif dan periksa chat dari MIRA.
             </p>
           </div>
 
-          {/* Footer Navigation */}
           <div className="mt-8 flex items-center justify-center gap-6 text-[13px] text-black/40">
-            <button className="hover:text-black/60 transition-colors">
-              Privacy
-            </button>
-            <span>\u00b7</span>
-            <button className="hover:text-black/60 transition-colors">
-              Terms
-            </button>
-            <span>\u00b7</span>
-            <button className="hover:text-black/60 transition-colors">
-              Contact
-            </button>
+            <button className="hover:text-black/60 transition-colors">Privacy</button>
+            <span>·</span>
+            <button className="hover:text-black/60 transition-colors">Terms</button>
+            <span>·</span>
+            <button className="hover:text-black/60 transition-colors">Contact</button>
           </div>
         </motion.div>
       </div>
@@ -483,16 +405,9 @@ export function OTPVerificationPage() {
           animation: slideUp 0.3s ease-out;
           z-index: 1000;
         }
-
         @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateX(-50%) translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-          }
+          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
       `}</style>
     </div>
