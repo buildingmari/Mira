@@ -18,9 +18,9 @@ const CAT_BG: Record<string, string> = {
   Pemasukan: '#F0FDF4', Others: '#F1F4F8',
 };
 const CAT_EMOJI: Record<string, string> = {
-  Makanan: '\uD83C\uDF5C', Transport: '\uD83D\uDE97', Belanja: '\uD83D\uDED2',
-  Tagihan: '\uD83D\uDCA1', Kesehatan: '\u2764\uFE0F', Hiburan: '\uD83C\uDFAE',
-  Pemasukan: '\uD83D\uDCB0', Others: '\u2728',
+  Makanan: '🍜', Transport: '🚗', Belanja: '🛒',
+  Tagihan: '💡', Kesehatan: '❤️', Hiburan: '🎮',
+  Pemasukan: '💰', Others: '✨',
 };
 
 function mapCat(c: string) {
@@ -102,7 +102,6 @@ export function DashboardTransactions() {
     loadTxns(ph);
   }, []);
 
-  // Refresh after new transaction added
   useEffect(() => {
     const handler = () => {
       const ph = localStorage.getItem('mira_phone');
@@ -135,7 +134,7 @@ export function DashboardTransactions() {
 
   if (txns.length === 0) return (
     <div className="txn-wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>\uD83D\uDCB8</div>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>💸</div>
       <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada transaksi. Mulai catat via WhatsApp atau tombol Catat.</p>
     </div>
   );
@@ -145,7 +144,7 @@ export function DashboardTransactions() {
       <div className="txn-filters">
         <input
           className="txn-ctrl"
-          placeholder="\uD83D\uDD0D  Cari merchant, kategori..."
+          placeholder={`🔍  Cari merchant, kategori...`}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -179,7 +178,7 @@ export function DashboardTransactions() {
               const cat   = mapCat(t.category || '');
               const bg    = CAT_BG[cat]    || '#F1F4F8';
               const clr   = CAT_COLOR[cat] || '#6B7280';
-              const emoji = CAT_EMOJI[cat] || '\u2728';
+              const emoji = CAT_EMOJI[cat] || '✨';
               const isIn  = t.transaction_type?.toLowerCase() === 'income' || cat === 'Pemasukan';
               const ds    = new Date(t.date).toLocaleDateString('id-ID', {
                 day: 'numeric', month: 'short', year: 'numeric',
@@ -212,7 +211,7 @@ export function DashboardTransactions() {
                     fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600,
                     color: isIn ? '#16A34A' : '#111827', flexShrink: 0, textAlign: 'right',
                   }}>
-                    {isIn ? '+' : '\u2212'} {fmt(Number(t.amount || 0))}
+                    {isIn ? '+' : '−'} {fmt(Number(t.amount || 0))}
                   </div>
                 </div>
               );

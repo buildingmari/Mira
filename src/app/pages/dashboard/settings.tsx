@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { User, Wallet, Bell, Shield, Save, AlertTriangle, Check } from 'lucide-react';
+import { User, Wallet, Bell, Shield, Save, AlertTriangle, Check, PiggyBank, CreditCard } from 'lucide-react';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
 
-const WALLETS = [
-  'BCA','BRI','Mandiri','BNI','CIMB','Jenius',
-  'GoPay','OVO','DANA','ShopeePay','LinkAja','Cash',
-];
+const BANKS    = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','BSI','Permata'];
+const EWALLETS = ['GoPay','OVO','DANA','ShopeePay','LinkAja'];
+const PAYLATER = ['GoPay Later','OVO Later','Akulaku','Kredivo','Shopee PayLater','Indodana'];
+const WALLETS  = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','GoPay','OVO','DANA','ShopeePay','LinkAja','Cash'];
 
 const SET_CSS = `
   .set-wrap       { padding: 28px 32px 80px; max-width: 680px; margin: 0 auto;
@@ -56,6 +56,12 @@ const SET_CSS = `
   .set-del-btn:hover { background: #FEF2F2; }
   .set-err        { font-size: 13px; color: #EF4444; padding: 10px 14px;
                     background: #FEF2F2; border-radius: 8px; margin-bottom: 12px; }
+  .set-chips      { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .set-chip       { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+                    cursor: pointer; border: 1.5px solid rgba(0,0,0,0.10);
+                    font-family: 'DM Sans', sans-serif; transition: all .15s; background: #F8F9FB; color: #374151; }
+  .set-chip.active { background: #EFF6FF; border-color: #2563EB; color: #1D4ED8; }
+  .set-ratio-bar  { height: 10px; border-radius: 99px; background: #F1F4F8; overflow: hidden; margin: 10px 0 4px; }
   @media (max-width: 900px) {
     .set-wrap { padding: 16px 16px 100px; }
   }
@@ -67,6 +73,10 @@ export function DashboardSettings() {
   const [name,          setName]          = useState('');
   const [primaryWallet, setPrimaryWallet] = useState('GoPay');
   const [monthlyLimit,  setMonthlyLimit]  = useState('5000000');
+  const [savingsRatio,  setSavingsRatio]  = useState('20');
+  const [activeBanks,   setActiveBanks]   = useState<string[]>([]);
+  const [activeEwallets,setActiveEwallets]= useState<string[]>([]);
+  const [activePaylater,setActivePaylater]= useState<string[]>([]);
   const [reminder,      setReminder]      = useState(true);
   const [weeklyReport,  setWeeklyReport]  = useState(true);
   const [budgetAlert,   setBudgetAlert]   = useState(true);
@@ -93,9 +103,13 @@ export function DashboardSettings() {
       const raw = localStorage.getItem('mira_user');
       if (raw) {
         const u = JSON.parse(raw);
-        if (u.name)           setName(u.name);
-        if (u.primary_wallet) setPrimaryWallet(u.primary_wallet);
-        if (u.monthly_limit)  setMonthlyLimit(String(u.monthly_limit));
+        if (u.name)            setName(u.name);
+        if (u.primary_wallet)  setPrimaryWallet(u.primary_wallet);
+        if (u.monthly_limit)   setMonthlyLimit(String(u.monthly_limit));
+        if (u.savings_ratio)   setSavingsRatio(String(u.savings_ratio));
+        if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
+        if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
+        if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
       }
     } catch {}
 
@@ -112,6 +126,10 @@ export function DashboardSettings() {
             setName(u.name || '');
             setPrimaryWallet(u.primary_wallet || 'GoPay');
             setMonthlyLimit(String(u.monthly_limit || 5000000));
+            setSavingsRatio(String(u.savings_ratio || 20));
+            if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
+            if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
+            if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
             localStorage.setItem('mira_user', JSON.stringify(u));
           }
         }
@@ -119,13 +137,21 @@ export function DashboardSettings() {
     })();
   }, []);
 
+  const toggleChip = (list: string[], setList: (v: string[]) => void, val: string) => {
+    setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val]);
+  };
+
   const handleSave = async () => {
     setSaving(true); setErr(null);
     try {
       const payload = {
-        name:           name.trim() || null,
-        primary_wallet: primaryWallet,
-        monthly_limit:  Number(monthlyLimit) || 5000000,
+        name:            name.trim() || null,
+        primary_wallet:  primaryWallet,
+        monthly_limit:   Number(monthlyLimit) || 5000000,
+        savings_ratio:   Number(savingsRatio) || 20,
+        active_banks:    activeBanks,
+        active_ewallets: activeEwallets,
+        active_paylater: activePaylater,
       };
       const r = await fetch(
         `${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,
@@ -184,8 +210,13 @@ export function DashboardSettings() {
     );
   }
 
+  const ratioNum = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
+  const spendRatio = 100 - ratioNum;
+
   return (
     <div className="set-wrap">
+
+      {/* Profile */}
       <div className="set-card">
         <div className="set-card-hdr">
           <User style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -194,7 +225,7 @@ export function DashboardSettings() {
         <div className="set-card-body">
           <div className="set-field">
             <label className="set-label">Nomor WhatsApp</label>
-            <input className="set-input" value={phone || '\u2014'} disabled />
+            <input className="set-input" value={phone || '—'} disabled />
             <p className="set-hint">Nomor WhatsApp tidak bisa diubah</p>
           </div>
           <div className="set-field">
@@ -209,24 +240,36 @@ export function DashboardSettings() {
         </div>
       </div>
 
+      {/* Ratio Tabungan */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
-          <h3>Wallet & Pembayaran</h3>
+          <PiggyBank style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <h3>Ratio Tabungan vs Pengeluaran</h3>
         </div>
         <div className="set-card-body">
           <div className="set-field">
-            <label className="set-label">Wallet Utama</label>
-            <select
-              className="set-select"
-              value={primaryWallet}
-              onChange={e => setPrimaryWallet(e.target.value)}
-            >
-              {WALLETS.map(w => <option key={w} value={w}>{w}</option>)}
-            </select>
+            <label className="set-label">Target Tabungan (%)</label>
+            <input
+              className="set-input"
+              type="number" min="0" max="100"
+              placeholder="20"
+              value={savingsRatio}
+              onChange={e => setSavingsRatio(e.target.value)}
+            />
+            <div className="set-ratio-bar">
+              <div style={{
+                height: '100%', borderRadius: 99,
+                background: 'linear-gradient(90deg, #2563EB 0%, #10B981 100%)',
+                width: `${ratioNum}%`, transition: 'width .4s',
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280' }}>
+              <span style={{ color: '#2563EB', fontWeight: 500 }}>Tabungan {ratioNum}%</span>
+              <span>Pengeluaran {spendRatio}%</span>
+            </div>
           </div>
           <div className="set-field">
-            <label className="set-label">Limit Pengeluaran Bulanan</label>
+            <label className="set-label">Limit Pengeluaran Bulanan (Rp)</label>
             <input
               className="set-input"
               type="number"
@@ -241,6 +284,87 @@ export function DashboardSettings() {
         </div>
       </div>
 
+      {/* Bank Aktif */}
+      <div className="set-card">
+        <div className="set-card-hdr">
+          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <h3>Bank Aktif</h3>
+        </div>
+        <div className="set-card-body">
+          <p className="set-hint" style={{ marginBottom: 0 }}>Pilih bank yang kamu gunakan untuk transaksi</p>
+          <div className="set-chips">
+            {BANKS.map(b => (
+              <button
+                key={b}
+                className={`set-chip${activeBanks.includes(b) ? ' active' : ''}`}
+                onClick={() => toggleChip(activeBanks, setActiveBanks, b)}
+              >{b}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* E-Wallet */}
+      <div className="set-card">
+        <div className="set-card-hdr">
+          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <h3>E-Wallet Aktif</h3>
+        </div>
+        <div className="set-card-body">
+          <p className="set-hint" style={{ marginBottom: 0 }}>Pilih e-wallet yang kamu gunakan</p>
+          <div className="set-chips">
+            {EWALLETS.map(w => (
+              <button
+                key={w}
+                className={`set-chip${activeEwallets.includes(w) ? ' active' : ''}`}
+                onClick={() => toggleChip(activeEwallets, setActiveEwallets, w)}
+              >{w}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Paylater / Kartu Kredit */}
+      <div className="set-card">
+        <div className="set-card-hdr">
+          <CreditCard style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <h3>Paylater & Kartu Kredit</h3>
+        </div>
+        <div className="set-card-body">
+          <p className="set-hint" style={{ marginBottom: 0 }}>Pilih paylater atau kartu kredit yang aktif</p>
+          <div className="set-chips">
+            {PAYLATER.map(p => (
+              <button
+                key={p}
+                className={`set-chip${activePaylater.includes(p) ? ' active' : ''}`}
+                onClick={() => toggleChip(activePaylater, setActivePaylater, p)}
+              >{p}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Wallet Utama */}
+      <div className="set-card">
+        <div className="set-card-hdr">
+          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <h3>Wallet Utama</h3>
+        </div>
+        <div className="set-card-body">
+          <div className="set-field" style={{ marginBottom: 0 }}>
+            <label className="set-label">Default wallet untuk transaksi baru</label>
+            <select
+              className="set-select"
+              value={primaryWallet}
+              onChange={e => setPrimaryWallet(e.target.value)}
+            >
+              {WALLETS.map(w => <option key={w} value={w}>{w}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Notifikasi */}
       <div className="set-card">
         <div className="set-card-hdr">
           <Bell style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -263,6 +387,7 @@ export function DashboardSettings() {
         </div>
       </div>
 
+      {/* Privasi */}
       <div className="set-card">
         <div className="set-card-hdr">
           <Shield style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -276,7 +401,7 @@ export function DashboardSettings() {
             href="/privacy-policy"
             style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}
           >
-            Lihat Privacy Policy \u2192
+            Lihat Privacy Policy →
           </a>
         </div>
       </div>

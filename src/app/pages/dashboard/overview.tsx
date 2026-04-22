@@ -47,9 +47,9 @@ const CAT_BG: Record<string,string> = {
   Pemasukan:'#D1FAE5', Others:'#F1F4F8',
 };
 const CAT_EMOJI: Record<string,string> = {
-  Makanan:'\uD83C\uDF5C', Transport:'\uD83D\uDE97', Belanja:'\uD83D\uDED2',
-  Tagihan:'\uD83D\uDCA1', Kesehatan:'\u2764\uFE0F', Hiburan:'\uD83C\uDFAE',
-  Pemasukan:'\uD83D\uDCB0', Others:'\u2728',
+  Makanan:'🍜', Transport:'🚗', Belanja:'🛒',
+  Tagihan:'💡', Kesehatan:'❤️', Hiburan:'🎮',
+  Pemasukan:'💰', Others:'✨',
 };
 
 function mapCat(c: string) {
@@ -120,7 +120,6 @@ export function DashboardOverview() {
     fetchData(ph);
   }, []);
 
-  // Refresh on new transaction
   useEffect(() => {
     const handler = () => {
       const ph = localStorage.getItem('mira_phone');
@@ -170,16 +169,16 @@ export function DashboardOverview() {
 
   if (loading) return (
     <div className="ov-wrap">
-      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} \uD83D\uDC4B</h1>
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} 👋</h1>
       <p style={{color:'#6B7280',fontSize:13,marginTop:4}}>Memuat data keuangan...</p>
     </div>
   );
 
   if (txns.length===0) return (
     <div className="ov-wrap">
-      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} \uD83D\uDC4B</h1>
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} 👋</h1>
       <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
-        <div style={{fontSize:48,marginBottom:16}}>\uD83D\uDCB0</div>
+        <div style={{fontSize:48,marginBottom:16}}>💰</div>
         <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat via WhatsApp atau tombol Catat.</p>
       </div>
     </div>
@@ -191,7 +190,7 @@ export function DashboardOverview() {
       {/* greeting */}
       <div style={{marginBottom:20}}>
         <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,letterSpacing:-0.5,color:'#111827'}}>
-          {greeting} \uD83D\uDC4B
+          {greeting} 👋
         </h1>
         <p style={{color:'#6B7280',fontSize:13,marginTop:3,marginBottom:0}}>
           {new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
@@ -211,7 +210,7 @@ export function DashboardOverview() {
           <div style={{fontSize:12,opacity:0.75,letterSpacing:0.3,marginBottom:6}}>Pengeluaran Bulan Ini</div>
           <div className="ov-hero-amount" style={{fontFamily:"'Sora',sans-serif",fontSize:36,fontWeight:600,letterSpacing:-1.5,lineHeight:1}}>{fmt(s.total)}</div>
           <div style={{fontSize:12,opacity:0.7,marginTop:6,display:'flex',alignItems:'center',gap:4}}>
-            <span style={{color:s.onTrack?'#6EE7B7':'#FCA5A5',fontWeight:500}}>{s.onTrack?'\u25b2 On Track':'! Over Budget'}</span>
+            <span style={{color:s.onTrack?'#6EE7B7':'#FCA5A5',fontWeight:500}}>{s.onTrack ? '▲ On Track' : '! Over Budget'}</span>
             <span>dari {fmt(s.limit)}</span>
           </div>
         </div>
@@ -231,9 +230,9 @@ export function DashboardOverview() {
       <div className="ov-three-col">
         <div style={{...CARD,padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>\uD83D\uDCC8</div>
+            <div style={{width:36,height:36,borderRadius:8,background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>📈</div>
             <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:s.onTrack?'#D1FAE5':'#FEE2E2',color:s.onTrack?'#065F46':'#991B1B'}}>
-              {s.onTrack?'\u25bc':'\u25b2'} {s.pct.toFixed(0)}%
+              {s.onTrack ? '▼' : '▲'} {s.pct.toFixed(0)}%
             </span>
           </div>
           <div className="ov-stat-val">{fmt(s.total)}</div>
@@ -241,15 +240,15 @@ export function DashboardOverview() {
         </div>
         <div style={{...CARD,padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'#D1FAE5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>\u2B50</div>
-            <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:'#D1FAE5',color:'#065F46'}}>\u25b2 {s.goalPct.toFixed(0)}%</span>
+            <div style={{width:36,height:36,borderRadius:8,background:'#D1FAE5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>⭐</div>
+            <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:'#D1FAE5',color:'#065F46'}}>▲ {s.goalPct.toFixed(0)}%</span>
           </div>
           <div className="ov-stat-val">{fmt(s.saved)}</div>
           <div style={{fontSize:12,color:'#6B7280'}}>Tabungan est.</div>
         </div>
         <div style={{...CARD,padding:'18px 20px',border:`1px solid ${s.onTrack?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`}}>
           <div style={{width:36,height:36,borderRadius:8,background:s.onTrack?'#D1FAE5':'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,fontSize:18}}>
-            {s.onTrack?'\u2705':'\u26A0\uFE0F'}
+            {s.onTrack ? '✅' : '⚠️'}
           </div>
           <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:700,color:s.onTrack?'#065F46':'#991B1B',marginBottom:2}}>{s.onTrack?'On Track':'Over Budget'}</div>
           <div style={{fontSize:12,color:'#6B7280'}}>{s.onTrack?'Sesuai budget':'Melebihi budget'}</div>
@@ -311,7 +310,7 @@ export function DashboardOverview() {
             <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:600,margin:0,color:'#111827'}}>Transaksi Terbaru</h3>
             <button onClick={()=>navigate('/dashboard/transactions')}
               style={{fontSize:12,color:'#6B7280',cursor:'pointer',background:'none',border:'none',padding:'4px 8px',borderRadius:6}}>
-              Lihat semua \u2192
+              Lihat semua →
             </button>
           </div>
           <div style={{padding:'4px 0'}}>
@@ -319,7 +318,7 @@ export function DashboardOverview() {
               const cat=mapCat(t.category||'');
               const bg=CAT_BG[cat]||'#F1F4F8';
               const clr=CAT_COLOR[cat]||'#6B7280';
-              const emoji=CAT_EMOJI[cat]||'\u2728';
+              const emoji=CAT_EMOJI[cat]||'✨';
               const ds=new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'});
               const isIn=t.transaction_type?.toLowerCase()==='income'||cat==='Pemasukan';
               return (
@@ -341,7 +340,7 @@ export function DashboardOverview() {
                     </div>
                   </div>
                   <div style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:500,color:isIn?'#16A34A':'#111827',flexShrink:0}}>
-                    {isIn?'+':'\u2212'} {fmt(Number(t.amount||0))}
+                    {isIn ? '+' : '−'} {fmt(Number(t.amount||0))}
                   </div>
                 </div>
               );
@@ -372,7 +371,7 @@ export function DashboardOverview() {
 
       {s.topCat && (
         <div style={{...CARD,padding:'16px 20px',display:'flex',alignItems:'flex-start',gap:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>\uD83D\uDCA1</div>
+          <div style={{width:36,height:36,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>💡</div>
           <div>
             <p style={{fontSize:13,fontWeight:600,marginBottom:4,marginTop:0,color:'#111827'}}>Tips hemat minggu ini</p>
             <p style={{fontSize:13,color:'#6B7280',margin:0,lineHeight:1.5}}>
