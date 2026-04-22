@@ -1,247 +1,217 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/card";
-import { Button } from "../../components/button";
-import { Input } from "../../components/input";
-import {
-  Plus,
-  Search,
-  Filter,
-  Edit2,
-  Trash2,
-  Calendar,
-  X,
-  Wallet as WalletIcon,
-} from "lucide-react";
-import { formatCurrency, formatDate } from "../../lib/utils";
-import { motion, AnimatePresence } from "motion/react";
-import { useUserSession } from "../../context/user-session-context";
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
+
+const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
+const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
+
+const fmt = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+
+const CAT_COLOR: Record<string, string> = {
+  Makanan: '#2563EB', Transport: '#10B981', Belanja: '#8B5CF6',
+  Tagihan: '#F59E0B', Kesehatan: '#EF4444', Hiburan: '#EC4899',
+  Pemasukan: '#16A34A', Others: '#6B7280',
+};
+const CAT_BG: Record<string, string> = {
+  Makanan: '#EFF6FF', Transport: '#ECFDF5', Belanja: '#F5F3FF',
+  Tagihan: '#FFFBEB', Kesehatan: '#FFF1F2', Hiburan: '#FDF2F8',
+  Pemasukan: '#F0FDF4', Others: '#F1F4F8',
+};
+const CAT_EMOJI: Record<string, string> = {
+  Makanan: '\uD83C\uDF5C', Transport: '\uD83D\uDE97', Belanja: '\uD83D\uDED2',
+  Tagihan: '\uD83D\uDCA1', Kesehatan: '\u2764\uFE0F', Hiburan: '\uD83C\uDFAE',
+  Pemasukan: '\uD83D\uDCB0', Others: '\u2728',
+};
+
+function mapCat(c: string) {
+  const m: Record<string, string> = {
+    food: 'Makanan', Food: 'Makanan', makanan: 'Makanan', Makanan: 'Makanan',
+    transport: 'Transport', Transport: 'Transport',
+    shopping: 'Belanja', Shopping: 'Belanja', Belanja: 'Belanja',
+    bills: 'Tagihan', Bills: 'Tagihan', Tagihan: 'Tagihan', utilities: 'Tagihan',
+    health: 'Kesehatan', Health: 'Kesehatan', Kesehatan: 'Kesehatan',
+    entertainment: 'Hiburan', Entertainment: 'Hiburan', Hiburan: 'Hiburan',
+    income: 'Pemasukan', Income: 'Pemasukan', Pemasukan: 'Pemasukan', salary: 'Pemasukan',
+  };
+  return m[c] || 'Makanan';
+}
+
+const TXN_CSS = `
+  .txn-wrap  { padding: 28px 32px 40px; max-width: 960px; margin: 0 auto;
+               font-family: 'DM Sans', sans-serif; }
+  .txn-card  { background: #fff; border: 1px solid rgba(0,0,0,0.07);
+               border-radius: 16px; overflow: hidden; }
+  .txn-hdr   { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,0.07);
+               display: flex; align-items: center; justify-content: space-between; }
+  .txn-row   { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+               border-bottom: 1px solid rgba(0,0,0,0.05); transition: background .12s; }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-row:hover { background: #F8F9FB; }
+  .txn-filters { display: grid; grid-template-columns: 1fr 1fr 1fr;
+                 gap: 12px; margin-bottom: 20px; }
+  .txn-ctrl  { height: 44px; border: 1px solid rgba(0,0,0,0.10); border-radius: 10px;
+               padding: 0 14px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+               background: #F8F9FB; outline: none; width: 100%; box-sizing: border-box; }
+  .txn-ctrl:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+  .txn-badge { display: inline-flex; align-items: center; padding: 3px 9px;
+               border-radius: 20px; font-size: 11px; font-weight: 500; }
+  @media (max-width: 900px) {
+    .txn-wrap    { padding: 16px 16px 24px; }
+    .txn-filters { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .txn-row { padding: 12px 16px; }
+  }
+`;
 
 export function DashboardTransactions() {
   const navigate = useNavigate();
-  const { userSession } = useUserSession();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
-  const [filterWallet, setFilterWallet] = useState("all");
+  const [txns,    setTxns]    = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState('');
+  const [catF,    setCatF]    = useState('all');
+  const [walletF, setWalletF] = useState('all');
 
+  // Inject page-scoped CSS
   useEffect(() => {
-    // Check if userSession exists
-    if (!userSession || !userSession.transactions) {
-      navigate("/login");
+    const id = 'mira-txn-css';
+    if (!document.getElementById(id)) {
+      const s = document.createElement('style');
+      s.id = id; s.textContent = TXN_CSS;
+      document.head.appendChild(s);
     }
-  }, [userSession, navigate]);
+    return () => { document.getElementById('mira-txn-css')?.remove(); };
+  }, []);
 
-  // If no userSession, redirect
-  if (!userSession || !userSession.transactions) {
-    return null;
-  }
+  // Auth guard + data fetch
+  useEffect(() => {
+    const ph = sessionStorage.getItem('mira_phone');
+    if (!ph) { navigate('/', { replace: true }); return; }
 
-  // Sort transactions by date descending (newest first)
-  const sortedTransactions = useMemo(() => {
-    return [...userSession.transactions].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [userSession.transactions]);
+    (async () => {
+      try {
+        const r = await fetch(
+          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&order=date.desc,created_at.desc&limit=1000`,
+          { headers: H }
+        );
+        if (r.ok) {
+          const a = await r.json();
+          if (Array.isArray(a)) setTxns(a);
+        }
+      } catch { /* network error — show empty state */ }
+      setLoading(false);
+    })();
+  }, []);
 
-  // Filter transactions
-  const filteredTransactions = sortedTransactions.filter((tx) => {
-    const matchesSearch =
-      (tx.merchant?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (tx.category?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      filterCategory === "all" || tx.category === filterCategory;
-    const matchesWallet =
-      filterWallet === "all" || tx.wallet === filterWallet;
-    return matchesSearch && matchesCategory && matchesWallet;
-  });
+  const filtered = useMemo(() => txns.filter(t => {
+    const q = search.toLowerCase();
+    const matchS = !q ||
+      (t.merchant || '').toLowerCase().includes(q) ||
+      (t.item     || '').toLowerCase().includes(q) ||
+      (t.category || '').toLowerCase().includes(q);
+    const cat = mapCat(t.category || '');
+    return matchS &&
+      (catF    === 'all' || cat === catF) &&
+      (walletF === 'all' || (t.wallet || '') === walletF);
+  }), [txns, search, catF, walletF]);
 
-  // Get unique categories and wallets for filters
-  const categories = useMemo(() => {
-    const cats = new Set(userSession.transactions.map((t: any) => t.category));
-    return Array.from(cats).filter(Boolean);
-  }, [userSession.transactions]);
+  const cats    = useMemo(() => [...new Set(txns.map(t => mapCat(t.category || '')))].sort(), [txns]);
+  const wallets = useMemo(() => [...new Set(txns.map(t => t.wallet || '').filter(Boolean))].sort(), [txns]);
 
-  const wallets = useMemo(() => {
-    const walls = new Set(userSession.transactions.map((t: any) => t.wallet));
-    return Array.from(walls).filter(Boolean);
-  }, [userSession.transactions]);
+  if (loading) return (
+    <div className="txn-wrap">
+      <p style={{ color: '#6B7280', fontSize: 14 }}>Memuat transaksi...</p>
+    </div>
+  );
 
-  // Show empty state if no transactions
-  if (userSession.transactions.length === 0) {
-    return (
-      <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-          <WalletIcon className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Belum ada transaksi</h2>
-          <p className="text-muted-foreground">
-            Mulai catat pengeluaran kamu via WhatsApp
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (txns.length === 0) return (
+    <div className="txn-wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>\uD83D\uDCB8</div>
+      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada transaksi. Mulai catat via WhatsApp.</p>
+    </div>
+  );
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Transactions</h1>
-          <p className="text-muted-foreground">
-            Semua transaksi kamu dari WhatsApp
-          </p>
-        </div>
-      </div>
+    <div className="txn-wrap">
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Cari merchant atau kategori..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="h-12 rounded-2xl border border-border bg-input-background px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="all">Semua Kategori</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterWallet}
-              onChange={(e) => setFilterWallet(e.target.value)}
-              className="h-12 rounded-2xl border border-border bg-input-background px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="all">Semua Wallet</option>
-              {wallets.map((wallet) => (
-                <option key={wallet} value={wallet}>
-                  {wallet}
-                </option>
-              ))}
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Transactions Table - Desktop */}
-      <div className="hidden lg:block">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {filteredTransactions.length} Transaksi
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium">Tanggal</th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Merchant
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">
-                      Kategori
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">Wallet</th>
-                    <th className="text-right py-3 px-4 font-medium">
-                      Jumlah
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((tx, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-border hover:bg-secondary/50 transition-colors"
-                    >
-                      <td className="py-3 px-4 text-sm">
-                        {new Date(tx.date).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="py-3 px-4 text-sm font-medium">
-                        {tx.merchant}
-                      </td>
-                      <td className="py-3 px-4 text-sm">
-                        <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
-                          {tx.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-sm">{tx.wallet}</td>
-                      <td className="py-3 px-4 text-sm font-medium text-right">
-                        {formatCurrency(tx.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="txn-filters">
+        <input
+          className="txn-ctrl"
+          placeholder="\uD83D\uDD0D  Cari merchant, kategori..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select className="txn-ctrl" value={catF} onChange={e => setCatF(e.target.value)}>
+          <option value="all">Semua Kategori</option>
+          {cats.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="txn-ctrl" value={walletF} onChange={e => setWalletF(e.target.value)}>
+          <option value="all">Semua Wallet</option>
+          {wallets.map(w => <option key={w} value={w}>{w}</option>)}
+        </select>
       </div>
 
-      {/* Transactions List - Mobile */}
-      <div className="lg:hidden space-y-3">
-        {filteredTransactions.map((tx, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex-1">
-                    <h3 className="font-semibold">{tx.merchant}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {tx.category}
-                    </p>
+      {/* List */}
+      <div className="txn-card">
+        <div className="txn-hdr">
+          <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>
+            Riwayat Transaksi
+          </h3>
+          <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
+            {filtered.length} transaksi
+          </span>
+        </div>
+
+        {filtered.length === 0
+          ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+              Tidak ada transaksi yang cocok
+            </div>
+          )
+          : filtered.map((t, i) => {
+              const cat   = mapCat(t.category || '');
+              const bg    = CAT_BG[cat]    || '#F1F4F8';
+              const clr   = CAT_COLOR[cat] || '#6B7280';
+              const emoji = CAT_EMOJI[cat] || '\u2728';
+              const isIn  = t.transaction_type?.toLowerCase() === 'income' || cat === 'Pemasukan';
+              const ds    = new Date(t.date).toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric',
+              });
+              return (
+                <div key={t.id || i} className="txn-row">
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 10, background: bg, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                  }}>
+                    {emoji}
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(tx.amount)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.date).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 500, color: '#111827',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {t.merchant || t.item || cat}
+                    </div>
+                    <div style={{
+                      fontSize: 12, color: '#9CA3AF', marginTop: 2,
+                      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+                    }}>
+                      <span className="txn-badge" style={{ background: bg, color: clr }}>{cat}</span>
+                      {t.wallet && <span>{t.wallet}</span>}
+                      <span>{ds}</span>
+                    </div>
+                  </div>
+                  <div style={{
+                    fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600,
+                    color: isIn ? '#16A34A' : '#111827', flexShrink: 0, textAlign: 'right',
+                  }}>
+                    {isIn ? '+' : '\u2212'} {fmt(Number(t.amount || 0))}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {tx.wallet}
-                  </span>
-                  <span className="text-xs text-muted-foreground">•</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(tx.date).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+              );
+            })
+        }
       </div>
     </div>
   );
