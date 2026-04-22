@@ -6,6 +6,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../components/theme-provider';
 import { PendingAssessmentGate } from '../../components/PendingAssessmentGate';
+import { AddTransactionModal } from '../../components/AddTransactionModal';
 
 const LAYOUT_CSS = `
   #mira-dash-layout {
@@ -110,13 +111,13 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
-  const [sbOpen, setSbOpen] = useState(false);
-  const [ready,  setReady]  = useState(false);
-  const [phone,  setPhone]  = useState('');
-  const [user,   setUser]   = useState<Record<string, any> | null>(null);
+  const [sbOpen,   setSbOpen]   = useState(false);
+  const [ready,    setReady]    = useState(false);
+  const [phone,    setPhone]    = useState('');
+  const [user,     setUser]     = useState<Record<string, any> | null>(null);
+  const [showAdd,  setShowAdd]  = useState(false);
 
   useEffect(() => {
-    // Inject layout CSS — no cleanup so it persists across any re-mount cycle
     const id = 'mira-layout-css';
     if (!document.getElementById(id)) {
       const s = document.createElement('style');
@@ -126,16 +127,16 @@ export function DashboardLayout() {
   }, []);
 
   useEffect(() => {
-    const ph = sessionStorage.getItem('mira_phone');
+    const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
-    try { const r = sessionStorage.getItem('mira_user'); if (r) setUser(JSON.parse(r)); } catch {}
+    try { const r = localStorage.getItem('mira_user'); if (r) setUser(JSON.parse(r)); } catch {}
     setReady(true);
   }, []);
 
   const logout = () => {
-    sessionStorage.removeItem('mira_phone');
-    sessionStorage.removeItem('mira_user');
+    localStorage.removeItem('mira_phone');
+    localStorage.removeItem('mira_user');
     navigate('/');
   };
 
@@ -152,11 +153,11 @@ export function DashboardLayout() {
         user={user ? { plan_name: user.plan_name, expiry: user.expiry } : null}
         onComplete={() => {
           try {
-            const r = sessionStorage.getItem('mira_user');
+            const r = localStorage.getItem('mira_user');
             if (r) {
               const c = JSON.parse(r);
               c.account_status = 'active';
-              sessionStorage.setItem('mira_user', JSON.stringify(c));
+              localStorage.setItem('mira_user', JSON.stringify(c));
             }
           } catch {}
           window.location.reload();
@@ -172,8 +173,21 @@ export function DashboardLayout() {
     meta.sub = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) + ' \u00b7 Personal';
   const on = (p: string) => location.pathname === p;
 
+  // Refresh page data after successful add
+  const handleAddSuccess = () => {
+    window.dispatchEvent(new CustomEvent('mira:tx-added'));
+  };
+
   return (
     <div id="mira-dash-layout">
+
+      {/* Add Transaction Modal */}
+      {showAdd && (
+        <AddTransactionModal
+          onClose={() => setShowAdd(false)}
+          onSuccess={handleAddSuccess}
+        />
+      )}
 
       {/* overlay */}
       <div id="mira-sidebar-overlay" className={sbOpen ? 'visible' : ''} onClick={() => setSbOpen(false)} />
@@ -248,12 +262,24 @@ export function DashboardLayout() {
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0, marginTop: 1 }}>{meta.sub}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* + Catat button (desktop) */}
+            <button
+              onClick={() => setShowAdd(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#2563EB', color: '#fff', border: 'none',
+                borderRadius: 8, padding: '8px 16px', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+              }}
+            >
+              <Plus style={{ width: 15, height: 15 }} strokeWidth={2.5} /> Catat
+            </button>
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               {theme === 'dark' ? <Sun style={{ width: 16, height: 16 }} /> : <Moon style={{ width: 16, height: 16 }} />}
             </button>
             <button onClick={logout}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', color: '#6B7280', border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
               <LogOut style={{ width: 14, height: 14 }} strokeWidth={2} /> Logout
             </button>
           </div>
@@ -294,9 +320,10 @@ export function DashboardLayout() {
               {label}
             </button>
           ))}
+          {/* Centre FAB — opens Add Transaction modal */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <button
-              onClick={() => navigate('/dashboard/transactions')}
+              onClick={() => setShowAdd(true)}
               style={{ width: 50, height: 50, background: '#2563EB', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.45)' }}
               onTouchStart={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.9)'; }}
               onTouchEnd={e   => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
