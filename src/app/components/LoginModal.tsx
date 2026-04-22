@@ -91,9 +91,10 @@ export function LoginModal({ isOpen, onClose }: Props) {
 
       if (isSuccess) {
         const userData    = data.user || data.profile || data.data?.user || null;
-        const phoneNumber = userData?.primary_phone || ('62' + phone);
-        if (userData) sessionStorage.setItem('mira_user', JSON.stringify(userData));
-        sessionStorage.setItem('mira_phone', phoneNumber);
+        const phoneNumber = userData?.primary_phone || userData?.phone_number || ('62' + phone);
+        // Use localStorage so dashboard auth guard can find it on refresh
+        if (userData) localStorage.setItem('mira_user', JSON.stringify(userData));
+        localStorage.setItem('mira_phone', phoneNumber);
         close();
         navigate('/dashboard');
       } else {
