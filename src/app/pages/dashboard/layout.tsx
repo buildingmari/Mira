@@ -2,11 +2,16 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Receipt, TrendingUp, Target,
   Download, Settings, LogOut, Moon, Sun, Menu, Plus, X,
+  Gift, Briefcase,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../components/theme-provider';
 import { PendingAssessmentGate } from '../../components/PendingAssessmentGate';
 import { AddTransactionModal } from '../../components/AddTransactionModal';
+
+const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
+const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 
 const LAYOUT_CSS = `
   #mira-dash-layout {
@@ -78,16 +83,18 @@ const LAYOUT_CSS = `
 
 const NAV_SECTIONS = [
   { label: 'Overview', items: [
-    { path: '/dashboard',              label: 'Dashboard', Icon: LayoutDashboard },
-    { path: '/dashboard/transactions', label: 'Transaksi', Icon: Receipt },
+    { path: '/dashboard',              label: 'Dashboard',  Icon: LayoutDashboard },
+    { path: '/dashboard/transactions', label: 'Transaksi',  Icon: Receipt },
   ]},
   { label: 'Analitik', items: [
-    { path: '/dashboard/insights', label: 'Insight', Icon: TrendingUp },
-    { path: '/dashboard/goals',    label: 'Target',  Icon: Target },
+    { path: '/dashboard/insights', label: 'Insight',   Icon: TrendingUp },
+    { path: '/dashboard/goals',    label: 'Target',    Icon: Target },
+    { path: '/dashboard/assets',   label: 'Aset & Net Worth', Icon: Briefcase },
   ]},
   { label: 'Akun', items: [
-    { path: '/dashboard/export',   label: 'Export Data', Icon: Download },
-    { path: '/dashboard/settings', label: 'Pengaturan',  Icon: Settings },
+    { path: '/dashboard/affiliate', label: 'Affiliate',   Icon: Gift },
+    { path: '/dashboard/export',    label: 'Export Data', Icon: Download },
+    { path: '/dashboard/settings',  label: 'Pengaturan',  Icon: Settings },
   ]},
 ];
 
@@ -99,23 +106,25 @@ const MOB_NAV = [
 ];
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-  '/dashboard':              { title: 'Dashboard',   sub: '' },
-  '/dashboard/transactions': { title: 'Transaksi',   sub: 'Riwayat pengeluaran' },
-  '/dashboard/insights':     { title: 'Insight',     sub: 'Analisis keuangan' },
-  '/dashboard/goals':        { title: 'Target',      sub: 'Progress goal kamu' },
-  '/dashboard/export':       { title: 'Export Data', sub: 'Unduh data transaksi' },
-  '/dashboard/settings':     { title: 'Pengaturan',  sub: 'Preferensi akun' },
+  '/dashboard':              { title: 'Dashboard',      sub: '' },
+  '/dashboard/transactions': { title: 'Transaksi',      sub: 'Riwayat pengeluaran' },
+  '/dashboard/insights':     { title: 'Insight',        sub: 'Analisis keuangan' },
+  '/dashboard/goals':        { title: 'Target',         sub: 'Progress goal kamu' },
+  '/dashboard/export':       { title: 'Export Data',    sub: 'Unduh data transaksi' },
+  '/dashboard/settings':     { title: 'Pengaturan',     sub: 'Preferensi akun' },
+  '/dashboard/affiliate':    { title: 'Affiliate',      sub: 'Program referral' },
+  '/dashboard/assets':       { title: 'Aset & Net Worth', sub: 'Total kekayaan bersih' },
 };
 
 export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
-  const [sbOpen,   setSbOpen]   = useState(false);
-  const [ready,    setReady]    = useState(false);
-  const [phone,    setPhone]    = useState('');
-  const [user,     setUser]     = useState<Record<string, any> | null>(null);
-  const [showAdd,  setShowAdd]  = useState(false);
+  const [sbOpen,  setSbOpen]  = useState(false);
+  const [ready,   setReady]   = useState(false);
+  const [phone,   setPhone]   = useState('');
+  const [user,    setUser]    = useState<Record<string, any> | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
 
   useEffect(() => {
     const id = 'mira-layout-css';
@@ -130,8 +139,31 @@ export function DashboardLayout() {
     const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
-    try { const r = localStorage.getItem('mira_user'); if (r) setUser(JSON.parse(r)); } catch {}
+
+    // Hydrate from localStorage first for instant render
+    try {
+      const raw = localStorage.getItem('mira_user');
+      if (raw) setUser(JSON.parse(raw));
+    } catch {}
+
     setReady(true);
+
+    // Then fetch fresh user data from Supabase
+    (async () => {
+      try {
+        const r = await fetch(
+          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,
+          { headers: H }
+        );
+        if (r.ok) {
+          const a = await r.json();
+          if (Array.isArray(a) && a.length > 0) {
+            setUser(a[0]);
+            localStorage.setItem('mira_user', JSON.stringify(a[0]));
+          }
+        }
+      } catch {}
+    })();
   }, []);
 
   const logout = () => {
@@ -168,12 +200,12 @@ export function DashboardLayout() {
 
   const name = user?.name || 'User';
   const init = name.charAt(0).toUpperCase();
+  const planLabel = user?.plan_name || 'Personal';
   const meta = { ...(PAGE_META[location.pathname] ?? { title: 'MIRA', sub: '' }) };
   if (meta.title === 'Dashboard')
-    meta.sub = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) + ' \u00b7 Personal';
+    meta.sub = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) + ' · ' + planLabel;
   const on = (p: string) => location.pathname === p;
 
-  // Refresh page data after successful add
   const handleAddSuccess = () => {
     window.dispatchEvent(new CustomEvent('mira:tx-added'));
   };
@@ -181,7 +213,6 @@ export function DashboardLayout() {
   return (
     <div id="mira-dash-layout">
 
-      {/* Add Transaction Modal */}
       {showAdd && (
         <AddTransactionModal
           onClose={() => setShowAdd(false)}
@@ -189,12 +220,9 @@ export function DashboardLayout() {
         />
       )}
 
-      {/* overlay */}
       <div id="mira-sidebar-overlay" className={sbOpen ? 'visible' : ''} onClick={() => setSbOpen(false)} />
 
-      {/* sidebar */}
       <nav id="mira-sidebar" className={sbOpen ? 'mobile-open' : ''}>
-        {/* logo */}
         <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 32, height: 32, background: '#2563EB', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <span style={{ color: '#fff', fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: -0.5 }}>M</span>
@@ -209,7 +237,6 @@ export function DashboardLayout() {
           </button>
         </div>
 
-        {/* nav */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
           {NAV_SECTIONS.map(sec => (
             <div key={sec.label} style={{ padding: '14px 12px 4px' }}>
@@ -227,7 +254,6 @@ export function DashboardLayout() {
           ))}
         </div>
 
-        {/* footer */}
         <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
           <div style={{ padding: '10px 12px' }}>
             <button className="mira-nav-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
@@ -243,7 +269,7 @@ export function DashboardLayout() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#111827', margin: 0 }}>{name}</p>
-              <span style={{ fontSize: 11, color: '#6B7280' }}>Personal</span>
+              <span style={{ fontSize: 11, color: '#6B7280' }}>{planLabel}</span>
             </div>
             <button onClick={logout} title="Logout" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', display: 'flex', alignItems: 'center' }}>
               <LogOut style={{ width: 16, height: 16 }} strokeWidth={1.8} />
@@ -252,25 +278,16 @@ export function DashboardLayout() {
         </div>
       </nav>
 
-      {/* main */}
       <div id="mira-main">
-
-        {/* desktop topbar */}
         <div id="mira-topbar">
           <div>
             <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 16, fontWeight: 600, margin: 0, color: '#111827' }}>{meta.title}</h1>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0, marginTop: 1 }}>{meta.sub}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* + Catat button (desktop) */}
             <button
               onClick={() => setShowAdd(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: '#2563EB', color: '#fff', border: 'none',
-                borderRadius: 8, padding: '8px 16px', fontSize: 13,
-                fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
             >
               <Plus style={{ width: 15, height: 15 }} strokeWidth={2.5} /> Catat
             </button>
@@ -285,7 +302,6 @@ export function DashboardLayout() {
           </div>
         </div>
 
-        {/* mobile topbar */}
         <div id="mira-mobile-topbar">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -305,13 +321,11 @@ export function DashboardLayout() {
           </div>
         </div>
 
-        {/* page outlet */}
         <div style={{ flex: 1, paddingBottom: 'calc(68px + env(safe-area-inset-bottom,0px))' }}>
           <Outlet />
         </div>
       </div>
 
-      {/* mobile bottom nav */}
       <div id="mira-mobile-nav">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {MOB_NAV.slice(0, 2).map(({ path, label, Icon }) => (
@@ -320,7 +334,6 @@ export function DashboardLayout() {
               {label}
             </button>
           ))}
-          {/* Centre FAB — opens Add Transaction modal */}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={() => setShowAdd(true)}

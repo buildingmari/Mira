@@ -1,5 +1,4 @@
 import { createBrowserRouter } from 'react-router';
-import { lazy, Suspense } from 'react';
 import { LandingWrapper } from './pages/LandingWrapper';
 import { RootLayout, RootErrorBoundary, NotFound } from './pages/RootLayout';
 import { PaymentSuccessPage } from './pages/payment-success';
@@ -17,6 +16,8 @@ import { DashboardGoals }        from './pages/dashboard/goals';
 import { DashboardInsights }     from './pages/dashboard/insights';
 import { DashboardSettings }     from './pages/dashboard/settings';
 import { DashboardExport }       from './pages/dashboard/export';
+import { DashboardAffiliate }    from './pages/dashboard/affiliate';
+import { DashboardAssets }       from './pages/dashboard/assets';
 
 export const router = createBrowserRouter([
   {
@@ -26,7 +27,6 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: LandingWrapper },
 
-      // Dashboard — nested routes, DashboardLayout renders <Outlet />
       {
         path: 'dashboard',
         Component: DashboardLayout,
@@ -37,6 +37,8 @@ export const router = createBrowserRouter([
           { path: 'insights',           Component: DashboardInsights },
           { path: 'settings',           Component: DashboardSettings },
           { path: 'export',             Component: DashboardExport },
+          { path: 'affiliate',          Component: DashboardAffiliate },
+          { path: 'assets',             Component: DashboardAssets },
         ],
       },
 
