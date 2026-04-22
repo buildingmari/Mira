@@ -1,34 +1,59 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  LineChart, Line, PieChart, Pie, Cell,
-  ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
+  LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from 'recharts';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
-const HEADERS  = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
+const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 
-const fmt = (n: number) => 'Rp' + Math.abs(n).toLocaleString('id-ID');
+const OV_CSS = `
+  .ov-hero-stats { display:flex; gap:28px; text-align:right; }
+  .ov-two-col  { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
+  .ov-three-col{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .ov-wrap     { padding:28px 32px 40px; max-width:960px; margin:0 auto; font-family:'DM Sans',sans-serif; }
+  .ov-stat-val { font-family:'Sora',sans-serif; font-size:22px; font-weight:600;
+                 letter-spacing:-0.8px; margin-bottom:2px;
+                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @media(max-width:900px){
+    .ov-wrap      { padding:20px 16px 24px; }
+    .ov-hero-stats{ display:none; }
+    .ov-two-col   { grid-template-columns:1fr; gap:10px; }
+    .ov-hero-amount{ font-size:28px !important; }
+  }
+  @media(max-width:600px){
+    .ov-three-col { grid-template-columns:1fr 1fr; gap:8px; }
+    .ov-stat-val  { font-size:16px !important; }
+  }
+`;
 
-const CAT_COLOR: Record<string, string> = {
-  Makanan: '#2563EB', Transport: '#10B981', Belanja: '#8B5CF6',
-  Tagihan: '#F59E0B', Kesehatan: '#EF4444', Hiburan: '#EC4899',
-  Pemasukan: '#16A34A', Others: '#6B7280',
+const fmt  = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+const fmtK = (n: number) => {
+  if (n === 0) return '0';
+  if (Math.abs(n) >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'jt';
+  if (Math.abs(n) >= 1000)    return Math.round(n/1000) + 'rb';
+  return String(Math.round(n));
 };
-const CAT_BG: Record<string, string> = {
-  Makanan: '#FEE2E2', Transport: '#EDE9FE', Belanja: '#FEF3C7',
-  Tagihan: '#FEF9C3', Kesehatan: '#D1FAE5', Hiburan: '#FCE7F3',
-  Pemasukan: '#D1FAE5', Others: '#F1F4F8',
+
+const CAT_COLOR: Record<string,string> = {
+  Makanan:'#2563EB', Transport:'#10B981', Belanja:'#8B5CF6',
+  Tagihan:'#F59E0B', Kesehatan:'#EF4444', Hiburan:'#EC4899',
+  Pemasukan:'#16A34A', Others:'#6B7280',
 };
-const CAT_EMOJI: Record<string, string> = {
-  Makanan: '\uD83C\uDF5C', Transport: '\uD83D\uDE97', Belanja: '\uD83D\uDED2',
-  Tagihan: '\uD83D\uDCB3', Kesehatan: '\u2764\uFE0F', Hiburan: '\uD83D\uDCF1',
-  Pemasukan: '\uD83D\uDCB0', Others: '\u2728',
+const CAT_BG: Record<string,string> = {
+  Makanan:'#FEE2E2', Transport:'#EDE9FE', Belanja:'#FEF3C7',
+  Tagihan:'#FEF9C3', Kesehatan:'#D1FAE5', Hiburan:'#FCE7F3',
+  Pemasukan:'#D1FAE5', Others:'#F1F4F8',
+};
+const CAT_EMOJI: Record<string,string> = {
+  Makanan:'\uD83C\uDF5C', Transport:'\uD83D\uDE97', Belanja:'\uD83D\uDED2',
+  Tagihan:'\uD83D\uDCA1', Kesehatan:'\u2764\uFE0F', Hiburan:'\uD83C\uDFAE',
+  Pemasukan:'\uD83D\uDCB0', Others:'\u2728',
 };
 
 function mapCat(c: string) {
-  const m: Record<string, string> = {
+  const m: Record<string,string> = {
     food:'Makanan',Food:'Makanan',makanan:'Makanan',Makanan:'Makanan',
     transport:'Transport',Transport:'Transport',
     shopping:'Belanja',Shopping:'Belanja',Belanja:'Belanja',
@@ -40,397 +65,308 @@ function mapCat(c: string) {
   return m[c] || 'Makanan';
 }
 
-const getGreeting = () => {
+function greet() {
   const h = new Date().getHours();
-  return h < 12 ? 'Selamat pagi' : h < 17 ? 'Selamat siang' : 'Selamat malam';
+  return h<12 ? 'Selamat pagi' : h<17 ? 'Selamat siang' : 'Selamat malam';
+}
+
+const CARD: React.CSSProperties = {
+  background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, overflow:'hidden',
+};
+const CARD_HDR: React.CSSProperties = {
+  padding:'16px 20px', borderBottom:'1px solid rgba(0,0,0,0.07)',
+  display:'flex', alignItems:'center', justifyContent:'space-between',
+};
+const TT: React.CSSProperties = {
+  backgroundColor:'#fff', border:'1px solid rgba(0,0,0,0.07)',
+  borderRadius:10, fontSize:12, boxShadow:'0 4px 12px rgba(0,0,0,0.08)',
 };
 
 export function DashboardOverview() {
-  const navigate = useNavigate();
-  const [user, setUser]   = useState<Record<string, any> | null>(null);
-  const [txns, setTxns]   = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const navigate           = useNavigate();
+  const [user,   setUser]  = useState<Record<string,any>|null>(null);
+  const [txns,   setTxns]  = useState<any[]>([]);
+  const [loading,setLoad]  = useState(true);
+
+  useEffect(() => {
+    const id = 'mira-ov-css';
+    if (!document.getElementById(id)) {
+      const s = document.createElement('style'); s.id=id; s.textContent=OV_CSS;
+      document.head.appendChild(s);
+    }
+    return () => { document.getElementById('mira-ov-css')?.remove(); };
+  }, []);
 
   useEffect(() => {
     const ph = sessionStorage.getItem('mira_phone');
-    if (!ph) { navigate('/', { replace: true }); return; }
+    if (!ph) { navigate('/',{replace:true}); return; }
+    try { const r=sessionStorage.getItem('mira_user'); if(r) setUser(JSON.parse(r)); } catch {}
 
-    // Load cached user first
-    try {
-      const raw = sessionStorage.getItem('mira_user');
-      if (raw) setUser(JSON.parse(raw));
-    } catch {}
-
-    const load = async () => {
+    (async () => {
       try {
-        // Fresh fetch user
-        const uRes = await fetch(
-          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,
-          { headers: HEADERS }
-        );
-        if (uRes.ok) {
-          const uData = await uRes.json();
-          if (Array.isArray(uData) && uData.length > 0) {
-            const u = uData[0];
-            sessionStorage.setItem('mira_user', JSON.stringify(u));
-            setUser(u);
-          }
-        }
+        const r = await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,{headers:H});
+        if (r.ok) { const a=await r.json(); if(Array.isArray(a)&&a.length>0){sessionStorage.setItem('mira_user',JSON.stringify(a[0]));setUser(a[0]);}}
       } catch {}
-
       try {
-        // Fetch last 90 days of expenses
-        const from90 = new Date();
-        from90.setDate(from90.getDate() - 90);
-        const fromStr = from90.toISOString().split('T')[0];
-        const tRes = await fetch(
-          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${fromStr}&order=date.desc,created_at.desc&limit=500`,
-          { headers: HEADERS }
+        const from = new Date(); from.setDate(from.getDate()-90);
+        const r = await fetch(
+          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${from.toISOString().split('T')[0]}&order=date.desc,created_at.desc&limit=500`,
+          {headers:H}
         );
-        if (tRes.ok) {
-          const expenses = await tRes.json();
-          if (Array.isArray(expenses)) setTxns(expenses);
-        }
+        if (r.ok) { const a=await r.json(); if(Array.isArray(a)) setTxns(a); }
       } catch {}
-
-      setLoading(false);
-    };
-
-    load();
+      setLoad(false);
+    })();
   }, []);
 
-  // Computed stats
-  const stats = useMemo(() => {
-    const now      = new Date();
-    const curMonth = now.getMonth();
-    const curYear  = now.getFullYear();
+  const s = useMemo(() => {
+    const now=new Date(), cm=now.getMonth(), cy=now.getFullYear();
+    const isExp=(t:any)=>t.transaction_type?.toLowerCase()!=='income'&&mapCat(t.category||'')!=='Pemasukan';
+    const mTxns = txns.filter(t=>{const d=new Date(t.date);return d.getMonth()===cm&&d.getFullYear()===cy&&isExp(t);});
+    const l7    = txns.filter(t=>new Date(t.date)>=new Date(now.getTime()-7*86400000)&&isExp(t));
 
-    const monthTxns = txns.filter(t => {
-      const d = new Date(t.date);
-      return d.getMonth() === curMonth && d.getFullYear() === curYear
-        && t.transaction_type?.toLowerCase() !== 'income'
-        && mapCat(t.category || '') !== 'Pemasukan';
-    });
+    const total   = mTxns.reduce((s,t)=>s+Number(t.amount||0),0);
+    const limit   = Number(user?.monthly_limit)||5000000;
+    const goal    = Number(user?.savings_goal)||2000000;
+    const pct     = Math.min((total/limit)*100,100);
+    const saved   = total*0.3;
+    const goalPct = Math.min((saved/goal)*100,100);
+    const onTrack = total<=limit;
 
-    const last7 = txns.filter(t => {
-      const d = new Date(t.date);
-      const ago = new Date(now.getTime() - 7 * 86400000);
-      return d >= ago;
-    });
+    const catMap:Record<string,number>={};
+    mTxns.forEach(t=>{const c=mapCat(t.category||'');catMap[c]=(catMap[c]||0)+Number(t.amount||0);});
+    const catData = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).map(([name,value])=>({name,value,color:CAT_COLOR[name]||'#6B7280'}));
 
-    const totalBulanIni = monthTxns.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const monthlyLimit  = Number(user?.monthly_limit)  || 5000000;
-    const savingsGoal   = Number(user?.savings_goal)   || 2000000;
-    const sisaLimit     = monthlyLimit - totalBulanIni;
-    const pctUsed       = Math.min((totalBulanIni / monthlyLimit) * 100, 100);
-    const currentSaved  = totalBulanIni * 0.3;
-    const goalPct       = Math.min((currentSaved / savingsGoal) * 100, 100);
-    const isOnTrack     = totalBulanIni <= monthlyLimit;
+    const l7Map:Record<string,number>={};
+    l7.forEach(t=>{const c=mapCat(t.category||'');l7Map[c]=(l7Map[c]||0)+Number(t.amount||0);});
+    let topCat='',topAmt=0;
+    Object.entries(l7Map).forEach(([c,a])=>{if(a>topAmt){topAmt=a;topCat=c;}});
 
-    // Category breakdown (this month)
-    const catMap: Record<string, number> = {};
-    monthTxns.forEach(t => {
-      const c = mapCat(t.category || '');
-      catMap[c] = (catMap[c] || 0) + Number(t.amount || 0);
-    });
-    const catData = Object.entries(catMap)
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, value]) => ({ name, value, color: CAT_COLOR[name] || '#6B7280' }));
+    const dMap:Record<string,number>={};
+    for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dMap[d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})]=0;}
+    l7.forEach(t=>{const k=new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'});if(k in dMap)dMap[k]+=Number(t.amount||0);});
+    const trendData=Object.entries(dMap).map(([date,amount])=>({date,amount}));
 
-    // Highest category last 7 days
-    const last7Map: Record<string, number> = {};
-    last7.forEach(t => {
-      const c = mapCat(t.category || '');
-      last7Map[c] = (last7Map[c] || 0) + Number(t.amount || 0);
-    });
-    let topCat = '', topAmt = 0;
-    Object.entries(last7Map).forEach(([c, a]) => { if (a > topAmt) { topAmt = a; topCat = c; } });
+    const wMap:Record<string,number>={};
+    mTxns.forEach(t=>{const w=t.wallet||'Lainnya';wMap[w]=(wMap[w]||0)+Number(t.amount||0);});
+    const walletData=Object.entries(wMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,amount])=>({name,amount}));
 
-    // 7-day trend
-    const dateMap: Record<string, number> = {};
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      dateMap[key] = 0;
-    }
-    last7.forEach(t => {
-      const key = new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      if (key in dateMap) dateMap[key] += Number(t.amount || 0);
-    });
-    const trendData = Object.entries(dateMap).map(([date, amount]) => ({ date, amount }));
+    return {total,limit,sisa:limit-total,pct,saved,goalPct,onTrack,catData,topCat,topAmt,trendData,walletData,recent:txns.slice(0,5)};
+  },[txns,user]);
 
-    // Wallet usage
-    const walletMap: Record<string, number> = {};
-    monthTxns.forEach(t => {
-      const w = t.wallet || 'Lainnya';
-      walletMap[w] = (walletMap[w] || 0) + Number(t.amount || 0);
-    });
-    const walletData = Object.entries(walletMap)
-      .sort((a, b) => b[1] - a[1]).slice(0, 6)
-      .map(([name, amount]) => ({ name, amount }));
+  const fn = user?.name ? user.name.split(' ')[0] : null;
+  const greeting = greet() + (fn ? `, ${fn}` : '');
 
-    // Recent 5 txns
-    const recentTxns = [...txns].slice(0, 5);
+  if (loading) return (
+    <div className="ov-wrap">
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} \uD83D\uDC4B</h1>
+      <p style={{color:'#6B7280',fontSize:13,marginTop:4}}>Memuat data keuangan...</p>
+    </div>
+  );
 
-    return {
-      totalBulanIni, monthlyLimit, sisaLimit, pctUsed,
-      currentSaved, goalPct, isOnTrack,
-      catData, topCat, topAmt, trendData, walletData, recentTxns,
-    };
-  }, [txns, user]);
-
-  const ttStyle = {
-    backgroundColor: '#fff',
-    border: '1px solid rgba(0,0,0,0.07)',
-    borderRadius: 10, fontSize: 12,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-  };
-
-  // Loading
-  if (loading) {
-    return (
-      <div style={{ padding: '40px 32px' }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-          {getGreeting()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} \uD83D\uDC4B
-        </div>
-        <p style={{ color: '#6B7280', fontSize: 14 }}>Memuat data keuangan kamu...</p>
+  if (txns.length===0) return (
+    <div className="ov-wrap">
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} \uD83D\uDC4B</h1>
+      <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
+        <div style={{fontSize:48,marginBottom:16}}>\uD83D\uDCB0</div>
+        <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat via WhatsApp.</p>
       </div>
-    );
-  }
-
-  // Empty
-  if (txns.length === 0) {
-    return (
-      <div style={{ padding: '40px 32px' }}>
-        <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-          {getGreeting()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} \uD83D\uDC4B
-        </div>
-        <div style={{ marginTop: 40, textAlign: 'center', color: '#6B7280' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>\uD83D\uDCB0</div>
-          <p style={{ fontSize: 14 }}>Belum ada transaksi. Mulai catat via WhatsApp.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const s = stats;
+    </div>
+  );
 
   return (
-    <div style={{ padding: '28px 32px 40px', maxWidth: 960, margin: '0 auto' }}
-      className="dashboard-content">
-      <style>{`
-        @media(max-width:900px){.dashboard-content{padding:16px 16px 24px!important}}
-        @media(max-width:600px){.stat-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}}
-        @media(max-width:900px){.two-col{grid-template-columns:1fr!important}}
-      `}</style>
+    <div className="ov-wrap">
 
-      {/* Greeting */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: -0.5 }}>
-          {getGreeting()}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} \uD83D\uDC4B
+      {/* greeting */}
+      <div style={{marginBottom:20}}>
+        <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,letterSpacing:-0.5,color:'#111827'}}>
+          {greeting} \uD83D\uDC4B
         </h1>
-        <p style={{ color: '#6B7280', fontSize: 13, marginTop: 2 }}>
-          {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        <p style={{color:'#6B7280',fontSize:13,marginTop:3,marginBottom:0}}>
+          {new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
         </p>
       </div>
 
-      {/* Hero card */}
+      {/* hero */}
       <div style={{
-        background: 'linear-gradient(135deg,#1D4ED8 0%,#2563EB 60%,#3B82F6 100%)',
-        borderRadius: 20, padding: '24px 28px', color: '#fff',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-        marginBottom: 20, position: 'relative', overflow: 'hidden',
+        background:'linear-gradient(135deg,#1D4ED8 0%,#2563EB 60%,#3B82F6 100%)',
+        borderRadius:20,padding:'28px 32px',color:'#fff',
+        display:'grid',gridTemplateColumns:'1fr auto',gap:20,alignItems:'flex-end',
+        marginBottom:20,position:'relative',overflow:'hidden',
       }}>
-        <div style={{ position:'absolute', right:-40, top:-60, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }} />
+        <div style={{position:'absolute',right:-40,top:-60,width:220,height:220,borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',right:60,bottom:-80,width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,0.04)',pointerEvents:'none'}}/>
         <div>
-          <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Pengeluaran Bulan Ini</div>
-          <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 32, fontWeight: 600, letterSpacing: -1.5, lineHeight: 1 }}>
-            {fmt(s.totalBulanIni)}
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: s.isOnTrack ? '#6EE7B7' : '#FCA5A5', fontWeight: 500 }}>
-              {s.isOnTrack ? '\u2713 On Track' : '! Over Budget'}
-            </span>
-            <span>dari {fmt(s.monthlyLimit)}</span>
+          <div style={{fontSize:12,opacity:0.75,letterSpacing:0.3,marginBottom:6}}>Pengeluaran Bulan Ini</div>
+          <div className="ov-hero-amount" style={{fontFamily:"'Sora',sans-serif",fontSize:36,fontWeight:600,letterSpacing:-1.5,lineHeight:1}}>{fmt(s.total)}</div>
+          <div style={{fontSize:12,opacity:0.7,marginTop:6,display:'flex',alignItems:'center',gap:4}}>
+            <span style={{color:s.onTrack?'#6EE7B7':'#FCA5A5',fontWeight:500}}>{s.onTrack?'\u25b2 On Track':'! Over Budget'}</span>
+            <span>dari {fmt(s.limit)}</span>
           </div>
         </div>
-        <div className="hero-stats" style={{ display:'flex', gap:24, textAlign:'right' }}>
+        <div className="ov-hero-stats">
           <div>
-            <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:600 }}>{fmt(s.sisaLimit)}</div>
-            <div style={{ fontSize:11, opacity:0.65, marginTop:2 }}>Sisa limit</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:600,letterSpacing:-0.5}}>{fmt(s.sisa)}</div>
+            <div style={{fontSize:11,opacity:0.65,marginTop:2}}>Sisa limit</div>
           </div>
           <div>
-            <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:600 }}>{s.goalPct.toFixed(0)}%</div>
-            <div style={{ fontSize:11, opacity:0.65, marginTop:2 }}>Goal progress</div>
+            <div style={{fontFamily:"'Sora',sans-serif",fontSize:18,fontWeight:600,letterSpacing:-0.5}}>{s.goalPct.toFixed(0)}%</div>
+            <div style={{fontSize:11,opacity:0.65,marginTop:2}}>Goal progress</div>
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div className="stat-grid" style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:20 }}>
-        {/* Pengeluaran */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'16px 18px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-            <div style={{ width:34, height:34, borderRadius:8, background:'#EFF6FF', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <span style={{ fontSize:16 }}>\uD83D\uDCB8</span>
-            </div>
-            <span style={{ fontSize:11, padding:'2px 7px', borderRadius:20, fontWeight:500, background: s.isOnTrack?'#D1FAE5':'#FEE2E2', color: s.isOnTrack?'#065F46':'#991B1B' }}>
-              {s.pctUsed.toFixed(0)}% used
+      {/* stats 3-col */}
+      <div className="ov-three-col">
+        <div style={{...CARD,padding:'18px 20px'}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
+            <div style={{width:36,height:36,borderRadius:8,background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>\uD83D\uDCC8</div>
+            <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:s.onTrack?'#D1FAE5':'#FEE2E2',color:s.onTrack?'#065F46':'#991B1B'}}>
+              {s.onTrack?'\u25bc':'\u25b2'} {s.pct.toFixed(0)}%
             </span>
           </div>
-          <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:700, letterSpacing:-0.5, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {fmt(s.totalBulanIni)}
-          </div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>Pengeluaran</div>
+          <div className="ov-stat-val">{fmt(s.total)}</div>
+          <div style={{fontSize:12,color:'#6B7280'}}>Pengeluaran</div>
         </div>
-
-        {/* Tabungan */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'16px 18px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10 }}>
-            <div style={{ width:34, height:34, borderRadius:8, background:'#D1FAE5', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <span style={{ fontSize:16 }}>\uD83C\uDF1F</span>
-            </div>
-            <span style={{ fontSize:11, padding:'2px 7px', borderRadius:20, fontWeight:500, background:'#D1FAE5', color:'#065F46' }}>
-              {s.goalPct.toFixed(0)}%
-            </span>
+        <div style={{...CARD,padding:'18px 20px'}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
+            <div style={{width:36,height:36,borderRadius:8,background:'#D1FAE5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>\u2B50</div>
+            <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:'#D1FAE5',color:'#065F46'}}>\u25b2 {s.goalPct.toFixed(0)}%</span>
           </div>
-          <div style={{ fontFamily:"'Sora',sans-serif", fontSize:18, fontWeight:700, letterSpacing:-0.5, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {fmt(s.currentSaved)}
-          </div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>Tabungan est.</div>
+          <div className="ov-stat-val">{fmt(s.saved)}</div>
+          <div style={{fontSize:12,color:'#6B7280'}}>Tabungan est.</div>
         </div>
-
-        {/* Status */}
-        <div style={{ background:'#fff', border:`1px solid ${s.isOnTrack?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`, borderRadius:16, padding:'16px 18px' }}>
-          <div style={{ width:34, height:34, borderRadius:8, background: s.isOnTrack?'#D1FAE5':'#FEE2E2', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:10 }}>
-            <span style={{ fontSize:18 }}>{s.isOnTrack?'\u2705':'\u26A0\uFE0F'}</span>
+        <div style={{...CARD,padding:'18px 20px',border:`1px solid ${s.onTrack?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`}}>
+          <div style={{width:36,height:36,borderRadius:8,background:s.onTrack?'#D1FAE5':'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,fontSize:18}}>
+            {s.onTrack?'\u2705':'\u26A0\uFE0F'}
           </div>
-          <div style={{ fontFamily:"'Sora',sans-serif", fontSize:15, fontWeight:700, color: s.isOnTrack?'#065F46':'#991B1B', marginBottom:2 }}>
-            {s.isOnTrack ? 'On Track' : 'Over Budget'}
-          </div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>{s.isOnTrack?'Sesuai budget':'Melebihi budget'}</div>
+          <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:700,color:s.onTrack?'#065F46':'#991B1B',marginBottom:2}}>{s.onTrack?'On Track':'Over Budget'}</div>
+          <div style={{fontSize:12,color:'#6B7280'}}>{s.onTrack?'Sesuai budget':'Melebihi budget'}</div>
         </div>
       </div>
 
-      {/* Charts row */}
-      <div className="two-col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
-        {/* Trend */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, margin:0 }}>Tren 7 Hari</h3>
+      {/* charts: trend + category */}
+      <div className="ov-two-col">
+        <div style={CARD}>
+          <div style={CARD_HDR}>
+            <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:600,margin:0,color:'#111827'}}>Tren 7 Hari</h3>
           </div>
-          <div style={{ padding:'12px 16px 16px' }}>
-            <ResponsiveContainer width="100%" height={180}>
+          <div style={{padding:'12px 20px 20px'}}>
+            <ResponsiveContainer width="100%" height={200}>
               <LineChart data={s.trendData}>
-                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9CA3AF" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v=>`${v/1000}k`} />
-                <Tooltip formatter={(v:number)=>fmt(v)} contentStyle={ttStyle} />
+                <XAxis dataKey="date" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false}/>
+                <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={38}/>
+                <Tooltip formatter={(v:number)=>[fmt(v),'Pengeluaran']} contentStyle={TT}/>
                 <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2}
-                  dot={{ fill:'#fff', stroke:'#2563EB', r:3, strokeWidth:2 }}
-                  activeDot={{ fill:'#2563EB', r:4, strokeWidth:0 }} />
+                  dot={{fill:'#fff',stroke:'#2563EB',r:3,strokeWidth:2}}
+                  activeDot={{fill:'#2563EB',r:5,strokeWidth:0}}/>
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Budget by category */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, margin:0 }}>Budget Kategori</h3>
+        <div style={CARD}>
+          <div style={CARD_HDR}>
+            <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:600,margin:0,color:'#111827'}}>Budget Bulan Ini</h3>
           </div>
-          <div style={{ padding:'8px 20px 16px', display:'flex', flexDirection:'column', gap:12 }}>
-            {s.catData.length === 0 ? (
-              <p style={{ fontSize:13, color:'#9CA3AF', padding:'12px 0' }}>Belum ada data</p>
-            ) : s.catData.slice(0, 5).map(({ name, value, color }) => {
-              const pct = s.totalBulanIni > 0 ? (value / s.totalBulanIni) * 100 : 0;
-              return (
-                <div key={name}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, fontWeight:500 }}>
-                      <div style={{ width:7, height:7, borderRadius:'50%', background:color, flexShrink:0 }} />
-                      {name}
+          <div style={{padding:'8px 20px 16px',display:'flex',flexDirection:'column',gap:14}}>
+            {s.catData.length===0
+              ? <p style={{fontSize:13,color:'#9CA3AF',padding:'12px 0',margin:0}}>Belum ada data</p>
+              : s.catData.slice(0,5).map(({name,value,color})=>{
+                  const p=s.total>0?(value/s.total)*100:0;
+                  return (
+                    <div key={name}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                        <div style={{display:'flex',alignItems:'center',gap:7,fontSize:13,fontWeight:500,color:'#111827'}}>
+                          <div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/>
+                          {name}
+                        </div>
+                        <span style={{fontSize:12,color:'#6B7280',fontWeight:500}}>{fmt(value)}</span>
+                      </div>
+                      <div style={{height:5,background:'#F1F4F8',borderRadius:99,overflow:'hidden'}}>
+                        <div style={{height:'100%',borderRadius:99,background:color,width:`${Math.min(p,100)}%`,transition:'width .8s cubic-bezier(.4,0,.2,1)'}}/>
+                      </div>
                     </div>
-                    <span style={{ fontSize:12, color:'#6B7280' }}>{fmt(value)}</span>
-                  </div>
-                  <div style={{ height:5, background:'#F1F4F8', borderRadius:99, overflow:'hidden' }}>
-                    <div style={{ height:'100%', borderRadius:99, background:color, width:`${Math.min(pct,100)}%`, transition:'width .8s ease' }} />
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })
+            }
           </div>
         </div>
       </div>
 
-      {/* Recent transactions + wallet */}
-      <div className="two-col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
-        {/* Recent txns */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(0,0,0,0.07)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, margin:0 }}>Transaksi Terbaru</h3>
+      {/* recent txns + wallet */}
+      <div className="ov-two-col">
+        <div style={CARD}>
+          <div style={CARD_HDR}>
+            <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:600,margin:0,color:'#111827'}}>Transaksi Terbaru</h3>
             <button onClick={()=>navigate('/dashboard/transactions')}
-              style={{ fontSize:12, color:'#6B7280', cursor:'pointer', background:'none', border:'none', padding:'4px 8px', borderRadius:6 }}>
-              Lihat semua →
+              style={{fontSize:12,color:'#6B7280',cursor:'pointer',background:'none',border:'none',padding:'4px 8px',borderRadius:6}}>
+              Lihat semua \u2192
             </button>
           </div>
-          <div>
-            {s.recentTxns.map((t: any, i: number) => {
-              const cat   = mapCat(t.category || '');
-              const emoji = CAT_EMOJI[cat] || '\u2728';
-              const bg    = CAT_BG[cat] || '#F1F4F8';
-              const dateStr = new Date(t.date).toLocaleDateString('id-ID', { day:'numeric', month:'short' });
-              const isIncome = t.transaction_type?.toLowerCase() === 'income' || cat === 'Pemasukan';
+          <div style={{padding:'4px 0'}}>
+            {s.recent.map((t:any,i:number)=>{
+              const cat=mapCat(t.category||'');
+              const bg=CAT_BG[cat]||'#F1F4F8';
+              const clr=CAT_COLOR[cat]||'#6B7280';
+              const emoji=CAT_EMOJI[cat]||'\u2728';
+              const ds=new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+              const isIn=t.transaction_type?.toLowerCase()==='income'||cat==='Pemasukan';
               return (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 20px', borderBottom: i<s.recentTxns.length-1 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}>
-                  <div style={{ width:38, height:38, borderRadius:8, background:bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, flexShrink:0 }}>{emoji}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.merchant || t.item || cat}</div>
-                    <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
-                      <span style={{ padding:'1px 6px', borderRadius:20, background:bg, color:CAT_COLOR[cat]||'#6B7280', fontSize:10 }}>{cat}</span>
-                      {dateStr}
+                <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 20px',
+                  borderBottom:i<s.recent.length-1?'1px solid rgba(0,0,0,0.05)':'none',
+                  cursor:'pointer',transition:'background .1s'}}
+                  onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.background='#F8F9FB';}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.background='';}}>
+                  <div style={{width:40,height:40,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>
+                    {emoji}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#111827'}}>
+                      {t.merchant||t.item||cat}
+                    </div>
+                    <div style={{fontSize:11,color:'#9CA3AF',marginTop:2,display:'flex',alignItems:'center',gap:4}}>
+                      <span style={{padding:'2px 7px',borderRadius:20,background:bg,color:clr,fontSize:10}}>{cat}</span>
+                      {ds}
                     </div>
                   </div>
-                  <div style={{ fontFamily:"'Sora',sans-serif", fontSize:13, fontWeight:600, color: isIncome?'#16A34A':'#111827', flexShrink:0 }}>
-                    {isIncome ? '+' : '\u2212'} {fmt(Number(t.amount||0))}
+                  <div style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:500,color:isIn?'#16A34A':'#111827',flexShrink:0}}>
+                    {isIn?'+':'\u2212'} {fmt(Number(t.amount||0))}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-
-        {/* Wallet */}
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, overflow:'hidden' }}>
-          <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(0,0,0,0.07)' }}>
-            <h3 style={{ fontFamily:"'Sora',sans-serif", fontSize:14, fontWeight:600, margin:0 }}>Penggunaan Dompet</h3>
+        <div style={CARD}>
+          <div style={CARD_HDR}>
+            <h3 style={{fontFamily:"'Sora',sans-serif",fontSize:14,fontWeight:600,margin:0,color:'#111827'}}>Penggunaan Dompet</h3>
           </div>
-          <div style={{ padding:'12px 16px 16px' }}>
-            {s.walletData.length === 0 ? (
-              <p style={{ fontSize:13, color:'#9CA3AF', padding:'8px 0' }}>Belum ada data</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={s.walletData} barSize={24}>
-                  <XAxis dataKey="name" stroke="#9CA3AF" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={10} tickLine={false} axisLine={false} tickFormatter={v=>`${v/1000}k`} />
-                  <Tooltip formatter={(v:number)=>fmt(v)} contentStyle={ttStyle} cursor={{ fill:'#F1F4F8' }} />
-                  <Bar dataKey="amount" fill="#2563EB" radius={[5,5,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+          <div style={{padding:'12px 20px 20px'}}>
+            {s.walletData.length===0
+              ? <p style={{fontSize:13,color:'#9CA3AF',padding:'8px 0',margin:0}}>Belum ada data</p>
+              : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={s.walletData} barSize={28}>
+                    <XAxis dataKey="name" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false}/>
+                    <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={38}/>
+                    <Tooltip formatter={(v:number)=>[fmt(v),'Pengeluaran']} contentStyle={TT} cursor={{fill:'#F1F4F8'}}/>
+                    <Bar dataKey="amount" fill="#2563EB" radius={[6,6,0,0]}/>
+                  </BarChart>
+                </ResponsiveContainer>
+              )
+            }
           </div>
         </div>
       </div>
 
-      {/* Insight tip */}
+      {/* insight tip */}
       {s.topCat && (
-        <div style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.07)', borderRadius:16, padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12 }}>
-          <div style={{ width:36, height:36, borderRadius:8, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <span style={{ fontSize:18 }}>\uD83D\uDCA1</span>
-          </div>
+        <div style={{...CARD,padding:'16px 20px',display:'flex',alignItems:'flex-start',gap:12}}>
+          <div style={{width:36,height:36,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>\uD83D\uDCA1</div>
           <div>
-            <p style={{ fontSize:13, fontWeight:600, marginBottom:3 }}>Tips hemat minggu ini</p>
-            <p style={{ fontSize:13, color:'#6B7280', margin:0, lineHeight:1.5 }}>
-              Kategori terbesar minggu ini adalah <strong style={{ color:'#111827' }}>{s.topCat}</strong> ({fmt(s.topAmt)}).
+            <p style={{fontSize:13,fontWeight:600,marginBottom:4,marginTop:0,color:'#111827'}}>Tips hemat minggu ini</p>
+            <p style={{fontSize:13,color:'#6B7280',margin:0,lineHeight:1.5}}>
+              Kategori terbesar minggu ini adalah <strong style={{color:'#111827'}}>{s.topCat}</strong> ({fmt(s.topAmt)}).
               Coba kurangi 15% untuk capai saving goal kamu.
             </p>
           </div>
