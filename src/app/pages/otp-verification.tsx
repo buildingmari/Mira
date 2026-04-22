@@ -54,7 +54,7 @@ export function OTPVerificationPage() {
     if (!phone || phone.length < 8) return phone;
     const start = phone.slice(0, 4);
     const end = phone.slice(-4);
-    const masked = "••••";
+    const masked = "\u2022\u2022\u2022\u2022";
     return `+${start}${masked}${end}`;
   };
 
@@ -155,7 +155,9 @@ export function OTPVerificationPage() {
             if (createAccountResponse.ok) {
               const accountData = await createAccountResponse.json();
               
-              // Save user session
+              // Always persist phone so dashboard auth guard can find it
+              localStorage.setItem("mira_phone", phoneNumber);
+              // Save user session (also persists mira_user)
               setUserSession(accountData);
               
               // Show success and redirect
@@ -176,7 +178,8 @@ export function OTPVerificationPage() {
             inputRefs.current[0]?.focus();
           }
         } else {
-          // No registration data, just show success
+          // No registration data — persist phone and show success
+          localStorage.setItem("mira_phone", phoneNumber);
           setShowSuccess(true);
           setTimeout(() => {
             navigate("/dashboard", { replace: true });
@@ -269,7 +272,7 @@ export function OTPVerificationPage() {
             </motion.div>
 
             <h1 className="text-[32px] sm:text-[40px] font-black mb-4 tracking-tight text-[#0F172A]">
-              Verifikasi Berhasil! 🎉
+              Verifikasi Berhasil! \uD83C\uDF89
             </h1>
             <p className="text-[15px] sm:text-base text-black/60 leading-relaxed font-light">
               Akun Anda telah aktif. Redirecting...
@@ -341,7 +344,7 @@ export function OTPVerificationPage() {
           <div className="bg-white rounded-2xl border border-black/5 shadow-sm p-5 sm:p-8">
             <div className="text-center mb-8">
               <h2 className="text-[28px] sm:text-[32px] font-black mb-3 text-[#0F172A] tracking-tight">
-                Cek WhatsApp Anda 📲
+                Cek WhatsApp Anda \uD83D\uDCF2
               </h2>
               <p className="text-[15px] text-black/60 mb-6 font-light leading-relaxed">
                 Kami sudah mengirim kode verifikasi ke nomor WhatsApp Anda.
@@ -452,11 +455,11 @@ export function OTPVerificationPage() {
             <button className="hover:text-black/60 transition-colors">
               Privacy
             </button>
-            <span>·</span>
+            <span>\u00b7</span>
             <button className="hover:text-black/60 transition-colors">
               Terms
             </button>
-            <span>·</span>
+            <span>\u00b7</span>
             <button className="hover:text-black/60 transition-colors">
               Contact
             </button>

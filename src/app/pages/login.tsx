@@ -68,7 +68,9 @@ export function LoginPage() {
 
         // Check if response status is "success"
         if (data.status === "success") {
-          // Save the entire API response to userSession
+          // Always persist phone so dashboard auth guard can find it
+          localStorage.setItem("mira_phone", phone);
+          // Save the entire API response to userSession (also persists mira_user)
           setUserSession(data);
           // Navigate to dashboard
           navigate("/dashboard");
