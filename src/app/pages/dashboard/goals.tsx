@@ -7,14 +7,18 @@ const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=representation' };
 
+// Table: user_goals
+// Key fields: achieved_amount (not current_amount), target_amount, deadline
 type Goal = {
   id: string;
   phone_number: string;
   name: string;
   target_amount: number;
-  current_amount: number;
+  achieved_amount: number;
   deadline?: string;
   created_at?: string;
+  category?: string;
+  icon?: string;
 };
 
 const fmt = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
@@ -74,7 +78,7 @@ export function DashboardGoals() {
     setLoading(true);
     try {
       const r = await fetch(
-        `${SUPA_URL}/rest/v1/goals?phone_number=eq.${ph}&order=created_at.desc`,
+        `${SUPA_URL}/rest/v1/user_goals?phone_number=eq.${ph}&order=created_at.desc`,
         { headers: HR }
       );
       if (r.ok) {
@@ -97,13 +101,13 @@ export function DashboardGoals() {
     setSaving(true); setErr(null);
     try {
       const payload: any = {
-        phone_number:   phone,
-        name:           name.trim(),
-        target_amount:  Number(target),
-        current_amount: Number(current) || 0,
+        phone_number:    phone,
+        name:            name.trim(),
+        target_amount:   Number(target),
+        achieved_amount: Number(current) || 0,
         deadline,
       };
-      const r = await fetch(`${SUPA_URL}/rest/v1/goals`, {
+      const r = await fetch(`${SUPA_URL}/rest/v1/user_goals`, {
         method: 'POST',
         headers: HW,
         body: JSON.stringify(payload),
@@ -121,7 +125,7 @@ export function DashboardGoals() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`${SUPA_URL}/rest/v1/goals?id=eq.${id}`, {
+      await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
         method: 'DELETE', headers: HR,
       });
       setGoals(prev => prev.filter(g => g.id !== id));
@@ -131,22 +135,20 @@ export function DashboardGoals() {
   const handleUpdateProgress = async (id: string, add: number) => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
-    const newAmount = Math.min(goal.current_amount + add, goal.target_amount);
-    // Optimistic update
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, current_amount: newAmount } : g));
+    const newAmount = Math.min(goal.achieved_amount + add, goal.target_amount);
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, achieved_amount: newAmount } : g));
     try {
-      await fetch(`${SUPA_URL}/rest/v1/goals?id=eq.${id}`, {
+      await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
         method: 'PATCH',
         headers: HW,
-        body: JSON.stringify({ current_amount: newAmount }),
+        body: JSON.stringify({ achieved_amount: newAmount }),
       });
     } catch {
-      // Revert on fail
       setGoals(prev => prev.map(g => g.id === id ? goal : g));
     }
   };
 
-  const progress = (g: Goal) => Math.min((g.current_amount / g.target_amount) * 100, 100);
+  const progress = (g: Goal) => g.target_amount > 0 ? Math.min((g.achieved_amount / g.target_amount) * 100, 100) : 0;
   const monthsLeft = (deadline?: string) => {
     if (!deadline) return 0;
     const months = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
@@ -154,11 +156,11 @@ export function DashboardGoals() {
   };
   const monthlyNeeded = (g: Goal) => {
     const m = monthsLeft(g.deadline);
-    return m > 0 ? (g.target_amount - g.current_amount) / m : g.target_amount - g.current_amount;
+    return m > 0 ? (g.target_amount - g.achieved_amount) / m : g.target_amount - g.achieved_amount;
   };
 
-  const totalTarget  = goals.reduce((s, g) => s + g.target_amount, 0);
-  const totalCurrent = goals.reduce((s, g) => s + g.current_amount, 0);
+  const totalTarget   = goals.reduce((s, g) => s + g.target_amount, 0);
+  const totalCurrent  = goals.reduce((s, g) => s + g.achieved_amount, 0);
 
   return (
     <div className="gl-wrap">
@@ -183,7 +185,7 @@ export function DashboardGoals() {
           { label: 'Total Goals',     val: String(goals.length), icon: '🎯', sub: 'active goals' },
           { label: 'Total Target',    val: fmt(totalTarget),     icon: '📈', sub: 'target amount' },
           { label: 'Total Terkumpul', val: fmt(totalCurrent),    icon: '💰', sub: 'current savings' },
-        ].map(({ label, val, icon, sub }) => (
+        ].map(({ label, val, icon }) => (
           <div key={label} style={{ ...CARD, padding: '18px 20px' }}>
             <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</div>
@@ -215,7 +217,9 @@ export function DashboardGoals() {
               <div key={g.id} style={{ ...CARD }}>
                 <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2 }}>{g.name}</div>
+                    <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2 }}>
+                      {g.icon ? `${g.icon} ` : ''}{g.name}
+                    </div>
                     <div style={{ fontSize: 12, color: '#6B7280' }}>Target: {fmt(g.target_amount)}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -232,8 +236,8 @@ export function DashboardGoals() {
                   {/* Progress bar */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                      <span style={{ fontWeight: 500, color: '#111827' }}>{fmt(g.current_amount)}</span>
-                      <span style={{ color: '#9CA3AF' }}>{fmt(g.target_amount - g.current_amount)} lagi</span>
+                      <span style={{ fontWeight: 500, color: '#111827' }}>{fmt(g.achieved_amount)}</span>
+                      <span style={{ color: '#9CA3AF' }}>{fmt(g.target_amount - g.achieved_amount)} lagi</span>
                     </div>
                     <div style={{ height: 8, background: '#F1F4F8', borderRadius: 99, overflow: 'hidden' }}>
                       <div style={{ height: '100%', borderRadius: 99, background: done ? '#16A34A' : '#2563EB', width: `${Math.min(pct, 100)}%`, transition: 'width .8s cubic-bezier(.4,0,.2,1)' }} />
