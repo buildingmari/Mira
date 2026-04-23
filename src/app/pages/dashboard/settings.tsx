@@ -7,10 +7,6 @@ const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
 
-// Actual users table columns used here:
-// name, limit_nominal, saving_allocation_pct, expense_allocation_pct,
-// banks_used (text, comma-separated), ewallets_used (text), paylater_active (text)
-
 const BANKS    = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','BSI','Permata'];
 const EWALLETS = ['GoPay','OVO','DANA','ShopeePay','LinkAja'];
 const PAYLATER = ['GoPay Later','OVO Later','Akulaku','Kredivo','Shopee PayLater','Indodana'];
@@ -21,13 +17,11 @@ function decodeUnicode(str: string): string {
   return str;
 }
 
-// Parse comma-separated string like "BCA, Jenius (BTPN), OVO" → ["BCA", "Jenius (BTPN)", "OVO"]
 function parseList(raw: string | null | undefined): string[] {
   if (!raw) return [];
   return raw.split(',').map(s => s.trim()).filter(Boolean);
 }
 
-// Encode array back to comma-separated string for storage
 function encodeList(arr: string[]): string | null {
   return arr.length > 0 ? arr.join(', ') : null;
 }
@@ -77,27 +71,56 @@ const SET_CSS = `
                     cursor: pointer; border: 1.5px solid rgba(0,0,0,0.10);
                     font-family: 'DM Sans', sans-serif; transition: all .15s; background: #F8F9FB; color: #374151; }
   .set-chip.active { background: #EFF6FF; border-color: #2563EB; color: #1D4ED8; }
-  .set-ratio-bar  { height: 10px; border-radius: 99px; background: #F1F4F8; overflow: hidden; margin: 10px 0 4px; }
-  @media (max-width: 900px) {
-    .set-wrap { padding: 16px 16px 100px; }
+
+  /* ─── Savings Slider ───────────────────────────────────────────── */
+  .savings-slider-wrap { margin: 12px 0 6px; }
+  .savings-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 99px; outline: none; cursor: pointer;
+    background: linear-gradient(to right, #2563EB 0%, #2563EB var(--thumb-pct, 20%), #E5E7EB var(--thumb-pct, 20%), #E5E7EB 100%);
+    transition: background .05s;
   }
+  .savings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%; background: #fff;
+    border: 2.5px solid #2563EB; box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+    cursor: grab; transition: transform .1s;
+  }
+  .savings-slider::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.15); }
+  .savings-slider::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%; background: #fff;
+    border: 2.5px solid #2563EB; box-shadow: 0 2px 8px rgba(37,99,235,0.3); cursor: grab;
+  }
+  .savings-ratio-labels { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
+  .dark .set-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+  .dark .set-card-hdr { border-color: rgba(255,255,255,0.08); }
+  .dark .set-card-hdr h3 { color: #F1F5F9; }
+  .dark .set-label { color: #CBD5E1; }
+  .dark .set-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+  .dark .set-chip  { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
+  .dark .set-chip.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
+  .dark .set-trow  { border-color: rgba(255,255,255,0.05); }
+  .dark .savings-slider {
+    background: linear-gradient(to right, #3B82F6 0%, #3B82F6 var(--thumb-pct, 20%), #334155 var(--thumb-pct, 20%), #334155 100%);
+  }
+  @media (max-width: 900px) { .set-wrap { padding: 16px 16px 100px; } }
 `;
 
 export function DashboardSettings() {
   const navigate = useNavigate();
-  const [phone,         setPhone]         = useState('');
-  const [name,          setName]          = useState('');
-  const [monthlyLimit,  setMonthlyLimit]  = useState('0');
-  const [savingsRatio,  setSavingsRatio]  = useState('20');
-  const [activeBanks,   setActiveBanks]   = useState<string[]>([]);
-  const [activeEwallets,setActiveEwallets]= useState<string[]>([]);
-  const [activePaylater,setActivePaylater]= useState<string[]>([]);
-  const [reminder,      setReminder]      = useState(true);
-  const [weeklyReport,  setWeeklyReport]  = useState(true);
-  const [budgetAlert,   setBudgetAlert]   = useState(true);
-  const [saving,        setSaving]        = useState(false);
-  const [saved,         setSaved]         = useState(false);
-  const [err,           setErr]           = useState<string | null>(null);
+  const [phone,          setPhone]          = useState('');
+  const [name,           setName]           = useState('');
+  const [monthlyLimit,   setMonthlyLimit]   = useState('0');
+  const [savingsRatio,   setSavingsRatio]   = useState(20);
+  const [activeBanks,    setActiveBanks]    = useState<string[]>([]);
+  const [activeEwallets, setActiveEwallets] = useState<string[]>([]);
+  const [activePaylater, setActivePaylater] = useState<string[]>([]);
+  const [reminder,       setReminder]       = useState(true);
+  const [weeklyReport,   setWeeklyReport]   = useState(true);
+  const [budgetAlert,    setBudgetAlert]    = useState(true);
+  const [saving,         setSaving]         = useState(false);
+  const [saved,          setSaved]          = useState(false);
+  const [err,            setErr]            = useState<string | null>(null);
 
   useEffect(() => {
     const id = 'mira-set-css';
@@ -109,12 +132,10 @@ export function DashboardSettings() {
     return () => { document.getElementById('mira-set-css')?.remove(); };
   }, []);
 
-  // Hydrate state from real users table column names
   const hydrateUser = (u: Record<string, any>) => {
-    if (u.name)                         setName(decodeUnicode(u.name));
-    if (u.limit_nominal != null)        setMonthlyLimit(String(u.limit_nominal));
-    if (u.saving_allocation_pct != null) setSavingsRatio(String(u.saving_allocation_pct));
-    // banks_used, ewallets_used, paylater_active are comma-separated text in DB
+    if (u.name)                          setName(decodeUnicode(u.name));
+    if (u.limit_nominal != null)         setMonthlyLimit(String(u.limit_nominal));
+    if (u.saving_allocation_pct != null) setSavingsRatio(Number(u.saving_allocation_pct));
     setActiveBanks(parseList(u.banks_used));
     setActiveEwallets(parseList(u.ewallets_used));
     setActivePaylater(parseList(u.paylater_active));
@@ -125,13 +146,11 @@ export function DashboardSettings() {
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
 
-    // Hydrate from localStorage cache immediately
     try {
       const raw = localStorage.getItem('mira_user');
       if (raw) hydrateUser(JSON.parse(raw));
     } catch {}
 
-    // Fetch fresh from Supabase
     (async () => {
       try {
         const r = await fetch(
@@ -142,7 +161,6 @@ export function DashboardSettings() {
           const a = await r.json();
           if (Array.isArray(a) && a.length > 0) {
             hydrateUser(a[0]);
-            // Merge into localStorage cache
             try {
               const existing = JSON.parse(localStorage.getItem('mira_user') || '{}');
               localStorage.setItem('mira_user', JSON.stringify({ ...existing, ...a[0] }));
@@ -160,17 +178,16 @@ export function DashboardSettings() {
   const handleSave = async () => {
     setSaving(true); setErr(null);
     try {
-      const ratioNum = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
-      // Map frontend fields to actual users table column names
+      const ratioNum = Math.min(Math.max(savingsRatio, 0), 100);
       const payload: Record<string, any> = {
-        name:                  name.trim() || null,
-        limit_nominal:         Number(monthlyLimit) || 0,
-        saving_allocation_pct: ratioNum,
+        name:                   name.trim() || null,
+        limit_nominal:          Number(monthlyLimit) || 0,
+        saving_allocation_pct:  ratioNum,
         expense_allocation_pct: 100 - ratioNum,
-        banks_used:            encodeList(activeBanks),
-        ewallets_used:         encodeList(activeEwallets),
-        paylater_active:       encodeList(activePaylater),
-        updated_at:            new Date().toISOString(),
+        banks_used:             encodeList(activeBanks),
+        ewallets_used:          encodeList(activeEwallets),
+        paylater_active:        encodeList(activePaylater),
+        updated_at:             new Date().toISOString(),
       };
       const r = await fetch(
         `${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,
@@ -180,7 +197,6 @@ export function DashboardSettings() {
         const text = await r.text().catch(() => 'Gagal menyimpan');
         throw new Error(text || 'Gagal menyimpan');
       }
-      // Update local cache
       try {
         const existing = JSON.parse(localStorage.getItem('mira_user') || '{}');
         localStorage.setItem('mira_user', JSON.stringify({ ...existing, ...payload }));
@@ -230,8 +246,7 @@ export function DashboardSettings() {
     );
   }
 
-  const ratioNum   = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
-  const spendRatio = 100 - ratioNum;
+  const spendRatio = 100 - savingsRatio;
 
   return (
     <div className="set-wrap">
@@ -260,7 +275,7 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Ratio Tabungan */}
+      {/* Ratio Tabungan — SLIDER */}
       <div className="set-card">
         <div className="set-card-hdr">
           <PiggyBank style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
@@ -268,26 +283,61 @@ export function DashboardSettings() {
         </div>
         <div className="set-card-body">
           <div className="set-field">
-            <label className="set-label">Target Tabungan (%)</label>
-            <input
-              className="set-input"
-              type="number" min="0" max="100"
-              placeholder="20"
-              value={savingsRatio}
-              onChange={e => setSavingsRatio(e.target.value)}
-            />
-            <div className="set-ratio-bar">
+            <label className="set-label">
+              Target Tabungan —&nbsp;
+              <span style={{ fontFamily: "'Sora',sans-serif", color: '#2563EB', fontWeight: 700 }}>
+                {savingsRatio}%
+              </span>
+            </label>
+
+            {/* Slider */}
+            <div className="savings-slider-wrap">
+              <input
+                type="range"
+                className="savings-slider"
+                min={0} max={100} step={1}
+                value={savingsRatio}
+                style={{ '--thumb-pct': `${savingsRatio}%` } as React.CSSProperties}
+                onChange={e => setSavingsRatio(Number(e.target.value))}
+              />
+            </div>
+
+            {/* Dual label */}
+            <div className="savings-ratio-labels">
+              <span style={{ color: '#2563EB', fontWeight: 600 }}>💰 Tabungan {savingsRatio}%</span>
+              <span style={{ color: '#6B7280' }}>💸 Pengeluaran {spendRatio}%</span>
+            </div>
+
+            {/* Visual split bar */}
+            <div style={{
+              display: 'flex', borderRadius: 99, overflow: 'hidden', height: 10, marginTop: 10,
+              transition: 'all .3s',
+            }}>
               <div style={{
-                height: '100%', borderRadius: 99,
-                background: 'linear-gradient(90deg, #2563EB 0%, #10B981 100%)',
-                width: `${ratioNum}%`, transition: 'width .4s',
+                flex: savingsRatio, background: 'linear-gradient(90deg,#2563EB,#10B981)',
+                transition: 'flex .3s',
+              }} />
+              <div style={{
+                flex: spendRatio, background: '#F1F4F8',
+                transition: 'flex .3s',
               }} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280' }}>
-              <span style={{ color: '#2563EB', fontWeight: 500 }}>Tabungan {ratioNum}%</span>
-              <span>Pengeluaran {spendRatio}%</span>
+
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+              {[0, 10, 20, 30, 40, 50].map(v => (
+                <button key={v} onClick={() => setSavingsRatio(v)} style={{
+                  padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 500,
+                  border: `1.5px solid ${savingsRatio === v ? '#2563EB' : 'rgba(0,0,0,0.1)'}`,
+                  background: savingsRatio === v ? '#EFF6FF' : '#F8F9FB',
+                  color: savingsRatio === v ? '#1D4ED8' : '#374151',
+                  cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
+                }}>
+                  {v}%
+                </button>
+              ))}
             </div>
           </div>
+
           <div className="set-field">
             <label className="set-label">Limit Pengeluaran Bulanan (Rp)</label>
             <input
@@ -397,10 +447,7 @@ export function DashboardSettings() {
           <p style={{ margin: '0 0 10px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
             Data kamu di-enkripsi dan aman. Kami tidak akan membagikan data ke pihak ketiga.
           </p>
-          <a
-            href="/privacy-policy"
-            style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}
-          >
+          <a href="/privacy-policy" style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}>
             Lihat Privacy Policy →
           </a>
         </div>
