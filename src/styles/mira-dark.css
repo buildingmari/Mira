@@ -1,7 +1,6 @@
 /* ======================================================================
    MIRA Dashboard — Dark Mode
    Applies when <html class="dark"> (set by ThemeProvider)
-   All colors target dashboard elements: layout, sidebar, cards, charts
    ====================================================================== */
 
 /* ── Layout shell ──────────────────────────────────────────────────── */
@@ -12,193 +11,188 @@
 /* ── Sidebar ───────────────────────────────────────────────────────── */
 .dark #mira-sidebar {
   background: #1E293B;
-  border-right-color: rgba(255, 255, 255, 0.07);
+  border-right-color: rgba(255,255,255,0.07);
 }
-.dark .mira-nav-btn {
-  color: #CBD5E1;
-}
-.dark .mira-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #F1F5F9;
-}
-.dark .mira-nav-btn.active {
-  background: rgba(37, 99, 235, 0.18);
-  color: #93C5FD;
-}
+.dark .mira-nav-btn { color: #CBD5E1; }
+.dark .mira-nav-btn:hover { background: rgba(255,255,255,0.06); color: #F1F5F9; }
+.dark .mira-nav-btn.active { background: rgba(37,99,235,0.18); color: #93C5FD; }
 
-/* Sidebar section label (10px uppercase nav group headers) */
-.dark #mira-sidebar [style*="color: #9CA3AF"],
-.dark #mira-sidebar [style*="color:#9CA3AF"] {
-  color: #64748B !important;
-}
-
-/* Sidebar logo text */
+/* Sidebar — text nodes */
 .dark #mira-sidebar [style*="color: #111827"],
-.dark #mira-sidebar [style*="color:#111827"] {
-  color: #F1F5F9 !important;
-}
+.dark #mira-sidebar [style*="color:#111827"] { color: #F1F5F9 !important; }
+.dark #mira-sidebar [style*="color: #6B7280"],
+.dark #mira-sidebar [style*="color:#6B7280"] { color: #64748B !important; }
+.dark #mira-sidebar [style*="color: #9CA3AF"],
+.dark #mira-sidebar [style*="color:#9CA3AF"] { color: #64748B !important; }
 
-/* Sidebar border separator */
-.dark #mira-sidebar > div:last-child {
-  border-top-color: rgba(255, 255, 255, 0.07) !important;
-}
-.dark #mira-sidebar > div > div:first-child {
-  border-top-color: rgba(255, 255, 255, 0.07) !important;
+/* Sidebar — border separators */
+.dark #mira-sidebar [style*="border-bottom: 1px solid rgba(0,0,0"],
+.dark #mira-sidebar [style*="borderBottom: 1px solid rgba(0,0,0"],
+.dark #mira-sidebar [style*="border-top: 1px solid rgba(0,0,0"],
+.dark #mira-sidebar [style*="borderTop: 1px solid rgba(0,0,0"] {
+  border-color: rgba(255,255,255,0.07) !important;
 }
 
 /* ── Top bar ───────────────────────────────────────────────────────── */
 .dark #mira-topbar {
-  background: rgba(15, 23, 42, 0.92);
-  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: rgba(15,23,42,0.92);
+  border-bottom-color: rgba(255,255,255,0.07);
 }
 .dark #mira-topbar h1 { color: #F1F5F9; }
 .dark #mira-topbar p  { color: #94A3B8; }
 
-/* Topbar: theme toggle button (white bg) and logout button (transparent) */
+/* Topbar buttons (theme-toggle white bg, logout transparent bg) */
 .dark #mira-topbar button[style*="background: #fff"],
 .dark #mira-topbar button[style*="background:#fff"] {
   background: #1E293B !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255,255,255,0.12) !important;
   color: #94A3B8 !important;
 }
 .dark #mira-topbar button[style*="background: transparent"] {
   color: #94A3B8 !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255,255,255,0.12) !important;
 }
 
 /* ── Mobile top bar ────────────────────────────────────────────────── */
 .dark #mira-mobile-topbar {
-  background: rgba(15, 23, 42, 0.96);
-  border-bottom-color: rgba(255, 255, 255, 0.07);
+  background: rgba(15,23,42,0.96);
+  border-bottom-color: rgba(255,255,255,0.07);
 }
 .dark #mira-mobile-topbar span { color: #F1F5F9; }
-
-/* Mobile topbar: theme toggle button */
 .dark #mira-mobile-topbar button[style*="background: #fff"],
 .dark #mira-mobile-topbar button[style*="background:#fff"] {
   background: #1E293B !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255,255,255,0.12) !important;
   color: #94A3B8 !important;
 }
 
 /* ── Mobile nav bar ────────────────────────────────────────────────── */
 .dark #mira-mobile-nav {
-  background: rgba(30, 41, 59, 0.96);
-  border-top-color: rgba(255, 255, 255, 0.07);
+  background: rgba(30,41,59,0.96);
+  border-top-color: rgba(255,255,255,0.07);
 }
 .dark .mira-mob-btn { color: #64748B; }
 .dark .mira-mob-btn.active { color: #60A5FA; }
 
-/* ── Generic card override (used everywhere) ───────────────────────── */
-.dark .mira-card,
-.dark [class*="-card"]:not(.aff-card-body):not(.set-err) {
-  background: #1E293B !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}
-.dark [class*="-card-hdr"] {
-  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
-}
-.dark [class*="-card-hdr"] h3 { color: #F1F5F9 !important; }
-
-/* ── Global text overrides ─────────────────────────────────────────── */
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #F1F5F9; }
-.dark p  { color: #CBD5E1; }
-.dark label { color: #CBD5E1; }
-.dark span  { color: inherit; }
-
-/* ── Force high-contrast on all inline-styled text in dark mode ─────── */
-.dark [style*="color: #111827"],
-.dark [style*="color:#111827"] {
-  color: #F1F5F9 !important;
-}
-.dark [style*="color: #1F2937"],
-.dark [style*="color:#1F2937"] {
-  color: #E2E8F0 !important;
-}
-.dark [style*="color: #374151"],
-.dark [style*="color:#374151"] {
-  color: #CBD5E1 !important;
-}
-.dark [style*="color: #4B5563"],
-.dark [style*="color:#4B5563"] {
-  color: #94A3B8 !important;
-}
-.dark [style*="color: #6B7280"],
-.dark [style*="color:#6B7280"] {
-  color: #94A3B8 !important;
-}
-/* FIX: was #64748B — insufficient contrast on dark bg, raised to #94A3B8 */
-.dark [style*="color: #9CA3AF"],
-.dark [style*="color:#9CA3AF"] {
-  color: #94A3B8 !important;
-}
-
-/* ── Specific page wrappers ────────────────────────────────────────── */
-.dark .ast-wrap,
-.dark .txn-wrap,
-.dark .exp-wrap,
-.dark .set-wrap,
-.dark .aff-wrap,
-.dark .ovr-wrap,
-.dark .ins-wrap,
-.dark .gls-wrap,
-.dark .gl-wrap,
-.dark .ov-wrap {
-  color: #F1F5F9;
-}
-
-/* ── Page backgrounds ──────────────────────────────────────────────── */
-.dark .txn-wrap > div:first-child,
-.dark .aff-wrap > div:first-child,
-.dark .ov-wrap > div:first-child {
-  color: #F1F5F9;
-}
-
-/* ── Overview / Dashboard cards (inline style object CARD) ─────────── */
-.dark .ov-wrap [style*="background: #fff"],
-.dark .ov-wrap [style*="background:#fff"] {
-  background: #1E293B !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* Overview progress bar track */
-.dark .ov-wrap [style*="background: #F1F4F8"],
-.dark .ov-wrap [style*="background:#F1F4F8"] {
-  background: rgba(255, 255, 255, 0.08) !important;
-}
-
-/* Overview "Lihat semua" button */
-.dark .ov-wrap button[style*="background: none"],
-.dark .ov-wrap button[style*="background:none"] {
-  color: #94A3B8 !important;
-}
-
-/* ── Filter / control bar background ──────────────────────────────── */
-.dark .txn-wrap > div[style*="background: #fff"],
-.dark .txn-wrap > div[style*="background:#fff"] {
+/* ======================================================================
+   GLOBAL CARD OVERRIDE
+   Catches every element inside #mira-main that carries an inline
+   background: #fff / #ffffff / white  (from CARD constant pattern)
+   Also catches backgroundColor: #fff used in recharts TT tooltips
+   ====================================================================== */
+.dark #mira-main [style*="background: #fff"],
+.dark #mira-main [style*="background:#fff"],
+.dark #mira-main [style*="background: #ffffff"],
+.dark #mira-main [style*="background:#ffffff"],
+.dark #mira-main [style*="background: #FFFFFF"],
+.dark #mira-main [style*="background: white"],
+.dark #mira-main [style*="background:white"] {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
 
-/* Category filter chips — inactive state */
-.dark .txn-wrap button[style*="background: #F8F9FB"],
-.dark .txn-wrap button[style*="background:#F8F9FB"] {
-  background: #0F172A !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #CBD5E1 !important;
+/* Recharts TT tooltip uses backgroundColor not background */
+.dark #mira-main [style*="background-color: #fff"],
+.dark #mira-main [style*="background-color:#fff"],
+.dark #mira-main [style*="background-color: #ffffff"],
+.dark #mira-main [style*="background-color: rgb(255, 255, 255)"] {
+  background-color: #1E293B !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }
 
-/* Filter toggle button inactive */
-.dark .txn-wrap > div button[style*="background: #F8F9FB"],
-.dark .txn-wrap > div button[style*="background:#F8F9FB"] {
-  background: #0F172A !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #CBD5E1 !important;
+/* ── Class-based generic card override ─────────────────────────────── */
+.dark .mira-card,
+.dark [class*="-card"]:not(.aff-card-body):not(.set-err) {
+  background: #1E293B !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+.dark [class*="-card-hdr"] {
+  border-bottom-color: rgba(255,255,255,0.07) !important;
+}
+.dark [class*="-card-hdr"] h3 { color: #F1F5F9 !important; }
+
+/* ======================================================================
+   GLOBAL INLINE BORDER OVERRIDES  (rgba(0,0,*) → white equivalent)
+   ====================================================================== */
+.dark #mira-main [style*="border-bottom: 1px solid rgba(0,0,0"],
+.dark #mira-main [style*="border-top: 1px solid rgba(0,0,0"],
+.dark #mira-main [style*="border: 1px solid rgba(0,0,0"] {
+  border-color: rgba(255,255,255,0.07) !important;
 }
 
-/* ── Overview / Dashboard ─────────────────────────────────────────── */
-.dark .ovr-stat-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .ovr-chart-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+/* ======================================================================
+   GLOBAL TEXT COLOR OVERRIDES
+   Catches all hardcoded light-mode text on inline-styled elements
+   ====================================================================== */
+.dark [style*="color: #111827"],
+.dark [style*="color:#111827"] { color: #F1F5F9 !important; }
+.dark [style*="color: #1F2937"],
+.dark [style*="color:#1F2937"] { color: #E2E8F0 !important; }
+.dark [style*="color: #374151"],
+.dark [style*="color:#374151"] { color: #CBD5E1 !important; }
+.dark [style*="color: #4B5563"],
+.dark [style*="color:#4B5563"] { color: #94A3B8 !important; }
+.dark [style*="color: #6B7280"],
+.dark [style*="color:#6B7280"] { color: #94A3B8 !important; }
+.dark [style*="color: #9CA3AF"],
+.dark [style*="color:#9CA3AF"] { color: #94A3B8 !important; }
+
+/* Semantic tag overrides */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #F1F5F9; }
+.dark p   { color: #CBD5E1; }
+.dark label { color: #CBD5E1; }
+.dark span  { color: inherit; }
+
+/* ── Specific page wrappers ────────────────────────────────────────── */
+.dark .ast-wrap, .dark .txn-wrap, .dark .exp-wrap, .dark .set-wrap,
+.dark .aff-wrap, .dark .ovr-wrap, .dark .ins-wrap, .dark .gls-wrap,
+.dark .gl-wrap,  .dark .ov-wrap  { color: #F1F5F9; }
+
+/* ======================================================================
+   LIGHT-TINT COLORED CARDS  (insight + goal status blocks)
+   Replace pastel fills with dark semi-transparent equivalents
+   ====================================================================== */
+
+/* Blue-tint cards */
+.dark #mira-main [style*="background: #EFF6FF"],
+.dark #mira-main [style*="background:#EFF6FF"] {
+  background: rgba(37,99,235,0.15) !important;
+  border-color: rgba(59,130,246,0.25) !important;
+}
+/* Red-tint cards */
+.dark #mira-main [style*="background: #FFF1F2"],
+.dark #mira-main [style*="background:#FFF1F2"] {
+  background: rgba(239,68,68,0.12) !important;
+  border-color: rgba(239,68,68,0.2) !important;
+}
+/* Yellow-tint cards */
+.dark #mira-main [style*="background: #FFFBEB"],
+.dark #mira-main [style*="background:#FFFBEB"] {
+  background: rgba(245,158,11,0.12) !important;
+  border-color: rgba(245,158,11,0.2) !important;
+}
+/* Green-tint cards */
+.dark #mira-main [style*="background: #F0FDF4"],
+.dark #mira-main [style*="background:#F0FDF4"] {
+  background: rgba(22,163,74,0.12) !important;
+  border-color: rgba(22,163,74,0.2) !important;
+}
+
+/* ======================================================================
+   PROGRESS BAR TRACKS  (all pages)
+   ====================================================================== */
+.dark #mira-main [style*="background: #F1F4F8"],
+.dark #mira-main [style*="background:#F1F4F8"] {
+  background: rgba(255,255,255,0.08) !important;
+}
+.dark #mira-main [style*="background: #F8F9FB"],
+.dark #mira-main [style*="background:#F8F9FB"] {
+  background: #0F172A !important;
+}
+
+/* ======================================================================
+   PAGE-SPECIFIC OVERRIDES
+   ====================================================================== */
 
 /* ── Transactions ──────────────────────────────────────────────────── */
 .dark .txn-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
@@ -206,24 +200,38 @@
 .dark .txn-hdr h3 { color: #F1F5F9 !important; }
 .dark .txn-hdr span { color: #94A3B8 !important; }
 .dark .txn-row   { border-bottom-color: rgba(255,255,255,0.05); color: #F1F5F9; }
-.dark .txn-row:hover { background: rgba(255,255,255,0.04); }
-.dark .txn-ctrl  {
-  background: #0F172A;
-  border-color: rgba(255,255,255,0.12);
-  color: #F1F5F9;
-  -webkit-text-fill-color: #F1F5F9;
+.dark .txn-row:hover { background: rgba(255,255,255,0.04) !important; }
+.dark .txn-ctrl {
+  background: #0F172A !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #F1F5F9 !important;
+  -webkit-text-fill-color: #F1F5F9 !important;
+  color-scheme: dark;
 }
 .dark .txn-ctrl::placeholder { color: #475569; -webkit-text-fill-color: #475569; }
 .dark .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
 .dark .txn-chip-active {
-  background: rgba(37,99,235,0.2);
-  border-color: rgba(59,130,246,0.4);
-  color: #93C5FD;
+  background: rgba(37,99,235,0.2) !important;
+  border-color: rgba(59,130,246,0.4) !important;
+  color: #93C5FD !important;
 }
 .dark .txn-reset {
-  background: rgba(239,68,68,0.12);
-  border-color: rgba(239,68,68,0.3);
-  color: #FCA5A5;
+  background: rgba(239,68,68,0.12) !important;
+  border-color: rgba(239,68,68,0.3) !important;
+  color: #FCA5A5 !important;
+}
+/* Transaction filter bar outer container */
+.dark .txn-wrap > div[style*="background: #fff"],
+.dark .txn-wrap > div[style*="background:#fff"] {
+  background: #1E293B !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+/* Category chip inactive */
+.dark .txn-wrap button[style*="background: #F8F9FB"],
+.dark .txn-wrap button[style*="background:#F8F9FB"] {
+  background: #0F172A !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #CBD5E1 !important;
 }
 
 /* ── Assets ────────────────────────────────────────────────────────── */
@@ -248,7 +256,7 @@
 .dark .set-chip.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
 .dark .set-trow  { border-bottom-color: rgba(255,255,255,0.05); }
 .dark .savings-slider {
-  background: linear-gradient(to right, #3B82F6 0%, #3B82F6 var(--thumb-pct, 20%), #334155 var(--thumb-pct, 20%), #334155 100%);
+  background: linear-gradient(to right, #3B82F6 0%, #3B82F6 var(--thumb-pct,20%), #334155 var(--thumb-pct,20%), #334155 100%);
 }
 
 /* ── Export ────────────────────────────────────────────────────────── */
@@ -270,10 +278,14 @@
 .dark .aff-card-hdr h3 { color: #F1F5F9 !important; }
 .dark .aff-card-body { color: #CBD5E1; }
 .dark .aff-stat > div { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark .aff-stat-val { color: #F1F5F9 !important; }
+.dark .aff-stat-lbl { color: #94A3B8 !important; }
+.dark .aff-ref-name { color: #F1F5F9 !important; }
+.dark .aff-ref-phone { color: #94A3B8 !important; }
 
 /* ── Goal cards ────────────────────────────────────────────────────── */
 .dark .goal-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .gl-wrap .gl-modal { background: #1E293B; }
+.dark .gl-wrap .gl-modal { background: #1E293B !important; }
 .dark .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
 .dark .gl-label { color: #94A3B8; }
 .dark .gl-input {
@@ -282,6 +294,27 @@
   color: #F1F5F9;
 }
 .dark .gl-input::placeholder { color: #475569; }
+.dark .gl-progress-input {
+  background: #0F172A !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: #F1F5F9 !important;
+}
+.dark .gl-progress-input::placeholder { color: #475569; }
+.dark .gl-quick-btn {
+  background: #0F172A !important;
+  border-color: rgba(255,255,255,0.10) !important;
+  color: #CBD5E1 !important;
+}
+.dark .gl-quick-btn:hover {
+  background: rgba(37,99,235,0.15) !important;
+  border-color: rgba(59,130,246,0.4) !important;
+  color: #93C5FD !important;
+}
+.dark .gl-reset-btn {
+  background: rgba(239,68,68,0.12) !important;
+  border-color: rgba(239,68,68,0.3) !important;
+  color: #FCA5A5 !important;
+}
 
 /* ── Modal overlays ────────────────────────────────────────────────── */
 .dark .ast-modal { background: #1E293B; }
@@ -291,28 +324,41 @@
   color: #F1F5F9;
 }
 
-/* ── Recharts / Charts ─────────────────────────────────────────────── */
+/* ── Overview stat / chart cards (class-named) ─────────────────────── */
+.dark .ovr-stat-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark .ovr-chart-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+
+/* ── Overview "Lihat semua" button ─────────────────────────────────── */
+.dark .ov-wrap button[style*="background: none"],
+.dark .ov-wrap button[style*="background:none"] { color: #94A3B8 !important; }
+
+/* ======================================================================
+   RECHARTS — Charts, Axes, Tooltips
+   ====================================================================== */
 .dark .recharts-cartesian-grid-horizontal line,
 .dark .recharts-cartesian-grid-vertical line {
   stroke: rgba(255,255,255,0.06);
 }
-.dark .recharts-text { fill: #94A3B8; }
+.dark .recharts-text { fill: #94A3B8 !important; }
+.dark .recharts-label { fill: #94A3B8 !important; }
+
+/* Tooltip wrapper — both inline bg variants */
 .dark .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.12) !important;
   color: #F1F5F9 !important;
 }
 .dark .recharts-tooltip-label { color: #F1F5F9 !important; }
-.dark .recharts-tooltip-item { color: #CBD5E1 !important; }
+.dark .recharts-tooltip-item  { color: #CBD5E1 !important; }
 
-/* ── Buttons ───────────────────────────────────────────────────────── */
-.dark #mira-topbar button:not([style*="background: #2563EB"]):not([style*="background:#2563EB"]) {
-  background: #1E293B;
-  border-color: rgba(255,255,255,0.12);
-  color: #94A3B8;
+/* BarChart cursor fill (hover highlight) */
+.dark .recharts-rectangle.recharts-tooltip-cursor {
+  fill: rgba(255,255,255,0.04) !important;
 }
 
-/* ── Input / select base ───────────────────────────────────────────── */
+/* ======================================================================
+   INPUTS — Global dark base
+   ====================================================================== */
 .dark input[type="date"],
 .dark input[type="text"],
 .dark input[type="number"],
@@ -320,13 +366,17 @@
 .dark select {
   color-scheme: dark;
   color: #F1F5F9;
+  background-color: #0F172A;
 }
-
-/* ── Generic input placeholder ─────────────────────────────────────── */
 .dark input::placeholder,
-.dark textarea::placeholder {
-  color: #475569;
+.dark textarea::placeholder { color: #475569; }
+
+/* ── Topbar button generic override ───────────────────────────────── */
+.dark #mira-topbar button:not([style*="background: #2563EB"]):not([style*="background:#2563EB"]) {
+  background: #1E293B;
+  border-color: rgba(255,255,255,0.12);
+  color: #94A3B8;
 }
 
-/* ── Page background ───────────────────────────────────────────────── */
+/* ── Page/body background ──────────────────────────────────────────── */
 .dark body { background: #0F172A; color: #F1F5F9; }
