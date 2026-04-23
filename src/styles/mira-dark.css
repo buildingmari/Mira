@@ -26,6 +26,26 @@
   color: #93C5FD;
 }
 
+/* Sidebar section label (10px uppercase nav group headers) */
+.dark #mira-sidebar [style*="color: #9CA3AF"],
+.dark #mira-sidebar [style*="color:#9CA3AF"] {
+  color: #64748B !important;
+}
+
+/* Sidebar logo text */
+.dark #mira-sidebar [style*="color: #111827"],
+.dark #mira-sidebar [style*="color:#111827"] {
+  color: #F1F5F9 !important;
+}
+
+/* Sidebar border separator */
+.dark #mira-sidebar > div:last-child {
+  border-top-color: rgba(255, 255, 255, 0.07) !important;
+}
+.dark #mira-sidebar > div > div:first-child {
+  border-top-color: rgba(255, 255, 255, 0.07) !important;
+}
+
 /* ── Top bar ───────────────────────────────────────────────────────── */
 .dark #mira-topbar {
   background: rgba(15, 23, 42, 0.92);
@@ -34,12 +54,32 @@
 .dark #mira-topbar h1 { color: #F1F5F9; }
 .dark #mira-topbar p  { color: #94A3B8; }
 
+/* Topbar: theme toggle button (white bg) and logout button (transparent) */
+.dark #mira-topbar button[style*="background: #fff"],
+.dark #mira-topbar button[style*="background:#fff"] {
+  background: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94A3B8 !important;
+}
+.dark #mira-topbar button[style*="background: transparent"] {
+  color: #94A3B8 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
 /* ── Mobile top bar ────────────────────────────────────────────────── */
 .dark #mira-mobile-topbar {
   background: rgba(15, 23, 42, 0.96);
   border-bottom-color: rgba(255, 255, 255, 0.07);
 }
 .dark #mira-mobile-topbar span { color: #F1F5F9; }
+
+/* Mobile topbar: theme toggle button */
+.dark #mira-mobile-topbar button[style*="background: #fff"],
+.dark #mira-mobile-topbar button[style*="background:#fff"] {
+  background: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #94A3B8 !important;
+}
 
 /* ── Mobile nav bar ────────────────────────────────────────────────── */
 .dark #mira-mobile-nav {
@@ -87,9 +127,10 @@
 .dark [style*="color:#6B7280"] {
   color: #94A3B8 !important;
 }
+/* FIX: was #64748B — insufficient contrast on dark bg, raised to #94A3B8 */
 .dark [style*="color: #9CA3AF"],
 .dark [style*="color:#9CA3AF"] {
-  color: #64748B !important;
+  color: #94A3B8 !important;
 }
 
 /* ── Specific page wrappers ────────────────────────────────────────── */
@@ -101,14 +142,35 @@
 .dark .ovr-wrap,
 .dark .ins-wrap,
 .dark .gls-wrap,
-.dark .gl-wrap {
+.dark .gl-wrap,
+.dark .ov-wrap {
   color: #F1F5F9;
 }
 
 /* ── Page backgrounds ──────────────────────────────────────────────── */
 .dark .txn-wrap > div:first-child,
-.dark .aff-wrap > div:first-child {
+.dark .aff-wrap > div:first-child,
+.dark .ov-wrap > div:first-child {
   color: #F1F5F9;
+}
+
+/* ── Overview / Dashboard cards (inline style object CARD) ─────────── */
+.dark .ov-wrap [style*="background: #fff"],
+.dark .ov-wrap [style*="background:#fff"] {
+  background: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Overview progress bar track */
+.dark .ov-wrap [style*="background: #F1F4F8"],
+.dark .ov-wrap [style*="background:#F1F4F8"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Overview "Lihat semua" button */
+.dark .ov-wrap button[style*="background: none"],
+.dark .ov-wrap button[style*="background:none"] {
+  color: #94A3B8 !important;
 }
 
 /* ── Filter / control bar background ──────────────────────────────── */
@@ -116,6 +178,22 @@
 .dark .txn-wrap > div[style*="background:#fff"] {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Category filter chips — inactive state */
+.dark .txn-wrap button[style*="background: #F8F9FB"],
+.dark .txn-wrap button[style*="background:#F8F9FB"] {
+  background: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #CBD5E1 !important;
+}
+
+/* Filter toggle button inactive */
+.dark .txn-wrap > div button[style*="background: #F8F9FB"],
+.dark .txn-wrap > div button[style*="background:#F8F9FB"] {
+  background: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #CBD5E1 !important;
 }
 
 /* ── Overview / Dashboard ─────────────────────────────────────────── */
@@ -133,7 +211,9 @@
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
+  -webkit-text-fill-color: #F1F5F9;
 }
+.dark .txn-ctrl::placeholder { color: #475569; -webkit-text-fill-color: #475569; }
 .dark .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
 .dark .txn-chip-active {
   background: rgba(37,99,235,0.2);
@@ -222,6 +302,8 @@
   border-color: rgba(255,255,255,0.12) !important;
   color: #F1F5F9 !important;
 }
+.dark .recharts-tooltip-label { color: #F1F5F9 !important; }
+.dark .recharts-tooltip-item { color: #CBD5E1 !important; }
 
 /* ── Buttons ───────────────────────────────────────────────────────── */
 .dark #mira-topbar button:not([style*="background: #2563EB"]):not([style*="background:#2563EB"]) {
@@ -238,6 +320,12 @@
 .dark select {
   color-scheme: dark;
   color: #F1F5F9;
+}
+
+/* ── Generic input placeholder ─────────────────────────────────────── */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569;
 }
 
 /* ── Page background ───────────────────────────────────────────────── */
