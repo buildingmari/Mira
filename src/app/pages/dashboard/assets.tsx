@@ -7,18 +7,32 @@ const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=representation' };
 
+// Table: user_assets
+// Key fields: category (main group), subtype (display label), name, value
 type Asset = {
   id: string;
   phone_number: string;
-  name: string;
   category: string;
+  subtype: string;
+  name: string;
   value: number;
+  updated_date?: string;
   created_at?: string;
 };
 
 const fmt = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
 
-const ASSET_TYPES = ['Tabungan', 'Investasi', 'Properti', 'Kendaraan', 'Emas', 'Kripto', 'Lainnya'];
+// Frontend subtype options
+const ASSET_SUBTYPES = ['Tabungan', 'Deposito', 'Saham', 'Reksa Dana', 'Obligasi', 'Kripto', 'Emas', 'Properti', 'Kendaraan', 'Lainnya'];
+
+// Map subtype to a broad category
+function subtypeToCategory(sub: string): string {
+  if (['Saham', 'Reksa Dana', 'Obligasi', 'Kripto', 'Emas'].includes(sub)) return 'Investasi';
+  if (['Tabungan', 'Deposito'].includes(sub)) return 'cash';
+  if (sub === 'Properti') return 'Properti';
+  if (sub === 'Kendaraan') return 'Kendaraan';
+  return 'Lainnya';
+}
 
 const AST_CSS = `
   .ast-wrap  { padding: 28px 32px 40px; max-width: 680px; margin: 0 auto; font-family: 'DM Sans', sans-serif; }
@@ -42,7 +56,7 @@ export function DashboardAssets() {
   const [loading,   setLoading]   = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [aName,     setAName]     = useState('');
-  const [aType,     setAType]     = useState('Tabungan');
+  const [aSubtype,  setASubtype]  = useState('Tabungan');
   const [aValue,    setAValue]    = useState('');
   const [saving,    setSaving]    = useState(false);
   const [err,       setErr]       = useState<string | null>(null);
@@ -60,7 +74,7 @@ export function DashboardAssets() {
     setLoading(true);
     try {
       const r = await fetch(
-        `${SUPA_URL}/rest/v1/assets?phone_number=eq.${ph}&order=created_at.desc`,
+        `${SUPA_URL}/rest/v1/user_assets?phone_number=eq.${ph}&order=created_at.desc`,
         { headers: HR }
       );
       if (r.ok) {
@@ -83,18 +97,20 @@ export function DashboardAssets() {
     setSaving(true); setErr(null);
     try {
       const payload = {
-        phone_number: phone,
-        name:         aName.trim(),
-        category:     aType,
-        value:        Number(aValue),
+        phone_number:  phone,
+        name:          aName.trim(),
+        category:      subtypeToCategory(aSubtype),
+        subtype:       aSubtype,
+        value:         Number(aValue),
+        updated_date:  new Date().toISOString().split('T')[0],
       };
-      const r = await fetch(`${SUPA_URL}/rest/v1/assets`, {
+      const r = await fetch(`${SUPA_URL}/rest/v1/user_assets`, {
         method: 'POST',
         headers: HW,
         body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error(await r.text());
-      setAName(''); setAType('Tabungan'); setAValue('');
+      setAName(''); setASubtype('Tabungan'); setAValue('');
       setShowModal(false);
       await fetchAssets(phone);
     } catch (e: any) {
@@ -106,7 +122,7 @@ export function DashboardAssets() {
   const handleDelete = async (id: string) => {
     setAssets(prev => prev.filter(a => a.id !== id)); // optimistic
     try {
-      await fetch(`${SUPA_URL}/rest/v1/assets?id=eq.${id}`, {
+      await fetch(`${SUPA_URL}/rest/v1/user_assets?id=eq.${id}`, {
         method: 'DELETE', headers: HR,
       });
     } catch {
@@ -114,9 +130,14 @@ export function DashboardAssets() {
     }
   };
 
-  const totalAssets = assets.reduce((s, a) => s + a.value, 0);
+  const totalAssets = assets.reduce((s, a) => s + (a.value || 0), 0);
+
+  // Group by display label (subtype || category)
   const byType: Record<string, number> = {};
-  assets.forEach(a => { byType[a.category] = (byType[a.category] || 0) + a.value; });
+  assets.forEach(a => {
+    const label = a.subtype || a.category || 'Lainnya';
+    byType[label] = (byType[label] || 0) + (a.value || 0);
+  });
 
   return (
     <div className="ast-wrap">
@@ -189,7 +210,7 @@ export function DashboardAssets() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{a.name}</div>
-                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{a.category}</div>
+                <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{a.subtype || a.category}</div>
               </div>
               <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827' }}>{fmt(a.value)}</div>
               <button onClick={() => handleDelete(a.id)}
@@ -218,9 +239,9 @@ export function DashboardAssets() {
                 <input className="ast-input" placeholder="e.g. Tabungan BCA" value={aName} onChange={e => setAName(e.target.value)} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#6B7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>Kategori</label>
-                <select className="ast-select" value={aType} onChange={e => setAType(e.target.value)}>
-                  {ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#6B7280', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 }}>Tipe Aset</label>
+                <select className="ast-select" value={aSubtype} onChange={e => setASubtype(e.target.value)}>
+                  {ASSET_SUBTYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div>
