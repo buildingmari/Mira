@@ -12,6 +12,12 @@ const EWALLETS = ['GoPay','OVO','DANA','ShopeePay','LinkAja'];
 const PAYLATER = ['GoPay Later','OVO Later','Akulaku','Kredivo','Shopee PayLater','Indodana'];
 const WALLETS  = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','GoPay','OVO','DANA','ShopeePay','LinkAja','Cash'];
 
+function decodeUnicode(str: string): string {
+  if (!str) return str;
+  try { return str.replace(/\\u([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16))); } catch {}
+  return str;
+}
+
 const SET_CSS = `
   .set-wrap       { padding: 28px 32px 80px; max-width: 680px; margin: 0 auto;
                     font-family: 'DM Sans', sans-serif; }
@@ -73,6 +79,7 @@ export function DashboardSettings() {
   const [name,          setName]          = useState('');
   const [primaryWallet, setPrimaryWallet] = useState('GoPay');
   const [monthlyLimit,  setMonthlyLimit]  = useState('5000000');
+  const [savingsGoal,   setSavingsGoal]   = useState('');
   const [savingsRatio,  setSavingsRatio]  = useState('20');
   const [activeBanks,   setActiveBanks]   = useState<string[]>([]);
   const [activeEwallets,setActiveEwallets]= useState<string[]>([]);
@@ -94,25 +101,29 @@ export function DashboardSettings() {
     return () => { document.getElementById('mira-set-css')?.remove(); };
   }, []);
 
+  const hydrateUser = (u: Record<string, any>) => {
+    if (u.name)            setName(decodeUnicode(u.name));
+    if (u.primary_wallet)  setPrimaryWallet(u.primary_wallet);
+    if (u.monthly_limit != null)  setMonthlyLimit(String(u.monthly_limit));
+    if (u.savings_goal   != null) setSavingsGoal(String(u.savings_goal));
+    if (u.savings_ratio  != null) setSavingsRatio(String(u.savings_ratio));
+    if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
+    if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
+    if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
+  };
+
   useEffect(() => {
     const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
 
+    // Hydrate from localStorage cache immediately
     try {
       const raw = localStorage.getItem('mira_user');
-      if (raw) {
-        const u = JSON.parse(raw);
-        if (u.name)            setName(u.name);
-        if (u.primary_wallet)  setPrimaryWallet(u.primary_wallet);
-        if (u.monthly_limit)   setMonthlyLimit(String(u.monthly_limit));
-        if (u.savings_ratio)   setSavingsRatio(String(u.savings_ratio));
-        if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
-        if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
-        if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
-      }
+      if (raw) hydrateUser(JSON.parse(raw));
     } catch {}
 
+    // Then fetch fresh from Supabase
     (async () => {
       try {
         const r = await fetch(
@@ -122,15 +133,8 @@ export function DashboardSettings() {
         if (r.ok) {
           const a = await r.json();
           if (Array.isArray(a) && a.length > 0) {
-            const u = a[0];
-            setName(u.name || '');
-            setPrimaryWallet(u.primary_wallet || 'GoPay');
-            setMonthlyLimit(String(u.monthly_limit || 5000000));
-            setSavingsRatio(String(u.savings_ratio || 20));
-            if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
-            if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
-            if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
-            localStorage.setItem('mira_user', JSON.stringify(u));
+            hydrateUser(a[0]);
+            localStorage.setItem('mira_user', JSON.stringify(a[0]));
           }
         }
       } catch {}
@@ -144,10 +148,11 @@ export function DashboardSettings() {
   const handleSave = async () => {
     setSaving(true); setErr(null);
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         name:            name.trim() || null,
         primary_wallet:  primaryWallet,
         monthly_limit:   Number(monthlyLimit) || 5000000,
+        savings_goal:    savingsGoal ? Number(savingsGoal) : null,
         savings_ratio:   Number(savingsRatio) || 20,
         active_banks:    activeBanks,
         active_ewallets: activeEwallets,
@@ -161,6 +166,7 @@ export function DashboardSettings() {
         const text = await r.text().catch(() => 'Gagal menyimpan');
         throw new Error(text || 'Gagal menyimpan');
       }
+      // Update local cache
       try {
         const raw = localStorage.getItem('mira_user');
         if (raw) {
@@ -184,6 +190,8 @@ export function DashboardSettings() {
       await Promise.allSettled([
         fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,    { method: 'DELETE', headers: HW }),
         fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${phone}`, { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/goals?phone_number=eq.${phone}`,    { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/assets?phone_number=eq.${phone}`,   { method: 'DELETE', headers: HW }),
       ]);
     } catch {}
     localStorage.removeItem('mira_phone');
@@ -280,6 +288,17 @@ export function DashboardSettings() {
             <p className="set-hint">
               Saat ini: Rp {(Number(monthlyLimit) || 0).toLocaleString('id-ID')}
             </p>
+          </div>
+          <div className="set-field">
+            <label className="set-label">Savings Goal (Rp, opsional)</label>
+            <input
+              className="set-input"
+              type="number"
+              placeholder="e.g. 100000000"
+              value={savingsGoal}
+              onChange={e => setSavingsGoal(e.target.value)}
+            />
+            <p className="set-hint">Target total tabungan yang ingin dicapai</p>
           </div>
         </div>
       </div>
