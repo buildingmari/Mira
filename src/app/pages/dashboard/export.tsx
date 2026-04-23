@@ -8,6 +8,13 @@ const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'ap
 
 const fmt = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
 
+function decodeUnicode(str: string): string {
+  if (!str) return str;
+  try { return decodeURIComponent(JSON.parse('"' + str.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"')); } catch {}
+  try { return str.replace(/\\u([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16))); } catch {}
+  return str;
+}
+
 function mapCat(c: string) {
   const m: Record<string, string> = {
     food: 'Makanan', Food: 'Makanan', makanan: 'Makanan', Makanan: 'Makanan',
@@ -28,7 +35,7 @@ function toCSV(rows: any[]): string {
   rows.forEach(t => {
     lines.push([
       t.date || '',
-      `"${(t.merchant || t.item || '').replace(/"/g, '""')}"`,
+      `"${decodeUnicode(t.merchant || t.item || '').replace(/"/g, '""')}"`,
       mapCat(t.category || ''),
       t.wallet || '',
       t.amount || 0,
@@ -114,9 +121,9 @@ export function DashboardExport() {
     return () => { document.getElementById('mira-exp-css')?.remove(); };
   }, []);
 
-  // Auth guard + fetch all transactions
+  // Auth guard + fetch all transactions — use localStorage (not sessionStorage)
   useEffect(() => {
-    const ph = sessionStorage.getItem('mira_phone');
+    const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
 
     (async () => {
