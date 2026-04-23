@@ -7,15 +7,29 @@ const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
 
+// Actual users table columns used here:
+// name, limit_nominal, saving_allocation_pct, expense_allocation_pct,
+// banks_used (text, comma-separated), ewallets_used (text), paylater_active (text)
+
 const BANKS    = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','BSI','Permata'];
 const EWALLETS = ['GoPay','OVO','DANA','ShopeePay','LinkAja'];
 const PAYLATER = ['GoPay Later','OVO Later','Akulaku','Kredivo','Shopee PayLater','Indodana'];
-const WALLETS  = ['BCA','BRI','Mandiri','BNI','CIMB','Jenius','GoPay','OVO','DANA','ShopeePay','LinkAja','Cash'];
 
 function decodeUnicode(str: string): string {
   if (!str) return str;
   try { return str.replace(/\\u([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16))); } catch {}
   return str;
+}
+
+// Parse comma-separated string like "BCA, Jenius (BTPN), OVO" → ["BCA", "Jenius (BTPN)", "OVO"]
+function parseList(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// Encode array back to comma-separated string for storage
+function encodeList(arr: string[]): string | null {
+  return arr.length > 0 ? arr.join(', ') : null;
 }
 
 const SET_CSS = `
@@ -38,10 +52,6 @@ const SET_CSS = `
                     outline: none; box-sizing: border-box; }
   .set-input:focus  { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
   .set-input:disabled { opacity: 0.55; cursor: not-allowed; background: #F1F4F8; }
-  .set-select     { height: 44px; width: 100%; border: 1px solid rgba(0,0,0,0.10);
-                    border-radius: 10px; padding: 0 14px; font-size: 14px;
-                    font-family: 'DM Sans', sans-serif; background: #F8F9FB;
-                    outline: none; cursor: pointer; box-sizing: border-box; }
   .set-hint       { font-size: 12px; color: #9CA3AF; margin: 5px 0 0; }
   .set-trow       { display: flex; align-items: center; justify-content: space-between;
                     padding: 13px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
@@ -77,9 +87,7 @@ export function DashboardSettings() {
   const navigate = useNavigate();
   const [phone,         setPhone]         = useState('');
   const [name,          setName]          = useState('');
-  const [primaryWallet, setPrimaryWallet] = useState('GoPay');
-  const [monthlyLimit,  setMonthlyLimit]  = useState('5000000');
-  const [savingsGoal,   setSavingsGoal]   = useState('');
+  const [monthlyLimit,  setMonthlyLimit]  = useState('0');
   const [savingsRatio,  setSavingsRatio]  = useState('20');
   const [activeBanks,   setActiveBanks]   = useState<string[]>([]);
   const [activeEwallets,setActiveEwallets]= useState<string[]>([]);
@@ -101,15 +109,15 @@ export function DashboardSettings() {
     return () => { document.getElementById('mira-set-css')?.remove(); };
   }, []);
 
+  // Hydrate state from real users table column names
   const hydrateUser = (u: Record<string, any>) => {
-    if (u.name)            setName(decodeUnicode(u.name));
-    if (u.primary_wallet)  setPrimaryWallet(u.primary_wallet);
-    if (u.monthly_limit != null)  setMonthlyLimit(String(u.monthly_limit));
-    if (u.savings_goal   != null) setSavingsGoal(String(u.savings_goal));
-    if (u.savings_ratio  != null) setSavingsRatio(String(u.savings_ratio));
-    if (Array.isArray(u.active_banks))    setActiveBanks(u.active_banks);
-    if (Array.isArray(u.active_ewallets)) setActiveEwallets(u.active_ewallets);
-    if (Array.isArray(u.active_paylater)) setActivePaylater(u.active_paylater);
+    if (u.name)                         setName(decodeUnicode(u.name));
+    if (u.limit_nominal != null)        setMonthlyLimit(String(u.limit_nominal));
+    if (u.saving_allocation_pct != null) setSavingsRatio(String(u.saving_allocation_pct));
+    // banks_used, ewallets_used, paylater_active are comma-separated text in DB
+    setActiveBanks(parseList(u.banks_used));
+    setActiveEwallets(parseList(u.ewallets_used));
+    setActivePaylater(parseList(u.paylater_active));
   };
 
   useEffect(() => {
@@ -123,18 +131,22 @@ export function DashboardSettings() {
       if (raw) hydrateUser(JSON.parse(raw));
     } catch {}
 
-    // Then fetch fresh from Supabase
+    // Fetch fresh from Supabase
     (async () => {
       try {
         const r = await fetch(
-          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=*`,
+          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=name,limit_nominal,saving_allocation_pct,expense_allocation_pct,banks_used,ewallets_used,paylater_active`,
           { headers: HR }
         );
         if (r.ok) {
           const a = await r.json();
           if (Array.isArray(a) && a.length > 0) {
             hydrateUser(a[0]);
-            localStorage.setItem('mira_user', JSON.stringify(a[0]));
+            // Merge into localStorage cache
+            try {
+              const existing = JSON.parse(localStorage.getItem('mira_user') || '{}');
+              localStorage.setItem('mira_user', JSON.stringify({ ...existing, ...a[0] }));
+            } catch {}
           }
         }
       } catch {}
@@ -148,15 +160,17 @@ export function DashboardSettings() {
   const handleSave = async () => {
     setSaving(true); setErr(null);
     try {
+      const ratioNum = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
+      // Map frontend fields to actual users table column names
       const payload: Record<string, any> = {
-        name:            name.trim() || null,
-        primary_wallet:  primaryWallet,
-        monthly_limit:   Number(monthlyLimit) || 5000000,
-        savings_goal:    savingsGoal ? Number(savingsGoal) : null,
-        savings_ratio:   Number(savingsRatio) || 20,
-        active_banks:    activeBanks,
-        active_ewallets: activeEwallets,
-        active_paylater: activePaylater,
+        name:                  name.trim() || null,
+        limit_nominal:         Number(monthlyLimit) || 0,
+        saving_allocation_pct: ratioNum,
+        expense_allocation_pct: 100 - ratioNum,
+        banks_used:            encodeList(activeBanks),
+        ewallets_used:         encodeList(activeEwallets),
+        paylater_active:       encodeList(activePaylater),
+        updated_at:            new Date().toISOString(),
       };
       const r = await fetch(
         `${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,
@@ -168,10 +182,8 @@ export function DashboardSettings() {
       }
       // Update local cache
       try {
-        const raw = localStorage.getItem('mira_user');
-        if (raw) {
-          localStorage.setItem('mira_user', JSON.stringify({ ...JSON.parse(raw), ...payload }));
-        }
+        const existing = JSON.parse(localStorage.getItem('mira_user') || '{}');
+        localStorage.setItem('mira_user', JSON.stringify({ ...existing, ...payload }));
       } catch {}
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -188,10 +200,10 @@ export function DashboardSettings() {
     if (!confirmed) return;
     try {
       await Promise.allSettled([
-        fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,    { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${phone}`, { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/goals?phone_number=eq.${phone}`,    { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/assets?phone_number=eq.${phone}`,   { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,     { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${phone}`,   { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/user_goals?phone_number=eq.${phone}`, { method: 'DELETE', headers: HW }),
+        fetch(`${SUPA_URL}/rest/v1/user_assets?phone_number=eq.${phone}`,{ method: 'DELETE', headers: HW }),
       ]);
     } catch {}
     localStorage.removeItem('mira_phone');
@@ -218,7 +230,7 @@ export function DashboardSettings() {
     );
   }
 
-  const ratioNum = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
+  const ratioNum   = Math.min(Math.max(Number(savingsRatio) || 0, 0), 100);
   const spendRatio = 100 - ratioNum;
 
   return (
@@ -289,17 +301,6 @@ export function DashboardSettings() {
               Saat ini: Rp {(Number(monthlyLimit) || 0).toLocaleString('id-ID')}
             </p>
           </div>
-          <div className="set-field">
-            <label className="set-label">Savings Goal (Rp, opsional)</label>
-            <input
-              className="set-input"
-              type="number"
-              placeholder="e.g. 100000000"
-              value={savingsGoal}
-              onChange={e => setSavingsGoal(e.target.value)}
-            />
-            <p className="set-hint">Target total tabungan yang ingin dicapai</p>
-          </div>
         </div>
       </div>
 
@@ -315,7 +316,7 @@ export function DashboardSettings() {
             {BANKS.map(b => (
               <button
                 key={b}
-                className={`set-chip${activeBanks.includes(b) ? ' active' : ''}`}
+                className={`set-chip${activeBanks.some(x => x.toLowerCase().includes(b.toLowerCase())) ? ' active' : ''}`}
                 onClick={() => toggleChip(activeBanks, setActiveBanks, b)}
               >{b}</button>
             ))}
@@ -335,7 +336,7 @@ export function DashboardSettings() {
             {EWALLETS.map(w => (
               <button
                 key={w}
-                className={`set-chip${activeEwallets.includes(w) ? ' active' : ''}`}
+                className={`set-chip${activeEwallets.some(x => x.toLowerCase().includes(w.toLowerCase())) ? ' active' : ''}`}
                 onClick={() => toggleChip(activeEwallets, setActiveEwallets, w)}
               >{w}</button>
             ))}
@@ -355,30 +356,10 @@ export function DashboardSettings() {
             {PAYLATER.map(p => (
               <button
                 key={p}
-                className={`set-chip${activePaylater.includes(p) ? ' active' : ''}`}
+                className={`set-chip${activePaylater.some(x => x.toLowerCase().includes(p.toLowerCase())) ? ' active' : ''}`}
                 onClick={() => toggleChip(activePaylater, setActivePaylater, p)}
               >{p}</button>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Wallet Utama */}
-      <div className="set-card">
-        <div className="set-card-hdr">
-          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
-          <h3>Wallet Utama</h3>
-        </div>
-        <div className="set-card-body">
-          <div className="set-field" style={{ marginBottom: 0 }}>
-            <label className="set-label">Default wallet untuk transaksi baru</label>
-            <select
-              className="set-select"
-              value={primaryWallet}
-              onChange={e => setPrimaryWallet(e.target.value)}
-            >
-              {WALLETS.map(w => <option key={w} value={w}>{w}</option>)}
-            </select>
           </div>
         </div>
       </div>
