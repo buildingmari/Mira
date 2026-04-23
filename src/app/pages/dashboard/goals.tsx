@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Target, Calendar, TrendingUp, X, Check } from 'lucide-react';
+import { Plus, Target, Calendar, TrendingUp, X, Check, RotateCcw } from 'lucide-react';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -37,6 +37,14 @@ const GOALS_CSS = `
   .gl-submit { width: 100%; height: 48px; background: #2563EB; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background .15s; }
   .gl-submit:hover { background: #1D4ED8; }
   .gl-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .gl-progress-input { height: 36px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: #F8F9FB; outline: none; box-sizing: border-box; color: #111827; width: 100%; min-width: 0; }
+  .gl-progress-input:focus { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.08); }
+  .gl-quick-btn { flex: 1; height: 32px; background: #F8F9FB; border: 1px solid rgba(0,0,0,0.10); border-radius: 7px; font-size: 11px; font-weight: 500; color: #374151; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: background .12s, border-color .12s; }
+  .gl-quick-btn:hover { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+  .gl-save-btn { height: 32px; padding: 0 14px; background: #2563EB; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+  .gl-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gl-reset-btn { height: 32px; width: 32px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 7px; color: #DC2626; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gl-reset-btn:hover { background: #FEE2E2; }
   @media (max-width: 900px) {
     .gl-wrap { padding: 16px 16px 24px; }
     .gl-stats { grid-template-columns: 1fr; gap: 10px; }
@@ -45,6 +53,17 @@ const GOALS_CSS = `
   @media (max-width: 600px) {
     .gl-stats { grid-template-columns: 1fr 1fr; }
   }
+
+  .dark .gl-modal { background: #1E293B; }
+  .dark .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+  .dark .gl-label { color: #94A3B8; }
+  .dark .gl-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+  .dark .gl-input::placeholder { color: #475569; }
+  .dark .gl-progress-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+  .dark .gl-progress-input::placeholder { color: #475569; }
+  .dark .gl-quick-btn { background: #0F172A; border-color: rgba(255,255,255,0.10); color: #CBD5E1; }
+  .dark .gl-quick-btn:hover { background: rgba(37,99,235,0.15); border-color: rgba(59,130,246,0.4); color: #93C5FD; }
+  .dark .gl-reset-btn { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #FCA5A5; }
 `;
 
 const CARD: React.CSSProperties = {
@@ -64,6 +83,10 @@ export function DashboardGoals() {
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
   const [err,       setErr]       = useState<string | null>(null);
+
+  // Per-card progress input state: goalId -> input string
+  const [progressInputs, setProgressInputs] = useState<Record<string, string>>({});
+  const [savingProgress, setSavingProgress] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const id = 'mira-gl-css';
@@ -132,10 +155,13 @@ export function DashboardGoals() {
     } catch {}
   };
 
-  const handleUpdateProgress = async (id: string, add: number) => {
+  // Save achieved_amount directly (manual input value)
+  const handleSaveProgress = async (id: string) => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
-    const newAmount = Math.min(goal.achieved_amount + add, goal.target_amount);
+    const raw = progressInputs[id] ?? String(goal.achieved_amount);
+    const newAmount = Math.min(Math.max(Number(raw) || 0, 0), goal.target_amount);
+    setSavingProgress(p => ({ ...p, [id]: true }));
     setGoals(prev => prev.map(g => g.id === id ? { ...g, achieved_amount: newAmount } : g));
     try {
       await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
@@ -146,6 +172,23 @@ export function DashboardGoals() {
     } catch {
       setGoals(prev => prev.map(g => g.id === id ? goal : g));
     }
+    setSavingProgress(p => ({ ...p, [id]: false }));
+  };
+
+  // Quick-add: add preset amount to the input field (not saved yet)
+  const handleQuickAdd = (id: string, add: number) => {
+    const goal = goals.find(g => g.id === id);
+    if (!goal) return;
+    const current = Number(progressInputs[id] ?? goal.achieved_amount) || goal.achieved_amount;
+    const next = Math.min(current + add, goal.target_amount);
+    setProgressInputs(p => ({ ...p, [id]: String(next) }));
+  };
+
+  // Reset input to current DB value
+  const handleResetInput = (id: string) => {
+    const goal = goals.find(g => g.id === id);
+    if (!goal) return;
+    setProgressInputs(p => ({ ...p, [id]: String(goal.achieved_amount) }));
   };
 
   const progress = (g: Goal) => g.target_amount > 0 ? Math.min((g.achieved_amount / g.target_amount) * 100, 100) : 0;
@@ -213,6 +256,8 @@ export function DashboardGoals() {
             const ml   = monthsLeft(g.deadline);
             const mn   = monthlyNeeded(g);
             const done = pct >= 100;
+            const inputVal = progressInputs[g.id] ?? String(g.achieved_amount);
+            const isSaving = savingProgress[g.id] || false;
             return (
               <div key={g.id} style={{ ...CARD }}>
                 <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -275,14 +320,47 @@ export function DashboardGoals() {
                     </p>
                   </div>
 
+                  {/* Progress update — manual input + quick add buttons */}
                   {!done && (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {[100000, 500000, 1000000].map(v => (
-                        <button key={v} onClick={() => handleUpdateProgress(g.id, v)}
-                          style={{ flex: 1, height: 34, background: '#F8F9FB', border: '1px solid rgba(0,0,0,0.10)', borderRadius: 8, fontSize: 11, fontWeight: 500, color: '#374151', cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
-                          +{v >= 1000000 ? (v / 1000000) + 'jt' : v / 1000 + 'rb'}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {/* Manual input + save + reset */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+                          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#6B7280', pointerEvents: 'none' }}>Rp</span>
+                          <input
+                            className="gl-progress-input"
+                            type="number"
+                            style={{ paddingLeft: 30 }}
+                            value={inputVal}
+                            onChange={e => setProgressInputs(p => ({ ...p, [g.id]: e.target.value }))}
+                            placeholder="0"
+                            min={0}
+                            max={g.target_amount}
+                          />
+                        </div>
+                        <button
+                          className="gl-save-btn"
+                          disabled={isSaving}
+                          onClick={() => handleSaveProgress(g.id)}
+                        >
+                          {isSaving ? '...' : <Check style={{ width: 13, height: 13 }} />}
                         </button>
-                      ))}
+                        <button
+                          className="gl-reset-btn"
+                          onClick={() => handleResetInput(g.id)}
+                          title="Reset ke nilai tersimpan"
+                        >
+                          <RotateCcw style={{ width: 13, height: 13 }} />
+                        </button>
+                      </div>
+                      {/* Quick-add chips */}
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        {[100000, 500000, 1000000].map(v => (
+                          <button key={v} onClick={() => handleQuickAdd(g.id, v)} className="gl-quick-btn">
+                            +{v >= 1000000 ? (v / 1000000) + 'jt' : v / 1000 + 'rb'}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
