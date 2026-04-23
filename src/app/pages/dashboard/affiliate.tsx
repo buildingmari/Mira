@@ -19,12 +19,27 @@ const AFF_CSS = `
   .aff-card-hdr h3 { margin: 0; font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; color: #111827; }
   .aff-card-body { padding: 20px; }
   .aff-stat { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .aff-stat-item { background: #fff; border: 1px solid rgba(0,0,0,0.07); border-radius: 16px; padding: 16px 18px; }
+  .aff-stat-val { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 600; color: #111827; margin-bottom: 2px; }
+  .aff-stat-lbl { font-size: 12px; color: #6B7280; }
+  .aff-page-title { font-family: 'Sora',sans-serif; font-size: 20px; font-weight: 600; margin: 0; color: #111827; }
+  .aff-page-sub { font-size: 13px; color: #6B7280; margin: 3px 0 0; }
+  .aff-step-title { font-size: 14px; font-weight: 600; color: #111827; margin-bottom: 3px; }
+  .aff-step-desc { font-size: 13px; color: #6B7280; line-height: 1.5; }
   @media (max-width: 900px) { .aff-wrap { padding: 16px 16px 40px; } .aff-stat { grid-template-columns: 1fr 1fr; } }
-`;
 
-const CARD: React.CSSProperties = {
-  background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 16, overflow: 'hidden',
-};
+  .dark .aff-card { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+  .dark .aff-card-hdr { border-bottom-color: rgba(255,255,255,0.07) !important; }
+  .dark .aff-card-hdr h3 { color: #F1F5F9 !important; }
+  .dark .aff-stat-item { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+  .dark .aff-stat-val { color: #F1F5F9 !important; }
+  .dark .aff-stat-lbl { color: #94A3B8 !important; }
+  .dark .aff-page-title { color: #F1F5F9 !important; }
+  .dark .aff-page-sub { color: #94A3B8 !important; }
+  .dark .aff-step-title { color: #F1F5F9 !important; }
+  .dark .aff-step-desc { color: #94A3B8 !important; }
+  .dark .aff-card-body { color: #CBD5E1 !important; }
+`;
 
 export function DashboardAffiliate() {
   const navigate = useNavigate();
@@ -51,9 +66,9 @@ export function DashboardAffiliate() {
 
     (async () => {
       try {
-        // 1. Fetch user to get referral_code
+        // 1. Fetch user to get referral_code from users table
         const ur = await fetch(
-          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=referral_code`,
+          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${encodeURIComponent(ph)}&select=referral_code`,
           { headers: HR }
         );
         let code = '';
@@ -64,10 +79,10 @@ export function DashboardAffiliate() {
           }
         }
 
-        // 2. If no code stored, generate and persist
+        // 2. If no code stored, generate and persist to users table
         if (!code) {
           code = generateCode(ph);
-          await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}`, {
+          await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${encodeURIComponent(ph)}`, {
             method: 'PATCH',
             headers: HW,
             body: JSON.stringify({ referral_code: code }),
@@ -75,17 +90,18 @@ export function DashboardAffiliate() {
         }
         setRefCode(code);
 
-        // 3. Fetch referral count
+        // 3. Fetch referral count from affiliate_referrals table
         const rr = await fetch(
-          `${SUPA_URL}/rest/v1/referrals?referrer_phone=eq.${ph}&select=id`,
-          { headers: { ...HR, Prefer: 'count=exact' } }
+          `${SUPA_URL}/rest/v1/affiliate_referrals?referrer_phone=eq.${encodeURIComponent(ph)}&select=id,status`,
+          { headers: HR }
         );
         if (rr.ok) {
           const refs = await rr.json();
           if (Array.isArray(refs)) {
             setRefCount(refs.length);
-            // "active" = those who also have a user record (best-effort)
-            setActiveCount(refs.length);
+            // Active = referrals with status 'active' or 'completed'
+            const active = refs.filter(r => r.status === 'active' || r.status === 'completed');
+            setActiveCount(active.length);
           }
         }
       } catch {}
@@ -103,8 +119,8 @@ export function DashboardAffiliate() {
   return (
     <div className="aff-wrap">
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 600, margin: 0, color: '#111827' }}>Affiliate</h1>
-        <p style={{ fontSize: 13, color: '#6B7280', margin: '3px 0 0' }}>Ajak teman & dapatkan reward eksklusif</p>
+        <h1 className="aff-page-title">Affiliate</h1>
+        <p className="aff-page-sub">Ajak teman & dapatkan reward eksklusif</p>
       </div>
 
       {/* Hero */}
@@ -114,9 +130,9 @@ export function DashboardAffiliate() {
         position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
-        <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Kode Referral Kamu</div>
+        <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6, color: '#fff' }}>Kode Referral Kamu</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: 2 }}>
+          <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: 2, color: '#fff' }}>
             {loading ? '...' : refCode}
           </span>
           <button
@@ -128,7 +144,7 @@ export function DashboardAffiliate() {
             {copied ? 'Tersalin!' : 'Salin'}
           </button>
         </div>
-        <p style={{ margin: 0, fontSize: 13, opacity: 0.8 }}>
+        <p style={{ margin: 0, fontSize: 13, opacity: 0.85, color: '#fff' }}>
           Bagikan kode ini ke teman. Setiap teman yang daftar dan aktif, kamu dapat reward!
         </p>
       </div>
@@ -140,12 +156,12 @@ export function DashboardAffiliate() {
           { label: 'Aktif',         val: loading ? '—' : String(activeCount), icon: <TrendingUp style={{ width: 18, height: 18 }} />, bg: '#F0FDF4', color: '#16A34A' },
           { label: 'Reward',        val: 'Rp 0',                              icon: <Gift style={{ width: 18, height: 18 }} />, bg: '#FFFBEB', color: '#D97706' },
         ].map(({ label, val, icon, bg, color }) => (
-          <div key={label} style={{ ...CARD, padding: '16px 18px' }}>
+          <div key={label} className="aff-stat-item">
             <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 10 }}>
               {icon}
             </div>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 2 }}>{val}</div>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>{label}</div>
+            <div className="aff-stat-val">{val}</div>
+            <div className="aff-stat-lbl">{label}</div>
           </div>
         ))}
       </div>
@@ -165,8 +181,8 @@ export function DashboardAffiliate() {
             <div key={num} style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Sora',sans-serif", fontSize: 13, fontWeight: 700, color: '#1D4ED8', flexShrink: 0 }}>{num}</div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 3 }}>{title}</div>
-                <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.5 }}>{desc}</div>
+                <div className="aff-step-title">{title}</div>
+                <div className="aff-step-desc">{desc}</div>
               </div>
             </div>
           ))}
