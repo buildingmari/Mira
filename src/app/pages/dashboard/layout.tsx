@@ -13,6 +13,16 @@ const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
 const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 
+/** Decode surrogate-pair unicode escapes like \uD83D\uDC4B → 👋 */
+function decodeUnicode(str: string): string {
+  if (!str) return str;
+  try {
+    // Handle JS unicode escape sequences in raw strings
+    return str.replace(/\\u([0-9A-Fa-f]{4})/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+  } catch {}
+  return str;
+}
+
 const LAYOUT_CSS = `
   #mira-dash-layout {
     display: flex; min-height: 100vh;
@@ -87,8 +97,8 @@ const NAV_SECTIONS = [
     { path: '/dashboard/transactions', label: 'Transaksi',  Icon: Receipt },
   ]},
   { label: 'Analitik', items: [
-    { path: '/dashboard/insights', label: 'Insight',   Icon: TrendingUp },
-    { path: '/dashboard/goals',    label: 'Target',    Icon: Target },
+    { path: '/dashboard/insights', label: 'Insight',        Icon: TrendingUp },
+    { path: '/dashboard/goals',    label: 'Target',         Icon: Target },
     { path: '/dashboard/assets',   label: 'Aset & Net Worth', Icon: Briefcase },
   ]},
   { label: 'Akun', items: [
@@ -106,13 +116,13 @@ const MOB_NAV = [
 ];
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
-  '/dashboard':              { title: 'Dashboard',      sub: '' },
-  '/dashboard/transactions': { title: 'Transaksi',      sub: 'Riwayat pengeluaran' },
-  '/dashboard/insights':     { title: 'Insight',        sub: 'Analisis keuangan' },
-  '/dashboard/goals':        { title: 'Target',         sub: 'Progress goal kamu' },
-  '/dashboard/export':       { title: 'Export Data',    sub: 'Unduh data transaksi' },
-  '/dashboard/settings':     { title: 'Pengaturan',     sub: 'Preferensi akun' },
-  '/dashboard/affiliate':    { title: 'Affiliate',      sub: 'Program referral' },
+  '/dashboard':              { title: 'Dashboard',        sub: '' },
+  '/dashboard/transactions': { title: 'Transaksi',        sub: 'Riwayat pengeluaran' },
+  '/dashboard/insights':     { title: 'Insight',          sub: 'Analisis keuangan' },
+  '/dashboard/goals':        { title: 'Target',           sub: 'Progress goal kamu' },
+  '/dashboard/export':       { title: 'Export Data',      sub: 'Unduh data transaksi' },
+  '/dashboard/settings':     { title: 'Pengaturan',       sub: 'Preferensi akun' },
+  '/dashboard/affiliate':    { title: 'Affiliate',        sub: 'Program referral' },
   '/dashboard/assets':       { title: 'Aset & Net Worth', sub: 'Total kekayaan bersih' },
 };
 
@@ -198,8 +208,10 @@ export function DashboardLayout() {
     );
   }
 
-  const name = user?.name || 'User';
-  const init = name.charAt(0).toUpperCase();
+  // Decode unicode escape sequences in name (e.g. "Dio \uD83D\uDC4B" → "Dio 👋")
+  const rawName = user?.name || 'User';
+  const name    = decodeUnicode(rawName);
+  const init    = name.charAt(0).toUpperCase();
   const planLabel = user?.plan_name || 'Personal';
   const meta = { ...(PAGE_META[location.pathname] ?? { title: 'MIRA', sub: '' }) };
   if (meta.title === 'Dashboard')
