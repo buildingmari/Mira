@@ -6,6 +6,15 @@ const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 
+// ── phone normalizer: ensure 628xxx format to match DB ───────────────
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('62')) return digits;
+  if (digits.startsWith('08')) return '62' + digits.slice(1);
+  if (digits.startsWith('8'))  return '62' + digits;
+  return digits;
+}
+
 // ── masking helpers ──────────────────────────────────────────────────
 function maskName(name: string): string {
   if (!name) return '—';
@@ -26,7 +35,7 @@ function maskPhone(phone: string): string {
 
 // ── referral row type ────────────────────────────────────────────────
 type ReferredUser = {
-  referred_phone: string;
+  referee_phone: string;
   name: string;
 };
 
@@ -85,9 +94,15 @@ export function DashboardAffiliate() {
   }, []);
 
   useEffect(() => {
-    const ph = localStorage.getItem('mira_phone');
-    if (!ph) { navigate('/', { replace: true }); return; }
+    const rawPhone = localStorage.getItem('mira_phone');
+    if (!rawPhone) { navigate('/', { replace: true }); return; }
+
+    // Normalize to 628xxx format — DB stores phones as 628xxx
+    const ph = normalizePhone(rawPhone);
     setPhone(ph);
+
+    console.log('[affiliate] rawPhone from localStorage:', rawPhone);
+    console.log('[affiliate] normalized phone for query:', ph);
 
     (async () => {
       try {
@@ -98,48 +113,45 @@ export function DashboardAffiliate() {
         );
         if (ur.ok) {
           const users = await ur.json();
+          console.log('[affiliate] users result:', users);
           if (Array.isArray(users) && users.length > 0) {
             setAffCode(users[0].affiliate_code || '');
           }
         }
 
-        // 2. Count referrals from affiliate_referrals WHERE referrer_phone = current user
-        const rr = await fetch(
-          `${SUPA_URL}/rest/v1/affiliate_referrals?referrer_phone=eq.${encodeURIComponent(ph)}&select=referred_phone`,
-          { headers: HR }
-        );
+        // 2. Fetch referrals from affiliate_referrals WHERE referrer_phone = current user
+        //    COLUMN: referee_phone (NOT referred_phone)
+        const rrUrl = `${SUPA_URL}/rest/v1/affiliate_referrals?referrer_phone=eq.${encodeURIComponent(ph)}&select=referee_phone,referee_name`;
+        console.log('[affiliate] referrals query URL:', rrUrl);
+        const rr = await fetch(rrUrl, { headers: HR });
+
         if (rr.ok) {
           const refs = await rr.json();
+          console.log('[affiliate] referrals result:', refs);
+
           if (Array.isArray(refs) && refs.length > 0) {
             setRefCount(refs.length);
 
-            // 3. Fetch referred users' names: JOIN users ON users.primary_phone = referred_phone
-            const phones = refs.map((r: any) => r.referred_phone).filter(Boolean);
-            if (phones.length > 0) {
-              const inList = phones.map((p: string) => encodeURIComponent(p)).join(',');
-              const usersRes = await fetch(
-                `${SUPA_URL}/rest/v1/users?primary_phone=in.(${inList})&select=primary_phone,name`,
-                { headers: HR }
-              );
-              if (usersRes.ok) {
-                const userData = await usersRes.json();
-                const userMap: Record<string, string> = {};
-                if (Array.isArray(userData)) {
-                  userData.forEach((u: any) => { userMap[u.primary_phone] = u.name || ''; });
-                }
-                const list: ReferredUser[] = phones.map((p: string) => ({
-                  referred_phone: p,
-                  name: userMap[p] || '',
-                }));
-                setReferredList(list);
-              } else {
-                // fallback: show phones without names
-                setReferredList(phones.map((p: string) => ({ referred_phone: p, name: '' })));
-              }
-            }
+            // Build list directly from referee_name in affiliate_referrals
+            // No join needed — referee_name is already stored in the table
+            const list: ReferredUser[] = refs.map((r: any) => ({
+              referee_phone: r.referee_phone || '',
+              name: r.referee_name || '',
+            }));
+            console.log('[affiliate] referral list built:', list);
+            setReferredList(list);
+          } else {
+            console.log('[affiliate] no referrals found — check phone format match in DB');
+            setRefCount(0);
+            setReferredList([]);
           }
+        } else {
+          const errText = await rr.text();
+          console.error('[affiliate] referrals fetch error:', rr.status, errText);
         }
-      } catch {}
+      } catch (err) {
+        console.error('[affiliate] unexpected error:', err);
+      }
       setLoading(false);
     })();
   }, []);
@@ -188,9 +200,9 @@ export function DashboardAffiliate() {
       {/* Stats — real counts from DB */}
       <div className="aff-stat">
         {[
-          { label: 'Total Referral', val: loading ? '—' : String(refCount), icon: <Users style={{ width: 18, height: 18 }} />, bg: '#EFF6FF', color: '#1D4ED8' },
+          { label: 'Total Referral', val: loading ? '—' : String(refCount),           icon: <Users style={{ width: 18, height: 18 }} />, bg: '#EFF6FF', color: '#1D4ED8' },
           { label: 'Terdaftar',      val: loading ? '—' : String(referredList.length), icon: <TrendingUp style={{ width: 18, height: 18 }} />, bg: '#F0FDF4', color: '#16A34A' },
-          { label: 'Reward',         val: 'Rp 0', icon: <Gift style={{ width: 18, height: 18 }} />, bg: '#FFFBEB', color: '#D97706' },
+          { label: 'Reward',         val: 'Rp 0',                                      icon: <Gift style={{ width: 18, height: 18 }} />, bg: '#FFFBEB', color: '#D97706' },
         ].map(({ label, val, icon, bg, color }) => (
           <div key={label} className="aff-stat-item">
             <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 10 }}>
@@ -202,7 +214,7 @@ export function DashboardAffiliate() {
         ))}
       </div>
 
-      {/* Referral list — real data, masked */}
+      {/* Referral list — real data from DB, masked */}
       <div className="aff-card">
         <div className="aff-card-hdr">
           <Users style={{ width: 15, height: 15, color: '#6B7280' }} />
@@ -221,7 +233,7 @@ export function DashboardAffiliate() {
                 </div>
                 <div>
                   <div className="aff-ref-name">{maskName(r.name)}</div>
-                  <div className="aff-ref-phone">{maskPhone(r.referred_phone)}</div>
+                  <div className="aff-ref-phone">{maskPhone(r.referee_phone)}</div>
                 </div>
               </div>
             ))
