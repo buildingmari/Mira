@@ -91,7 +91,7 @@ export function DashboardAffiliate() {
 
     (async () => {
       try {
-        // 1. Get affiliate_code from users table
+        // 1. Get affiliate_code from users table using primary_phone
         const ur = await fetch(
           `${SUPA_URL}/rest/v1/users?primary_phone=eq.${encodeURIComponent(ph)}&select=affiliate_code`,
           { headers: HR }
@@ -113,12 +113,12 @@ export function DashboardAffiliate() {
           if (Array.isArray(refs) && refs.length > 0) {
             setRefCount(refs.length);
 
-            // 3. Fetch referred users' names from users table
+            // 3. Fetch referred users' names: JOIN users ON users.primary_phone = referred_phone
             const phones = refs.map((r: any) => r.referred_phone).filter(Boolean);
             if (phones.length > 0) {
-              const phoneFilter = phones.map((p: string) => `primary_phone=eq.${encodeURIComponent(p)}`).join('&');
+              const inList = phones.map((p: string) => encodeURIComponent(p)).join(',');
               const usersRes = await fetch(
-                `${SUPA_URL}/rest/v1/users?or=(${phones.map((p: string) => `primary_phone.eq.${encodeURIComponent(p)}`).join(',')})&select=primary_phone,name`,
+                `${SUPA_URL}/rest/v1/users?primary_phone=in.(${inList})&select=primary_phone,name`,
                 { headers: HR }
               );
               if (usersRes.ok) {
@@ -133,7 +133,7 @@ export function DashboardAffiliate() {
                 }));
                 setReferredList(list);
               } else {
-                // fallback: just show phones without names
+                // fallback: show phones without names
                 setReferredList(phones.map((p: string) => ({ referred_phone: p, name: '' })));
               }
             }
@@ -158,7 +158,7 @@ export function DashboardAffiliate() {
         <p className="aff-page-sub">Ajak teman & dapatkan reward eksklusif</p>
       </div>
 
-      {/* Hero — referral code */}
+      {/* Hero — referral code from DB */}
       <div style={{
         background: 'linear-gradient(135deg,#7C3AED 0%,#2563EB 100%)',
         borderRadius: 20, padding: '28px 32px', color: '#fff', marginBottom: 20,
@@ -185,7 +185,7 @@ export function DashboardAffiliate() {
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats — real counts from DB */}
       <div className="aff-stat">
         {[
           { label: 'Total Referral', val: loading ? '—' : String(refCount), icon: <Users style={{ width: 18, height: 18 }} />, bg: '#EFF6FF', color: '#1D4ED8' },
@@ -202,7 +202,7 @@ export function DashboardAffiliate() {
         ))}
       </div>
 
-      {/* Referral list */}
+      {/* Referral list — real data, masked */}
       <div className="aff-card">
         <div className="aff-card-hdr">
           <Users style={{ width: 15, height: 15, color: '#6B7280' }} />
