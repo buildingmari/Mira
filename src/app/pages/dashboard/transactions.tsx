@@ -46,31 +46,60 @@ const TXN_CSS = `
                border-radius: 16px; overflow: hidden; }
   .txn-hdr   { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,0.07);
                display: flex; align-items: center; justify-content: space-between; }
+  .txn-hdr h3 { font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; margin: 0; color: #111827; }
+  .txn-hdr span { font-size: 13px; color: #6B7280; font-weight: 500; }
   .txn-row   { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
                border-bottom: 1px solid rgba(0,0,0,0.05); transition: background .12s; }
   .txn-row:last-child { border-bottom: none; }
   .txn-row:hover { background: #F8F9FB; }
   .txn-ctrl  { height: 40px; border: 1px solid rgba(0,0,0,0.10); border-radius: 9px;
                padding: 0 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-               background: #F8F9FB; outline: none; box-sizing: border-box; }
+               background: #F8F9FB; outline: none; box-sizing: border-box;
+               color: #111827; -webkit-text-fill-color: #111827; }
   .txn-ctrl:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+  .txn-date-ctrl { color: #111827 !important; -webkit-text-fill-color: #111827 !important; }
   .txn-badge { display: inline-flex; align-items: center; padding: 3px 9px;
                border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .txn-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .txn-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0; align-items: center; }
   .txn-chip-active { display: inline-flex; align-items: center; gap: 5px; background: #EFF6FF;
                      border: 1px solid #BFDBFE; border-radius: 20px; padding: 4px 10px;
                      font-size: 12px; color: #1D4ED8; font-weight: 500; }
   .txn-chip-active button { background: none; border: none; cursor: pointer; color: #93C5FD; padding: 0; display: flex; }
   .txn-reset { height: 32px; padding: 0 12px; background: #FEF2F2; border: 1px solid #FECACA;
                border-radius: 8px; font-size: 12px; color: #DC2626; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
-  .dark .txn-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-  .dark .txn-hdr  { border-color: rgba(255,255,255,0.08); }
+
+  /* Dark mode */
+  .dark .txn-wrap > div:first-child { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+  .dark .txn-card { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+  .dark .txn-hdr  { border-bottom-color: rgba(255,255,255,0.07) !important; }
+  .dark .txn-hdr h3 { color: #F1F5F9 !important; }
+  .dark .txn-hdr span { color: #94A3B8 !important; }
   .dark .txn-row:hover { background: rgba(255,255,255,0.04); }
-  .dark .txn-row  { border-color: rgba(255,255,255,0.05); }
-  .dark .txn-ctrl { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+  .dark .txn-row  { border-bottom-color: rgba(255,255,255,0.05); color: #F1F5F9; }
+  .dark .txn-ctrl {
+    background: #0F172A; border-color: rgba(255,255,255,0.12);
+    color: #F1F5F9 !important; -webkit-text-fill-color: #F1F5F9 !important;
+    color-scheme: dark;
+  }
+  .dark .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
+  .dark .txn-chip-active { background: rgba(37,99,235,0.2); border-color: rgba(59,130,246,0.4); color: #93C5FD; }
+  .dark .txn-reset { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #FCA5A5; }
+
+  /* Mobile layout */
   @media (max-width: 900px) {
-    .txn-wrap { padding: 16px 16px 24px; }
-    .txn-row  { padding: 12px 16px; }
+    .txn-wrap { padding: 12px 12px 24px; }
+    .txn-row  { padding: 12px 14px; gap: 10px; }
+    .txn-filter-row { flex-direction: column; gap: 8px; }
+    .txn-search-input { width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important; }
+    .txn-dates-row { display: flex; gap: 6px; width: 100%; }
+    .txn-dates-row .txn-ctrl { flex: 1; min-width: 0; }
+    .txn-bottom-row { display: flex; gap: 6px; width: 100%; }
+    .txn-bottom-row .txn-ctrl { flex: 1; min-width: 0; }
+  }
+  @media (max-width: 480px) {
+    .txn-wrap { padding: 10px 10px 20px; }
+    .txn-hdr { padding: 14px 14px; }
+    .txn-row { padding: 10px 12px; }
   }
 `;
 
@@ -174,38 +203,56 @@ export function DashboardTransactions() {
   return (
     <div className="txn-wrap">
       {/* Filter bar */}
-      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 14, padding: '12px 16px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Search */}
+      <div style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
+
+        {/* Row 1: Search full width */}
+        <div style={{ marginBottom: 8 }}>
           <input
-            className="txn-ctrl"
-            style={{ flex: '1 1 180px', minWidth: 140 }}
+            className="txn-ctrl txn-search-input"
+            style={{ width: '100%', boxSizing: 'border-box' }}
             placeholder="🔍  Cari merchant, kategori..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          {/* Date range */}
-          <input type="date" className="txn-ctrl" value={startDate} onChange={e => setStartDate(e.target.value)}
-            style={{ flex: '0 1 140px' }} title="Dari tanggal" />
-          <input type="date" className="txn-ctrl" value={endDate} onChange={e => setEndDate(e.target.value)}
-            style={{ flex: '0 1 140px' }} title="Sampai tanggal" />
-          {/* Wallet */}
-          <select className="txn-ctrl" value={walletF} onChange={e => setWalletF(e.target.value)}
-            style={{ flex: '0 1 140px' }}>
+        </div>
+
+        {/* Row 2: Date range + wallet + filter toggle */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            type="date"
+            className="txn-ctrl txn-date-ctrl"
+            value={startDate}
+            onChange={e => setStartDate(e.target.value)}
+            style={{ flex: '1 1 130px', minWidth: 0, color: '#111827' }}
+            title="Dari tanggal"
+          />
+          <input
+            type="date"
+            className="txn-ctrl txn-date-ctrl"
+            value={endDate}
+            onChange={e => setEndDate(e.target.value)}
+            style={{ flex: '1 1 130px', minWidth: 0, color: '#111827' }}
+            title="Sampai tanggal"
+          />
+          <select
+            className="txn-ctrl"
+            value={walletF}
+            onChange={e => setWalletF(e.target.value)}
+            style={{ flex: '1 1 120px', minWidth: 0 }}
+          >
             <option value="all">Semua Wallet</option>
             {wallets.map(w => <option key={w} value={w}>{w}</option>)}
           </select>
-          {/* Filter toggle */}
           <button
             onClick={() => setShowFilters(v => !v)}
-            style={{ height: 40, padding: '0 12px', background: showFilters ? '#EFF6FF' : '#F8F9FB', border: `1px solid ${showFilters ? '#BFDBFE' : 'rgba(0,0,0,0.10)'}`, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: showFilters ? '#1D4ED8' : '#374151', fontFamily: "'DM Sans',sans-serif" }}
+            style={{ height: 40, padding: '0 12px', background: showFilters ? '#EFF6FF' : '#F8F9FB', border: `1px solid ${showFilters ? '#BFDBFE' : 'rgba(0,0,0,0.10)'}`, borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: showFilters ? '#1D4ED8' : '#374151', fontFamily: "'DM Sans',sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}
           >
-            <SlidersHorizontal style={{ width: 14, height: 14 }} />
-            Kategori {catF.length > 0 && `(${catF.length})`}
-            <ChevronDown style={{ width: 13, height: 13, transform: showFilters ? 'rotate(180deg)' : '', transition: 'transform .2s' }} />
+            <SlidersHorizontal style={{ width: 13, height: 13 }} />
+            {catF.length > 0 ? `Kat (${catF.length})` : 'Kat'}
+            <ChevronDown style={{ width: 12, height: 12, transform: showFilters ? 'rotate(180deg)' : '', transition: 'transform .2s' }} />
           </button>
           {hasFilters && (
-            <button className="txn-reset" onClick={resetFilters}>Reset filter</button>
+            <button className="txn-reset" onClick={resetFilters} style={{ flexShrink: 0 }}>Reset</button>
           )}
         </div>
 
@@ -231,10 +278,10 @@ export function DashboardTransactions() {
 
         {/* Active filter chips */}
         {hasFilters && (
-          <div className="txn-filter-bar" style={{ marginTop: 8, marginBottom: 0 }}>
+          <div className="txn-filter-bar" style={{ marginTop: 8 }}>
             {search && (
               <span className="txn-chip-active">
-                Cari: "{search}" <button onClick={() => setSearch('')}><X style={{ width: 10, height: 10 }} /></button>
+                "{search}" <button onClick={() => setSearch('')}><X style={{ width: 10, height: 10 }} /></button>
               </span>
             )}
             {startDate && (
@@ -249,7 +296,7 @@ export function DashboardTransactions() {
             )}
             {walletF !== 'all' && (
               <span className="txn-chip-active">
-                Wallet: {walletF} <button onClick={() => setWalletF('all')}><X style={{ width: 10, height: 10 }} /></button>
+                {walletF} <button onClick={() => setWalletF('all')}><X style={{ width: 10, height: 10 }} /></button>
               </span>
             )}
             {catF.map(c => (
@@ -263,12 +310,8 @@ export function DashboardTransactions() {
 
       <div className="txn-card">
         <div className="txn-hdr">
-          <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>
-            Riwayat Transaksi
-          </h3>
-          <span style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
-            {loading ? '...' : `${filtered.length} transaksi`}
-          </span>
+          <h3>Riwayat Transaksi</h3>
+          <span>{loading ? '...' : `${filtered.length} transaksi`}</span>
         </div>
 
         {loading ? (
@@ -292,8 +335,8 @@ export function DashboardTransactions() {
             return (
               <div key={t.id || i} className="txn-row">
                 <div style={{
-                  width: 42, height: 42, borderRadius: 10, background: bg, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                  width: 40, height: 40, borderRadius: 10, background: bg, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
                 }}>
                   {emoji}
                 </div>
@@ -306,11 +349,11 @@ export function DashboardTransactions() {
                   </div>
                   <div style={{
                     fontSize: 12, color: '#9CA3AF', marginTop: 2,
-                    display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+                    display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
                   }}>
                     <span className="txn-badge" style={{ background: bg, color: clr }}>{cat}</span>
-                    {t.wallet && <span>{t.wallet}</span>}
-                    <span>{ds}</span>
+                    {t.wallet && <span style={{ color: '#9CA3AF' }}>{t.wallet}</span>}
+                    <span style={{ color: '#9CA3AF' }}>{ds}</span>
                   </div>
                 </div>
                 <div style={{
