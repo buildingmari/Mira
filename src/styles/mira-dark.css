@@ -15,7 +15,7 @@
   border-right-color: rgba(255, 255, 255, 0.07);
 }
 .dark .mira-nav-btn {
-  color: #94A3B8;
+  color: #CBD5E1;
 }
 .dark .mira-nav-btn:hover {
   background: rgba(255, 255, 255, 0.06);
@@ -32,7 +32,7 @@
   border-bottom-color: rgba(255, 255, 255, 0.07);
 }
 .dark #mira-topbar h1 { color: #F1F5F9; }
-.dark #mira-topbar p  { color: #64748B; }
+.dark #mira-topbar p  { color: #94A3B8; }
 
 /* ── Mobile top bar ────────────────────────────────────────────────── */
 .dark #mira-mobile-topbar {
@@ -60,9 +60,37 @@
 }
 .dark [class*="-card-hdr"] h3 { color: #F1F5F9 !important; }
 
-/* ── Text overrides ────────────────────────────────────────────────── */
-.dark h1, .dark h2, .dark h3 { color: #F1F5F9; }
-.dark p  { color: #94A3B8; }
+/* ── Global text overrides ─────────────────────────────────────────── */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #F1F5F9; }
+.dark p  { color: #CBD5E1; }
+.dark label { color: #CBD5E1; }
+.dark span  { color: inherit; }
+
+/* ── Force high-contrast on all inline-styled text in dark mode ─────── */
+.dark [style*="color: #111827"],
+.dark [style*="color:#111827"] {
+  color: #F1F5F9 !important;
+}
+.dark [style*="color: #1F2937"],
+.dark [style*="color:#1F2937"] {
+  color: #E2E8F0 !important;
+}
+.dark [style*="color: #374151"],
+.dark [style*="color:#374151"] {
+  color: #CBD5E1 !important;
+}
+.dark [style*="color: #4B5563"],
+.dark [style*="color:#4B5563"] {
+  color: #94A3B8 !important;
+}
+.dark [style*="color: #6B7280"],
+.dark [style*="color:#6B7280"] {
+  color: #94A3B8 !important;
+}
+.dark [style*="color: #9CA3AF"],
+.dark [style*="color:#9CA3AF"] {
+  color: #64748B !important;
+}
 
 /* ── Specific page wrappers ────────────────────────────────────────── */
 .dark .ast-wrap,
@@ -72,8 +100,22 @@
 .dark .aff-wrap,
 .dark .ovr-wrap,
 .dark .ins-wrap,
-.dark .gls-wrap {
+.dark .gls-wrap,
+.dark .gl-wrap {
   color: #F1F5F9;
+}
+
+/* ── Page backgrounds ──────────────────────────────────────────────── */
+.dark .txn-wrap > div:first-child,
+.dark .aff-wrap > div:first-child {
+  color: #F1F5F9;
+}
+
+/* ── Filter / control bar background ──────────────────────────────── */
+.dark .txn-wrap > div[style*="background: #fff"],
+.dark .txn-wrap > div[style*="background:#fff"] {
+  background: #1E293B !important;
+  border-color: rgba(255,255,255,0.08) !important;
 }
 
 /* ── Overview / Dashboard ─────────────────────────────────────────── */
@@ -81,8 +123,10 @@
 .dark .ovr-chart-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
 
 /* ── Transactions ──────────────────────────────────────────────────── */
-.dark .txn-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .txn-hdr   { border-bottom-color: rgba(255,255,255,0.07); }
+.dark .txn-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark .txn-hdr   { border-bottom-color: rgba(255,255,255,0.07) !important; }
+.dark .txn-hdr h3 { color: #F1F5F9 !important; }
+.dark .txn-hdr span { color: #94A3B8 !important; }
 .dark .txn-row   { border-bottom-color: rgba(255,255,255,0.05); color: #F1F5F9; }
 .dark .txn-row:hover { background: rgba(255,255,255,0.04); }
 .dark .txn-ctrl  {
@@ -90,6 +134,7 @@
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
+.dark .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
 .dark .txn-chip-active {
   background: rgba(37,99,235,0.2);
   border-color: rgba(59,130,246,0.4);
@@ -112,12 +157,13 @@
 .dark .set-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
 .dark .set-card-hdr h3 { color: #F1F5F9; }
 .dark .set-label { color: #CBD5E1; }
-.dark .set-hint  { color: #64748B; }
+.dark .set-hint  { color: #94A3B8; }
 .dark .set-input {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
+.dark .set-input::placeholder { color: #475569; }
 .dark .set-chip  { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
 .dark .set-chip.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
 .dark .set-trow  { border-bottom-color: rgba(255,255,255,0.05); }
@@ -130,7 +176,7 @@
 .dark .exp-qcard { background: #1E293B; border-color: rgba(255,255,255,0.08); }
 .dark .exp-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
 .dark .exp-card-hdr h3 { color: #F1F5F9; }
-.dark .exp-card-hdr p  { color: #64748B; }
+.dark .exp-card-hdr p  { color: #94A3B8; }
 .dark .exp-ctrl {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
@@ -139,13 +185,23 @@
 .dark .exp-month-row { border-bottom-color: rgba(255,255,255,0.05); }
 
 /* ── Affiliate ─────────────────────────────────────────────────────── */
-.dark .aff-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .aff-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-.dark .aff-card-hdr h3 { color: #F1F5F9; }
-.dark .aff-card-body { color: #94A3B8; }
+.dark .aff-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark .aff-card-hdr { border-bottom-color: rgba(255,255,255,0.07) !important; }
+.dark .aff-card-hdr h3 { color: #F1F5F9 !important; }
+.dark .aff-card-body { color: #CBD5E1; }
+.dark .aff-stat > div { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
 
 /* ── Goal cards ────────────────────────────────────────────────────── */
 .dark .goal-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark .gl-wrap .gl-modal { background: #1E293B; }
+.dark .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+.dark .gl-label { color: #94A3B8; }
+.dark .gl-input {
+  background: #0F172A;
+  border-color: rgba(255,255,255,0.12);
+  color: #F1F5F9;
+}
+.dark .gl-input::placeholder { color: #475569; }
 
 /* ── Modal overlays ────────────────────────────────────────────────── */
 .dark .ast-modal { background: #1E293B; }
@@ -172,6 +228,16 @@
   background: #1E293B;
   border-color: rgba(255,255,255,0.12);
   color: #94A3B8;
+}
+
+/* ── Input / select base ───────────────────────────────────────────── */
+.dark input[type="date"],
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="email"],
+.dark select {
+  color-scheme: dark;
+  color: #F1F5F9;
 }
 
 /* ── Page background ───────────────────────────────────────────────── */
