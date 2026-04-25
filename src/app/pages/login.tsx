@@ -14,33 +14,20 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const formatPhoneNumber = (input: string) => {
-    // Remove all non-numeric characters except +
-    let cleaned = input.replace(/[^\d+]/g, "");
-    
-    // If starts with +, remove it and keep the country code
-    if (cleaned.startsWith("+")) {
-      return cleaned.substring(1);
-    }
-    
-    // If starts with 0, assume Indonesian local number
-    if (cleaned.startsWith("0")) {
-      return "62" + cleaned.substring(1);
-    }
-    
-    // If starts with 8 or 9 (common Indonesian mobile prefixes), add 62
-    if (cleaned.startsWith("8") || cleaned.startsWith("9")) {
-      return "62" + cleaned;
-    }
-    
-    // Otherwise, assume it already has country code or return as-is
-    return cleaned;
+  /**
+   * Normalize to E.164 WITHOUT + — always "628xxxxxxxx"
+   * Handles: 08xxx / 8xxx / +628xxx / 628xxx
+   */
+  const normalizePhone = (input: string): string => {
+    let p = input.replace(/[^\d+]/g, "");
+    if (p.startsWith("+")) p = p.slice(1);          // +628 → 628
+    if (p.startsWith("0")) p = "62" + p.slice(1);   // 08xx → 628xx
+    if (p.startsWith("8") || p.startsWith("9")) p = "62" + p; // 8xx → 628xx
+    return p;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    const formatted = formatPhoneNumber(input);
-    setPhone(formatted);
+    setPhone(e.target.value);
     setError("");
   };
 
@@ -49,41 +36,51 @@ export function LoginPage() {
     setLoading(true);
     setError("");
 
+    const normalized = normalizePhone(phone);
+
+    if (normalized.length < 10 || !normalized.startsWith("62")) {
+      setError("Masukkan nomor WhatsApp yang valid (contoh: 08123456789)");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(
         "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/login-mira",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone_number: phone, // Already formatted as 628xxx
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: normalized }),
         },
       );
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
 
-        // Check if response status is "success"
-        if (data.status === "success") {
-          // Always persist phone so dashboard auth guard can find it
-          localStorage.setItem("mira_phone", phone);
-          // Save the entire API response to userSession (also persists mira_user)
-          setUserSession(data);
-          // Navigate to dashboard
-          navigate("/dashboard");
-        } else {
-          setError("Login failed. Please try again.");
-          setLoading(false);
-        }
+      if (data.status === "otp_sent") {
+        // OTP sent successfully — go to OTP verification page
+        localStorage.setItem("mira_phone", normalized);
+        navigate("/otp-verification");
+      } else if (data.status === "success") {
+        // Direct login (no OTP required)
+        localStorage.setItem("mira_phone", normalized);
+        setUserSession(data);
+        navigate("/dashboard");
       } else {
-        setError("Login failed. Please try again.");
+        // Show server error message
+        const msg = data.message || "Terjadi kesalahan. Coba lagi ya.";
+        if (
+          msg.toLowerCase().includes("not found") ||
+          msg.toLowerCase().includes("tidak ditemukan") ||
+          msg.toLowerCase().includes("user not found")
+        ) {
+          setError("Nomor tidak terdaftar. Pastikan nomor WhatsApp yang kamu gunakan saat daftar.");
+        } else {
+          setError(msg);
+        }
         setLoading(false);
       }
-    } catch (err) {
-      setError("Login failed. Please try again.");
+    } catch {
+      setError("Koneksi gagal. Periksa internet kamu dan coba lagi.");
       setLoading(false);
     }
   };
@@ -107,11 +104,7 @@ export function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10">
           <div className="flex items-center justify-center mb-6 sm:mb-8">
-            <img
-              src={logo}
-              alt="MIRA"
-              className="h-12 sm:h-14"
-            />
+            <img src={logo} alt="MIRA" className="h-12 sm:h-14" />
           </div>
           <h1 className="font-['Playfair_Display'] text-[36px] sm:text-[44px] font-medium mb-3 tracking-tight text-[#1a1a2e]">
             Masuk ke MIRA
@@ -148,7 +141,7 @@ export function LoginPage() {
 
           <Button
             onClick={handleSubmit}
-            disabled={phone.length < 10 || loading}
+            disabled={phone.length < 8 || loading}
             className="w-full h-14 bg-[#2D5BFF] text-white hover:bg-[#2D5BFF]/90 disabled:opacity-40 disabled:cursor-not-allowed text-[16px] font-medium rounded-xl transition-all active:scale-[0.98]"
           >
             {loading ? (
@@ -157,7 +150,7 @@ export function LoginPage() {
                 Memproses...
               </>
             ) : (
-              "Masuk"
+              "Kirim Kode OTP"
             )}
           </Button>
 
