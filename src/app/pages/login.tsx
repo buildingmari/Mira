@@ -14,15 +14,11 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /**
-   * Normalize to E.164 WITHOUT + — always "628xxxxxxxx"
-   * Handles: 08xxx / 8xxx / +628xxx / 628xxx
-   */
   const normalizePhone = (input: string): string => {
     let p = input.replace(/[^\d+]/g, "");
-    if (p.startsWith("+")) p = p.slice(1);          // +628 → 628
-    if (p.startsWith("0")) p = "62" + p.slice(1);   // 08xx → 628xx
-    if (p.startsWith("8") || p.startsWith("9")) p = "62" + p; // 8xx → 628xx
+    if (p.startsWith("+")) p = p.slice(1);
+    if (p.startsWith("0")) p = "62" + p.slice(1);
+    if (p.startsWith("8") || p.startsWith("9")) p = "62" + p;
     return p;
   };
 
@@ -57,8 +53,9 @@ export function LoginPage() {
       const data = await response.json();
 
       if (data.status === "otp_sent") {
-        // OTP sent successfully — store phone and navigate with state
-        localStorage.setItem("mira_phone", normalized);
+        // IMPORTANT: Do NOT set mira_phone here.
+        // mira_phone is only written to localStorage after successful OTP verification
+        // in otp-verification.tsx. Setting it here would allow dashboard access bypass.
         navigate("/otp-verification", { state: { phoneNumber: normalized } });
       } else if (data.status === "success") {
         // Direct login fallback (no OTP required)
@@ -66,7 +63,6 @@ export function LoginPage() {
         setUserSession(data);
         navigate("/dashboard");
       } else {
-        // Show server error message
         const msg = data.message || "Terjadi kesalahan. Coba lagi ya.";
         if (
           msg.toLowerCase().includes("not found") ||
@@ -92,7 +88,6 @@ export function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Back Button */}
         <button
           onClick={() => navigate("/")}
           className="inline-flex items-center gap-2 text-sm text-[#1a1a2e]/60 hover:text-[#1a1a2e] mb-8 transition-colors font-medium active:scale-95"
@@ -101,7 +96,6 @@ export function LoginPage() {
           Kembali
         </button>
 
-        {/* Header */}
         <div className="text-center mb-8 sm:mb-10">
           <div className="flex items-center justify-center mb-6 sm:mb-8">
             <img src={logo} alt="MIRA" className="h-12 sm:h-14" />
@@ -114,7 +108,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Login Form */}
         <div className="space-y-5">
           <div>
             <label className="block text-[15px] font-medium mb-2.5 text-[#1a1a2e]">
@@ -159,7 +152,6 @@ export function LoginPage() {
           </p>
         </div>
 
-        {/* Footer Link */}
         <div className="mt-10 pt-6 border-t border-[#2D5BFF]/10 text-center">
           <p className="text-[15px] text-[#1a1a2e]/60">
             Belum punya akun?{" "}
