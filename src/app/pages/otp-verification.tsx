@@ -117,7 +117,9 @@ export function OTPVerificationPage() {
       );
       const verifyData = await verifyResponse.json();
 
-      if (verifyResponse.ok && verifyData.status === "verified") {
+      // n8n True branch returns the user data object (no explicit status field)
+      // n8n False branch returns { status: "error", message: "..." }
+      if (verifyResponse.ok && verifyData.status !== "error") {
         if (registrationData) {
           try {
             const createAccountResponse = await fetch(
@@ -131,6 +133,9 @@ export function OTPVerificationPage() {
             if (createAccountResponse.ok) {
               const accountData = await createAccountResponse.json();
               localStorage.setItem("mira_phone", phoneNumber);
+              if (accountData && typeof accountData === "object" && !Array.isArray(accountData)) {
+                localStorage.setItem("mira_user", JSON.stringify(accountData));
+              }
               setUserSession(accountData);
               setShowSuccess(true);
               setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
@@ -147,17 +152,18 @@ export function OTPVerificationPage() {
             inputRefs.current[0]?.focus();
           }
         } else {
-          // Login flow — OTP verified, go to dashboard
+          // Login flow — OTP verified, save session and go to dashboard
           localStorage.setItem("mira_phone", phoneNumber);
+          // verifyData is the user row returned by n8n after marking OTP verified
+          if (verifyData && typeof verifyData === "object" && !Array.isArray(verifyData)) {
+            localStorage.setItem("mira_user", JSON.stringify(verifyData));
+            setUserSession(verifyData);
+          }
           setShowSuccess(true);
           setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
         }
-      } else if (verifyData.status === "invalid_otp") {
-        setError("Kode OTP salah. Coba lagi.");
-        setLoading(false);
-        setOtp(["", "", "", ""]);
-        inputRefs.current[0]?.focus();
       } else {
+        // n8n returned { status: "error", message: "..." }
         setError(verifyData.message || "Kode salah atau sudah kadaluarsa.");
         setLoading(false);
         setOtp(["", "", "", ""]);
