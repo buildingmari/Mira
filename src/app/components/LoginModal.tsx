@@ -1,6 +1,6 @@
 /**
  * LoginModal — popup login di landing page
- * Desktop : centered card  |  Mobile : bottom sheet (sama persis dengan Modal "Mulai Sekarang")
+ * Desktop : centered card  |  Mobile : bottom sheet
  */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
@@ -22,7 +22,6 @@ export function LoginModal({ isOpen, onClose }: Props) {
     useRef<HTMLInputElement>(null),
   ];
 
-  /* lock body scroll saat modal open — sama seperti Modal.tsx */
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -35,15 +34,24 @@ export function LoginModal({ isOpen, onClose }: Props) {
   const reset = () => { setStep('phone'); setPhone(''); setOtp(['','','','']); setErr(''); };
   const close = () => { reset(); onClose(); };
 
+  const normalizePhone = (raw: string): string => {
+    let p = raw.replace(/[^\d]/g, '');
+    if (p.startsWith('0')) p = '62' + p.slice(1);
+    else if (p.startsWith('8') || p.startsWith('9')) p = '62' + p;
+    else if (!p.startsWith('62')) p = '62' + p;
+    return p;
+  };
+
   /* ── Send OTP ── */
   const sendOTP = async () => {
     if (phone.length < 9) { setErr('Nomor minimal 9 digit'); return; }
     setErr(''); setStep('loading'); setLoadTxt('Mengirim OTP...');
     try {
+      const normalized = normalizePhone(phone);
       const res  = await fetch('https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/login-mira', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone_number: '62' + phone }),
+        body: JSON.stringify({ phone_number: normalized }),
       });
       const data = await res.json().catch(() => ({}));
       if (data.status === 'otp_sent') {
@@ -64,49 +72,56 @@ export function LoginModal({ isOpen, onClose }: Props) {
     const c = val.replace(/\D/g, '').slice(-1);
     const next = [...otp]; next[i] = c; setOtp(next);
     if (c && i < 3) refs[i + 1].current?.focus();
+    // Auto-submit when all 4 digits filled
+    if (c && i === 3) {
+      const filled = [...next];
+      if (filled.every(d => d !== '')) {
+        verifyWithCode(filled.join(''));
+      }
+    }
   };
   const otpKd = (i: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otp[i] && i > 0) refs[i - 1].current?.focus();
   };
 
-  /* ── Verify OTP ── */
-  const verify = async () => {
-    const code = otp.join('');
+  /* ── Verify OTP — STRICT: only data.status === 'success' is accepted ── */
+  const verifyWithCode = async (code: string) => {
     if (code.length < 4) { setErr('Masukkan kode OTP lengkap'); return; }
     setErr(''); setStep('loading'); setLoadTxt('Memverifikasi...');
+    const normalized = normalizePhone(phone);
     try {
       const res = await fetch('https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone_number: '62' + phone, otp: code }),
+        body: JSON.stringify({ phone_number: normalized, otp: code }),
       });
       const raw = await res.text();
       let data: any = {};
       try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
-      const isSuccess =
-        data.success === true || data.success === 1 || data.success === 'true' ||
-        data.status === 'verified' || data.status === 'success' ||
-        (res.ok && data.success !== false && data.status !== 'invalid_otp');
-
-      if (isSuccess) {
+      // STRICT CHECK: only status === 'success' is a valid login.
+      // Do NOT use response.ok or broad fallbacks — n8n always returns HTTP 200
+      // for both success and failure, so response.ok is meaningless here.
+      if (data.status === 'success') {
         const userData    = data.user || data.profile || data.data?.user || null;
-        const phoneNumber = userData?.primary_phone || userData?.phone_number || ('62' + phone);
-        // Use localStorage so dashboard auth guard can find it on refresh
+        const phoneNumber = userData?.primary_phone || userData?.phone_number || normalized;
         if (userData) localStorage.setItem('mira_user', JSON.stringify(userData));
         localStorage.setItem('mira_phone', phoneNumber);
         close();
         navigate('/dashboard');
       } else {
+        // Treat everything else (including HTTP 200 with status !== 'success') as failure
         setErr(data.message || 'Kode OTP salah atau kadaluarsa.');
         setOtp(['','','','']); setStep('otp');
         refs[0].current?.focus();
       }
     } catch {
       setErr('Verifikasi gagal. Coba lagi.');
-      setStep('otp');
+      setOtp(['','','','']); setStep('otp');
     }
   };
+
+  const verify = () => verifyWithCode(otp.join(''));
 
   /* ── Shared styles ── */
   const mainBtn = (disabled = false): React.CSSProperties => ({
@@ -131,16 +146,13 @@ export function LoginModal({ isOpen, onClose }: Props) {
     <div className={`lm-overlay ${isOpen ? 'open' : ''}`} onClick={e => e.target === e.currentTarget && close()}>
       <div className="lm-box">
 
-        {/* Drag handle — muncul hanya di mobile */}
         <div className="lm-handle" aria-hidden="true" />
 
-        {/* Header — sama persis dengan Modal */}
         <div className="lm-header">
           <div className="lm-title">{getTitle()}</div>
           <button className="lm-close" onClick={close}>✕</button>
         </div>
 
-        {/* Body */}
         <div className="lm-body">
 
           {/* ── STEP: PHONE ── */}
@@ -149,7 +161,6 @@ export function LoginModal({ isOpen, onClose }: Props) {
               Masukkan nomor WhatsApp yang terdaftar di MIRA.
             </p>
 
-            {/* Phone input */}
             <div style={{
               display: 'flex',
               border: `1.5px solid ${phone.length > 0 ? '#2D4BFF' : '#E2E8F0'}`,
@@ -171,7 +182,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
                 onKeyDown={e => e.key === 'Enter' && sendOTP()}
                 style={{
                   flex: 1, padding: '13px 14px', border: 'none',
-                  fontSize: '16px', /* ≥16px: cegah iOS auto-zoom */
+                  fontSize: '16px',
                   fontFamily: "'DM Sans',sans-serif", color: '#0F172A',
                   background: 'transparent', outline: 'none',
                 }}

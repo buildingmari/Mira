@@ -10,7 +10,10 @@ interface OtpFormProps {
 }
 
 export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProps) {
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  // n8n generates 4-digit OTPs — this MUST match
+  const OTP_LENGTH = 4;
+
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -18,7 +21,6 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -28,19 +30,13 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
     }
   }, [countdown]);
 
-  // Auto focus first OTP input
   useEffect(() => {
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
-    }
+    inputRefs.current[0]?.focus();
   }, []);
 
   const maskPhoneNumber = (phone: string) => {
     if (!phone || phone.length < 8) return phone;
-    const start = phone.slice(0, 4);
-    const end = phone.slice(-4);
-    const masked = "••••";
-    return `+${start}${masked}${end}`;
+    return `+${phone.slice(0, 4)}••••${phone.slice(-4)}`;
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -51,11 +47,11 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
     setOtp(newOtp);
     setOtpError("");
 
-    if (value && index < 5) {
+    if (value && index < OTP_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    if (index === 5 && value && newOtp.every((digit) => digit !== "")) {
+    if (index === OTP_LENGTH - 1 && value && newOtp.every((d) => d !== "")) {
       handleVerifyOtp(newOtp.join(""));
     }
   };
@@ -68,29 +64,26 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").slice(0, 6);
-    
+    const pastedData = e.clipboardData.getData("text").slice(0, OTP_LENGTH);
     if (!/^\d+$/.test(pastedData)) return;
 
-    const newOtp = [...otp];
-    for (let i = 0; i < pastedData.length && i < 6; i++) {
-      newOtp[i] = pastedData[i];
-    }
+    const newOtp = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < pastedData.length; i++) newOtp[i] = pastedData[i];
     setOtp(newOtp);
     setOtpError("");
 
-    if (pastedData.length === 6) {
+    if (pastedData.length === OTP_LENGTH) {
       handleVerifyOtp(pastedData);
     } else {
-      inputRefs.current[Math.min(pastedData.length, 5)]?.focus();
+      inputRefs.current[Math.min(pastedData.length, OTP_LENGTH - 1)]?.focus();
     }
   };
 
   const handleVerifyOtp = async (otpCode?: string) => {
     const otpToVerify = otpCode || otp.join("");
-    
-    if (otpToVerify.length !== 6) {
-      setOtpError("Masukkan 6 digit kode OTP");
+
+    if (otpToVerify.length !== OTP_LENGTH) {
+      setOtpError(`Masukkan ${OTP_LENGTH} digit kode OTP`);
       return;
     }
 
@@ -102,57 +95,34 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
         "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/verify-otp",
         {
           method: "POST",
-          mode: "cors",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify({
-            phone_number: phoneNumber,
-            otp: otpToVerify,
-          }),
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ phone_number: phoneNumber, otp: otpToVerify }),
         }
       );
 
-      const responseText = await response.text();
-
-      let data;
+      let data: any = {};
       try {
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch (e) {
-        data = { message: responseText };
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
       }
 
-      if (
-        response.ok || 
-        data.status === "verified" || 
-        data.status === "success" ||
-        data.message?.toLowerCase().includes("verified") ||
-        data.message?.toLowerCase().includes("success") ||
-        responseText.toLowerCase().includes("verified") ||
-        responseText.toLowerCase().includes("success")
-      ) {
-        onVerified(data || { status: "verified" });
-      } else if (data.status === "invalid_otp" || data.message?.toLowerCase().includes("invalid")) {
-        setOtpError("Kode OTP salah. Coba lagi.");
-        setOtpLoading(false);
-        setOtp(["", "", "", "", "", ""]);
-        inputRefs.current[0]?.focus();
+      // STRICT CHECK: only data.status === 'success' is a valid verification.
+      // Do NOT use response.ok — n8n returns HTTP 200 for BOTH success and failure.
+      // Using response.ok would bypass OTP validation entirely.
+      if (data.status === 'success') {
+        onVerified(data);
       } else {
         setOtpError(data.message || "Kode salah atau sudah kadaluarsa.");
         setOtpLoading(false);
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
       }
-    } catch (err) {
-      if ((err as Error).message.includes("fetch")) {
-        setOtpError("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
-      } else {
-        setOtpError("Verifikasi gagal. Coba lagi.");
-      }
-      
+    } catch {
+      setOtpError("Verifikasi gagal. Coba lagi.");
       setOtpLoading(false);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(Array(OTP_LENGTH).fill(""));
       inputRefs.current[0]?.focus();
     }
   };
@@ -160,33 +130,26 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
   const handleResendOtp = async () => {
     setOtpLoading(true);
     setOtpError("");
-
     try {
       const response = await fetch(
         "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            phone_number: phoneNumber,
-            resend_otp: true,
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: phoneNumber, resend_otp: true }),
         }
       );
-
       if (response.ok) {
         setCountdown(60);
         setCanResend(false);
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
         setOtpLoading(false);
       } else {
         setOtpError("Gagal mengirim ulang. Coba lagi.");
         setOtpLoading(false);
       }
-    } catch (err) {
+    } catch {
       setOtpError("Gagal mengirim ulang. Coba lagi.");
       setOtpLoading(false);
     }
@@ -199,7 +162,7 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
           Masukkan Kode OTP
         </h2>
         <p className="text-[15px] text-black/60 mb-6 font-light leading-relaxed">
-          Kami sudah mengirimkan kode 6 digit ke WhatsApp Anda
+          Kami sudah mengirimkan kode {OTP_LENGTH} digit ke WhatsApp Anda
         </p>
 
         <div className="inline-flex items-center gap-3 bg-black/[0.02] border border-black/5 rounded-lg px-4 py-3">
@@ -216,7 +179,7 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
       </div>
 
       <div className="mb-6">
-        <div className="flex justify-center gap-2 sm:gap-3 mb-4" onPaste={handleOtpPaste}>
+        <div className="flex justify-center gap-3 sm:gap-4 mb-4" onPaste={handleOtpPaste}>
           {otp.map((digit, index) => (
             <input
               key={index}
@@ -228,7 +191,7 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
               onChange={(e) => handleOtpChange(index, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(index, e)}
               disabled={otpLoading}
-              className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-[24px] font-bold border-2 rounded-lg transition-all focus:outline-none ${
+              className={`w-14 h-16 sm:w-16 sm:h-18 text-center text-[28px] font-bold border-2 rounded-lg transition-all focus:outline-none ${
                 otpError
                   ? "border-red-500 bg-red-50"
                   : digit
