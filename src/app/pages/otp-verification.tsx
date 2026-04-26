@@ -10,11 +10,18 @@ export function OTPVerificationPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUserSession } = useUserSession();
-  
-  const phoneNumber = location.state?.phoneNumber || "";
-  const registrationData = location.state?.registrationData || null;
 
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const registrationData = location.state?.registrationData || null;
+  const isLoginFlow = !registrationData;
+
+  // Phone: prefer navigation state, fallback to localStorage (login flow)
+  const phoneNumber =
+    location.state?.phoneNumber ||
+    localStorage.getItem("mira_phone") ||
+    "";
+
+  // 4-digit OTP
+  const [otp, setOtp] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(60);
@@ -26,9 +33,10 @@ export function OTPVerificationPage() {
 
   useEffect(() => {
     if (!phoneNumber) {
-      navigate("/register", { replace: true });
+      // No phone found at all — redirect based on flow
+      navigate(isLoginFlow ? "/login" : "/register", { replace: true });
     }
-  }, [phoneNumber, navigate]);
+  }, [phoneNumber, navigate, isLoginFlow]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -58,10 +66,10 @@ export function OTPVerificationPage() {
     newOtp[index] = value;
     setOtp(newOtp);
     setError("");
-    if (value && index < 5) {
+    if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
-    if (index === 5 && value && newOtp.every((digit) => digit !== "")) {
+    if (index === 3 && value && newOtp.every((digit) => digit !== "")) {
       handleVerify(newOtp.join(""));
     }
   };
@@ -74,25 +82,25 @@ export function OTPVerificationPage() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData("text").slice(0, 6);
+    const pastedData = e.clipboardData.getData("text").slice(0, 4);
     if (!/^\d+$/.test(pastedData)) return;
     const newOtp = [...otp];
-    for (let i = 0; i < pastedData.length && i < 6; i++) {
+    for (let i = 0; i < pastedData.length && i < 4; i++) {
       newOtp[i] = pastedData[i];
     }
     setOtp(newOtp);
     setError("");
-    if (pastedData.length === 6) {
+    if (pastedData.length === 4) {
       handleVerify(pastedData);
     } else {
-      inputRefs.current[Math.min(pastedData.length, 5)]?.focus();
+      inputRefs.current[Math.min(pastedData.length, 3)]?.focus();
     }
   };
 
   const handleVerify = async (otpCode?: string) => {
     const otpToVerify = otpCode || otp.join("");
-    if (otpToVerify.length !== 6) {
-      setError("Masukkan 6 digit kode OTP");
+    if (otpToVerify.length !== 4) {
+      setError("Masukkan 4 digit kode OTP");
       return;
     }
     setLoading(true);
@@ -129,16 +137,17 @@ export function OTPVerificationPage() {
             } else {
               setError("Gagal membuat akun. Coba lagi.");
               setLoading(false);
-              setOtp(["", "", "", "", "", ""]);
+              setOtp(["", "", "", ""]);
               inputRefs.current[0]?.focus();
             }
           } catch {
             setError("Gagal membuat akun. Coba lagi.");
             setLoading(false);
-            setOtp(["", "", "", "", "", ""]);
+            setOtp(["", "", "", ""]);
             inputRefs.current[0]?.focus();
           }
         } else {
+          // Login flow — OTP verified, go to dashboard
           localStorage.setItem("mira_phone", phoneNumber);
           setShowSuccess(true);
           setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
@@ -146,18 +155,18 @@ export function OTPVerificationPage() {
       } else if (verifyData.status === "invalid_otp") {
         setError("Kode OTP salah. Coba lagi.");
         setLoading(false);
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(["", "", "", ""]);
         inputRefs.current[0]?.focus();
       } else {
         setError(verifyData.message || "Kode salah atau sudah kadaluarsa.");
         setLoading(false);
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(["", "", "", ""]);
         inputRefs.current[0]?.focus();
       }
     } catch {
       setError("Verifikasi gagal. Coba lagi.");
       setLoading(false);
-      setOtp(["", "", "", "", "", ""]);
+      setOtp(["", "", "", ""]);
       inputRefs.current[0]?.focus();
     }
   };
@@ -166,18 +175,18 @@ export function OTPVerificationPage() {
     setResendLoading(true);
     setError("");
     try {
-      const response = await fetch(
-        "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone_number: phoneNumber, resend_otp: true }),
-        }
-      );
+      const endpoint = isLoginFlow
+        ? "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/login-mira"
+        : "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phoneNumber, resend_otp: true }),
+      });
       if (response.ok) {
         setCountdown(60);
         setCanResend(false);
-        setOtp(["", "", "", "", "", ""]);
+        setOtp(["", "", "", ""]);
         inputRefs.current[0]?.focus();
         setResendLoading(false);
         const successMsg = document.createElement("div");
@@ -230,7 +239,7 @@ export function OTPVerificationPage() {
       <div className="hidden lg:flex flex-1 items-center justify-center pl-20 pr-10 bg-[#F8F8F6]">
         <div className="w-full max-w-2xl">
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => navigate(isLoginFlow ? "/login" : "/register")}
             className="inline-flex items-center gap-2 text-sm text-black/60 hover:text-black mb-20 transition-colors font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -243,7 +252,7 @@ export function OTPVerificationPage() {
               WhatsApp Anda.
             </h1>
             <p className="text-[20px] xl:text-[22px] text-black/60 leading-relaxed font-light">
-              Kami telah mengirim kode verifikasi 6 digit ke nomor WhatsApp Anda.
+              Kami telah mengirim kode verifikasi 4 digit ke nomor WhatsApp Anda.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -261,7 +270,7 @@ export function OTPVerificationPage() {
           className="w-full max-w-md"
         >
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => navigate(isLoginFlow ? "/login" : "/register")}
             className="lg:hidden inline-flex items-center gap-2 text-sm text-black/60 hover:text-black mb-3 transition-colors font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -290,7 +299,7 @@ export function OTPVerificationPage() {
                   {maskPhoneNumber(phoneNumber)}
                 </span>
                 <button
-                  onClick={() => navigate("/register", { replace: true })}
+                  onClick={() => navigate(isLoginFlow ? "/login" : "/register", { replace: true })}
                   className="text-[13px] text-blue-600 hover:text-blue-700 font-medium transition-colors"
                 >
                   Ubah
@@ -302,7 +311,7 @@ export function OTPVerificationPage() {
               <label className="block text-[14px] font-medium mb-4 text-center text-[#0F172A]">
                 Masukkan Kode Verifikasi
               </label>
-              <div className="flex justify-center gap-2 sm:gap-3 mb-4" onPaste={handlePaste}>
+              <div className="flex justify-center gap-3 sm:gap-4 mb-4" onPaste={handlePaste}>
                 {otp.map((digit, index) => (
                   <input
                     key={index}
@@ -314,7 +323,7 @@ export function OTPVerificationPage() {
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     disabled={loading}
-                    className={`w-12 h-14 sm:w-14 sm:h-16 text-center text-[24px] font-bold border-2 rounded-lg transition-all focus:outline-none ${
+                    className={`w-14 h-16 sm:w-16 sm:h-18 text-center text-[28px] font-bold border-2 rounded-lg transition-all focus:outline-none ${
                       error
                         ? "border-red-500 bg-red-50"
                         : digit

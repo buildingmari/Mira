@@ -57,11 +57,11 @@ export function LoginPage() {
       const data = await response.json();
 
       if (data.status === "otp_sent") {
-        // OTP sent successfully — go to OTP verification page
+        // OTP sent successfully — store phone and navigate with state
         localStorage.setItem("mira_phone", normalized);
-        navigate("/otp-verification");
+        navigate("/otp-verification", { state: { phoneNumber: normalized } });
       } else if (data.status === "success") {
-        // Direct login (no OTP required)
+        // Direct login fallback (no OTP required)
         localStorage.setItem("mira_phone", normalized);
         setUserSession(data);
         navigate("/dashboard");
