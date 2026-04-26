@@ -33,10 +33,18 @@ export function OTPVerificationPage() {
 
   useEffect(() => {
     if (!phoneNumber) {
-      // No phone found at all — redirect based on flow
       navigate(isLoginFlow ? "/login" : "/register", { replace: true });
+      return;
     }
-  }, [phoneNumber, navigate, isLoginFlow]);
+    // SECURITY: Clear existing session while OTP is being verified.
+    // mira_phone will only be re-set after successful OTP verification.
+    // This prevents bypassing OTP by navigating directly to /dashboard.
+    if (isLoginFlow) {
+      localStorage.removeItem("mira_phone");
+      localStorage.removeItem("mira_user");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — phoneNumber is already captured above
 
   useEffect(() => {
     if (countdown > 0) {
@@ -117,10 +125,13 @@ export function OTPVerificationPage() {
       );
       const verifyData = await verifyResponse.json();
 
-      // n8n True branch returns the user data object (no explicit status field)
-      // n8n False branch returns { status: "error", message: "..." }
-      if (verifyResponse.ok && verifyData.status !== "error") {
+      // n8n True branch (Respond to Webhook2) returns:
+      //   { status: "success", message: "Login berhasil", user: { ...user_row } }
+      // n8n False branch (Respond to Webhook5) returns:
+      //   { status: "error", message: "OTP salah atau expired" }
+      if (verifyResponse.ok && verifyData.status === "success") {
         if (registrationData) {
+          // Registration flow: call register-mira webhook to create account
           try {
             const createAccountResponse = await fetch(
               "https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira",
@@ -132,11 +143,12 @@ export function OTPVerificationPage() {
             );
             if (createAccountResponse.ok) {
               const accountData = await createAccountResponse.json();
+              const userData = accountData?.user || accountData;
               localStorage.setItem("mira_phone", phoneNumber);
-              if (accountData && typeof accountData === "object" && !Array.isArray(accountData)) {
-                localStorage.setItem("mira_user", JSON.stringify(accountData));
+              if (userData && typeof userData === "object" && !Array.isArray(userData)) {
+                localStorage.setItem("mira_user", JSON.stringify(userData));
               }
-              setUserSession(accountData);
+              setUserSession(userData);
               setShowSuccess(true);
               setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
             } else {
@@ -152,18 +164,19 @@ export function OTPVerificationPage() {
             inputRefs.current[0]?.focus();
           }
         } else {
-          // Login flow — OTP verified, save session and go to dashboard
+          // Login flow: OTP verified — n8n returns { status:"success", user:{...} }
+          // Extract user data from the response
+          const userData = verifyData.user;
           localStorage.setItem("mira_phone", phoneNumber);
-          // verifyData is the user row returned by n8n after marking OTP verified
-          if (verifyData && typeof verifyData === "object" && !Array.isArray(verifyData)) {
-            localStorage.setItem("mira_user", JSON.stringify(verifyData));
-            setUserSession(verifyData);
+          if (userData && typeof userData === "object" && !Array.isArray(userData)) {
+            localStorage.setItem("mira_user", JSON.stringify(userData));
+            setUserSession(userData);
           }
           setShowSuccess(true);
           setTimeout(() => { navigate("/dashboard", { replace: true }); }, 1500);
         }
       } else {
-        // n8n returned { status: "error", message: "..." }
+        // status: "error" or unexpected response
         setError(verifyData.message || "Kode salah atau sudah kadaluarsa.");
         setLoading(false);
         setOtp(["", "", "", ""]);
