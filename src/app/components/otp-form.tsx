@@ -36,7 +36,7 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
 
   const maskPhoneNumber = (phone: string) => {
     if (!phone || phone.length < 8) return phone;
-    return `+${phone.slice(0, 4)}••••${phone.slice(-4)}`;
+    return `+${phone.slice(0, 4)}\u2022\u2022\u2022\u2022${phone.slice(-4)}`;
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -139,14 +139,25 @@ export function OtpForm({ phoneNumber, onVerified, onChangeNumber }: OtpFormProp
           body: JSON.stringify({ phone_number: phoneNumber, resend_otp: true }),
         }
       );
-      if (response.ok) {
+
+      let data: any = {};
+      try {
+        const text = await response.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {};
+      }
+
+      // STRICT CHECK: only data.status === 'success' confirms resend.
+      // Do NOT use response.ok — n8n always returns HTTP 200 regardless of outcome.
+      if (data.status === 'success') {
         setCountdown(60);
         setCanResend(false);
         setOtp(Array(OTP_LENGTH).fill(""));
         inputRefs.current[0]?.focus();
         setOtpLoading(false);
       } else {
-        setOtpError("Gagal mengirim ulang. Coba lagi.");
+        setOtpError(data.message || "Gagal mengirim ulang. Coba lagi.");
         setOtpLoading(false);
       }
     } catch {

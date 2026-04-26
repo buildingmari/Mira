@@ -100,7 +100,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
       try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
 
       // STRICT CHECK: only status === 'success' is a valid login.
-      // Do NOT use response.ok or broad fallbacks — n8n always returns HTTP 200
+      // Do NOT use response.ok — n8n always returns HTTP 200
       // for both success and failure, so response.ok is meaningless here.
       if (data.status === 'success') {
         const userData    = data.user || data.profile || data.data?.user || null;
