@@ -9,7 +9,8 @@ import { useUserSession } from "../context/user-session-context";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { setUserSession } = useUserSession();
+  // setUserSession is not used here — session is only set after OTP verification
+  const { setUserSession: _setUserSession } = useUserSession();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,16 +54,14 @@ export function LoginPage() {
       const data = await response.json();
 
       if (data.status === "otp_sent") {
-        // IMPORTANT: Do NOT set mira_phone here.
-        // mira_phone is only written to localStorage after successful OTP verification
-        // in otp-verification.tsx. Setting it here would allow dashboard access bypass.
+        // OTP sent — navigate to verification page.
+        // mira_phone is NOT set here. It is only written to localStorage
+        // inside otp-verification.tsx after a confirmed verify-otp success.
+        // Setting it here would allow dashboard access bypass.
         navigate("/otp-verification", { state: { phoneNumber: normalized } });
-      } else if (data.status === "success") {
-        // Direct login fallback (no OTP required)
-        localStorage.setItem("mira_phone", normalized);
-        setUserSession(data);
-        navigate("/dashboard");
       } else {
+        // Any other response (including unexpected "success") is treated as an error.
+        // There is no direct login without OTP.
         const msg = data.message || "Terjadi kesalahan. Coba lagi ya.";
         if (
           msg.toLowerCase().includes("not found") ||
