@@ -1,26 +1,23 @@
 {
-  "rewrites": [
+  "routes": [
     {
+      "src": "/(.*)",
       "has": [
-        {
-          "type": "host",
-          "value": "admin.halo-mira.com"
-        }
+        { "type": "host", "value": "admin.halo-mira.com" }
       ],
-      "source": "/(.*)",
-      "destination": "/admin/index.html"
+      "dest": "/admin/index.html"
     },
     {
-      "source": "/dashboard",
-      "destination": "/dashboard/index.html"
+      "src": "^/dashboard$",
+      "dest": "/dashboard/index.html"
     },
     {
-      "source": "/dashboard/(.*)",
-      "destination": "/dashboard/index.html"
+      "src": "^/dashboard/(.*)",
+      "dest": "/dashboard/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
