@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MIRA Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3347;
+      --accent: #6c63ff;
+      --accent-hover: #5a52d5;
+      --text: #e8eaf0;
+      --text-muted: #8b90a0;
+      --error: #ff5c5c;
+      --success: #4caf82;
+      --radius: 12px;
+      --font: 'Inter', system-ui, sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ---------- AUTH ---------- */
+    #auth-screen {
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 36px;
+    }
+    .auth-logo {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+    .auth-logo span { color: var(--accent); }
+    .auth-sub {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input[type="email"], input[type="password"], input[type="text"], input[type="url"], textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: var(--font);
+    }
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 72px; }
+    .field { margin-bottom: 20px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+      font-family: var(--font);
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 8px 16px;
+      width: auto;
+    }
+    .btn-outline:hover { border-color: var(--text-muted); color: var(--text); background: transparent; }
+    .msg {
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .msg.error { background: rgba(255,92,92,0.12); color: var(--error); border: 1px solid rgba(255,92,92,0.25); display: block; }
+    .msg.success { background: rgba(76,175,130,0.12); color: var(--success); border: 1px solid rgba(76,175,130,0.25); display: block; }
+
+    /* ---------- DASHBOARD ---------- */
+    #dashboard-screen {
+      display: none;
+      width: 100%;
+      min-height: 100vh;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .dash-wrap {
+      width: 100%;
+      max-width: 760px;
+      padding: 40px 24px 80px;
+    }
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 40px;
+    }
+    .dash-title {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .dash-title span { color: var(--accent); }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .save-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .save-row .btn { width: auto; min-width: 160px; }
+    #save-msg { font-size: 13px; }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<!-- ========== AUTH SCREEN ========== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">MIRA <span>Admin</span></div>
+    <p class="auth-sub">Sign in to manage your site settings</p>
+    <div id="auth-msg" class="msg"></div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="admin@halo-mira.com" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="••••••••••" autocomplete="current-password" />
+    </div>
+    <button class="btn" id="login-btn" onclick="handleLogin()">Sign In</button>
+  </div>
+</div>
+
+<!-- ========== DASHBOARD SCREEN ========== -->
+<div id="dashboard-screen">
+  <div class="dash-wrap">
+    <div class="dash-header">
+      <div class="dash-title">MIRA <span>Admin</span></div>
+      <button class="btn btn-outline" onclick="handleLogout()">Sign Out</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">SEO</div>
+      <div class="field">
+        <label for="site_title">Site Title</label>
+        <input type="text" id="site_title" placeholder="MIRA — Finance" />
+      </div>
+      <div class="field">
+        <label for="meta_description">Meta Description</label>
+        <textarea id="meta_description" placeholder="Short description for search engines..."></textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Open Graph</div>
+      <div class="field">
+        <label for="og_title">OG Title</label>
+        <input type="text" id="og_title" placeholder="MIRA — Finance" />
+      </div>
+      <div class="field">
+        <label for="og_description">OG Description</label>
+        <textarea id="og_description" placeholder="Description shown on social media previews..."></textarea>
+      </div>
+      <div class="field">
+        <label for="og_image">OG Image URL</label>
+        <input type="url" id="og_image" placeholder="https://..." />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Favicon</div>
+      <div class="field">
+        <label for="favicon_url">Favicon URL</label>
+        <input type="url" id="favicon_url" placeholder="https://... (.ico or .png)" />
+      </div>
+    </div>
+
+    <div class="save-row">
+      <button class="btn" id="save-btn" onclick="handleSave()">Save Changes</button>
+      <span id="save-msg"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  var API = 'https://vhwissutkmxyzlyzkhyt.supabase.co/functions/v1/admin-api';
+  var SESSION_KEY = 'mira_admin_token';
+
+  function getToken() {
+    return sessionStorage.getItem(SESSION_KEY);
+  }
+
+  function showDashboard() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('dashboard-screen').style.display = 'flex';
+  }
+
+  function showAuth() {
+    document.getElementById('auth-screen').style.display = '';
+    document.getElementById('dashboard-screen').style.display = 'none';
+  }
+
+  function setAuthMsg(text, type) {
+    var el = document.getElementById('auth-msg');
+    el.textContent = text;
+    el.className = 'msg ' + (type || '');
+  }
+
+  function setSaveMsg(text, type) {
+    var el = document.getElementById('save-msg');
+    el.textContent = text;
+    el.style.color = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success)' : 'var(--text-muted)';
+  }
+
+  async function api(body) {
+    var res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
+
+  async function handleLogin() {
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+    var btn = document.getElementById('login-btn');
+    if (!email || !password) { setAuthMsg('Please enter your email and password.', 'error'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    setAuthMsg('', '');
+    try {
+      var data = await api({ action: 'login', email: email, password: password });
+      if (data.success) {
+        sessionStorage.setItem(SESSION_KEY, data.token);
+        await loadSettings();
+        showDashboard();
+      } else {
+        setAuthMsg(data.message || 'Invalid credentials.', 'error');
+      }
+    } catch (e) {
+      setAuthMsg('Connection error. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      var data = await api({ action: 'get_settings' });
+      if (data.success && data.settings) {
+        var s = data.settings;
+        document.getElementById('site_title').value = s.site_title || '';
+        document.getElementById('meta_description').value = s.meta_description || '';
+        document.getElementById('og_title').value = s.og_title || '';
+        document.getElementById('og_description').value = s.og_description || '';
+        document.getElementById('og_image').value = s.og_image || '';
+        document.getElementById('favicon_url').value = s.favicon_url || '';
+      }
+    } catch (e) {}
+  }
+
+  async function handleSave() {
+    var token = getToken();
+    if (!token) { showAuth(); return; }
+    var btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+    setSaveMsg('', '');
+    var settings = {
+      site_title: document.getElementById('site_title').value.trim(),
+      meta_description: document.getElementById('meta_description').value.trim(),
+      og_title: document.getElementById('og_title').value.trim(),
+      og_description: document.getElementById('og_description').value.trim(),
+      og_image: document.getElementById('og_image').value.trim(),
+      favicon_url: document.getElementById('favicon_url').value.trim()
+    };
+    try {
+      var data = await api({ action: 'update_settings', token: token, settings: settings });
+      if (data.success) {
+        setSaveMsg('Changes saved successfully.', 'success');
+      } else if (data.message === 'Unauthorized') {
+        sessionStorage.removeItem(SESSION_KEY);
+        showAuth();
+      } else {
+        setSaveMsg('Failed to save. Please try again.', 'error');
+      }
+    } catch (e) {
+      setSaveMsg('Connection error. Please try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+    }
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    document.getElementById('password').value = '';
+    showAuth();
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      if (document.getElementById('auth-screen').style.display !== 'none' ||
+          !document.getElementById('auth-screen').style.display) {
+        handleLogin();
+      }
+    }
+  });
+
+  // Init
+  (function () {
+    var token = getToken();
+    if (token) {
+      loadSettings().then(showDashboard);
+    } else {
+      showAuth();
+    }
+  })();
+</script>
+</body>
+</html>
