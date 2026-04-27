@@ -9,7 +9,7 @@ const TOC = [
   { id: 'eligibility', label: 'Syarat Pengguna' },
   { id: 'account',     label: 'Akun & Keamanan' },
   { id: 'acceptable',  label: 'Penggunaan yang Diizinkan' },
-  { id: 'subscription','label': 'Langganan & Pembayaran' },
+  { id: 'subscription', label: 'Langganan & Pembayaran' },
   { id: 'limitation',  label: 'Batasan Tanggung Jawab' },
   { id: 'ip',          label: 'Kekayaan Intelektual' },
   { id: 'termination', label: 'Penghentian Layanan' },
@@ -48,7 +48,7 @@ export function TermsOfService() {
           {/* Hero */}
           <div className="legal-hero">
             <div className="legal-badge">📋 Legal</div>
-            <h1 className="legal-title">Syarat & Ketentuan</h1>
+            <h1 className="legal-title">Syarat &amp; Ketentuan</h1>
             <div className="legal-meta">
               <span>📅 Berlaku sejak: 1 Januari 2025</span>
               <span>🔄 Terakhir diperbarui: 17 Maret 2025</span>
@@ -62,10 +62,10 @@ export function TermsOfService() {
               Pendahuluan
             </h2>
             <p className="legal-p">
-              Syarat dan Ketentuan ini ("S&K") merupakan perjanjian hukum antara Anda ("Pengguna") dan PT. Mira Teknologi Indonesia ("MIRA") yang mengatur penggunaan layanan asisten keuangan berbasis WhatsApp beserta semua platform pendukungnya.
+              Syarat dan Ketentuan ini ("S&amp;K") merupakan perjanjian hukum antara Anda ("Pengguna") dan MIRA yang mengatur penggunaan layanan asisten keuangan berbasis WhatsApp beserta semua platform pendukungnya.
             </p>
             <p className="legal-p">
-              Dengan mendaftarkan akun, mengirimkan pesan ke nomor WhatsApp MIRA, atau menggunakan dashboard web kami, Anda menyatakan telah membaca, memahami, dan menyetujui S&K ini.
+              Dengan mendaftarkan akun, mengirimkan pesan ke nomor WhatsApp MIRA, atau menggunakan dashboard web kami, Anda menyatakan telah membaca, memahami, dan menyetujui S&amp;K ini.
             </p>
             <div className="legal-box">
               <p>
@@ -116,7 +116,7 @@ export function TermsOfService() {
           <section className="legal-section" id="account">
             <h2 className="legal-section-title">
               <span className="legal-section-num">4</span>
-              Akun & Keamanan
+              Akun &amp; Keamanan
             </h2>
             <p className="legal-p">
               Akun MIRA terikat pada nomor WhatsApp Anda. Anda bertanggung jawab untuk:
@@ -165,7 +165,7 @@ export function TermsOfService() {
           <section className="legal-section" id="subscription">
             <h2 className="legal-section-title">
               <span className="legal-section-num">6</span>
-              Langganan & Pembayaran
+              Langganan &amp; Pembayaran
             </h2>
             <p className="legal-p">
               MIRA menawarkan model berlangganan dengan ketentuan berikut:
@@ -210,10 +210,10 @@ export function TermsOfService() {
               Kekayaan Intelektual
             </h2>
             <p className="legal-p">
-              Seluruh elemen layanan MIRA — termasuk merek dagang, logo, desain antarmuka, kode program, model AI, dan konten editorial — merupakan kekayaan intelektual PT. Mira Teknologi Indonesia yang dilindungi hukum.
+              Seluruh elemen layanan MIRA — termasuk merek dagang, logo, desain antarmuka, kode program, model AI, dan konten editorial — merupakan kekayaan intelektual MIRA yang dilindungi hukum.
             </p>
             <p className="legal-p">
-              Anda diberikan lisensi terbatas, tidak eksklusif, dan tidak dapat dipindahtangankan untuk menggunakan layanan sesuai S&K ini. Data transaksi yang Anda masukkan tetap menjadi milik Anda.
+              Anda diberikan lisensi terbatas, tidak eksklusif, dan tidak dapat dipindahtangankan untuk menggunakan layanan sesuai S&amp;K ini. Data transaksi yang Anda masukkan tetap menjadi milik Anda.
             </p>
           </section>
 
@@ -231,7 +231,7 @@ export function TermsOfService() {
             </ul>
             <p className="legal-p"><strong>Penghentian oleh MIRA:</strong></p>
             <ul className="legal-ul">
-              <li>MIRA dapat menangguhkan akun yang melanggar S&K ini tanpa pemberitahuan sebelumnya</li>
+              <li>MIRA dapat menangguhkan akun yang melanggar S&amp;K ini tanpa pemberitahuan sebelumnya</li>
               <li>Untuk pelanggaran berat (penipuan, hacking), akun dapat dihapus permanen</li>
               <li>Penghentian layanan secara keseluruhan akan diberitahukan minimal 30 hari sebelumnya dengan pengembalian dana pro-rata</li>
             </ul>
@@ -244,7 +244,7 @@ export function TermsOfService() {
               Hukum yang Berlaku
             </h2>
             <p className="legal-p">
-              S&K ini diatur oleh dan ditafsirkan sesuai hukum Republik Indonesia, termasuk:
+              S&amp;K ini diatur oleh dan ditafsirkan sesuai hukum Republik Indonesia, termasuk:
             </p>
             <ul className="legal-ul">
               <li>UU No. 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik (ITE)</li>
@@ -262,12 +262,10 @@ export function TermsOfService() {
               <span className="legal-section-num">11</span>
               Hubungi Kami
             </h2>
-            <p className="legal-p">Pertanyaan terkait Syarat & Ketentuan ini:</p>
+            <p className="legal-p">Pertanyaan terkait Syarat &amp; Ketentuan ini:</p>
             <div className="legal-contact-block">
-              <p><strong>PT. Mira Teknologi Indonesia</strong></p>
-              <p>Email legal: <a href="mailto:legal@getmira.id">legal@getmira.id</a></p>
-              <p>Email umum: <a href="mailto:hi@getmira.id">hi@getmira.id</a></p>
-              <p>WhatsApp: <a href="https://wa.me/6281234567890">+62 812-3456-7890</a></p>
+              <p><strong>MIRA</strong></p>
+              <p>Email: <a href="mailto:support@halo-mira.com">support@halo-mira.com</a></p>
             </div>
           </section>
         </main>

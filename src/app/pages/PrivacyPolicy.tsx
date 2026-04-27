@@ -61,10 +61,10 @@ export function PrivacyPolicy() {
               Pendahuluan
             </h2>
             <p className="legal-p">
-              PT. Mira Teknologi Indonesia ("MIRA", "kami", "kita") menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi yang Anda berikan saat menggunakan layanan MIRA — asisten pencatat keuangan berbasis WhatsApp.
+              MIRA ("kami", "kita") menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi yang Anda berikan saat menggunakan layanan MIRA — asisten pencatat keuangan berbasis WhatsApp.
             </p>
             <p className="legal-p">
-              Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi Anda ketika mengakses layanan melalui platform WhatsApp maupun dashboard web di <strong>getmira.id</strong>.
+              Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi Anda ketika mengakses layanan melalui platform WhatsApp maupun dashboard web di <strong>halo-mira.com</strong>.
             </p>
             <div className="legal-box">
               <p>
@@ -81,7 +81,7 @@ export function PrivacyPolicy() {
             </h2>
             <p className="legal-p">Kami mengumpulkan beberapa kategori data berikut:</p>
 
-            <p className="legal-p"><strong>a. Data Identitas & Akun</strong></p>
+            <p className="legal-p"><strong>a. Data Identitas &amp; Akun</strong></p>
             <ul className="legal-ul">
               <li>Nomor WhatsApp yang Anda gunakan untuk mendaftar</li>
               <li>Nama tampilan (jika diberikan)</li>
@@ -157,7 +157,7 @@ export function PrivacyPolicy() {
           <section className="legal-section" id="storage">
             <h2 className="legal-section-title">
               <span className="legal-section-num">5</span>
-              Penyimpanan & Keamanan
+              Penyimpanan &amp; Keamanan
             </h2>
             <p className="legal-p">
               Data Anda disimpan di server yang berlokasi di Indonesia dan/atau Singapura dengan standar keamanan berikut:
@@ -190,7 +190,7 @@ export function PrivacyPolicy() {
               <li><strong>Hak Keberatan</strong> — menolak pemrosesan data untuk tujuan tertentu</li>
             </ul>
             <p className="legal-p">
-              Untuk mengajukan permintaan terkait hak-hak ini, hubungi kami melalui email <a href="mailto:privacy@getmira.id" style={{color:'#2D4BFF'}}>privacy@getmira.id</a>. Kami akan merespons dalam <strong>14 hari kerja</strong>.
+              Untuk mengajukan permintaan terkait hak-hak ini, hubungi kami melalui email <a href="mailto:support@halo-mira.com" style={{color:'#2D4BFF'}}>support@halo-mira.com</a>. Kami akan merespons dalam <strong>14 hari kerja</strong>.
             </p>
           </section>
 
@@ -198,7 +198,7 @@ export function PrivacyPolicy() {
           <section className="legal-section" id="cookies">
             <h2 className="legal-section-title">
               <span className="legal-section-num">7</span>
-              Cookie & Pelacakan
+              Cookie &amp; Pelacakan
             </h2>
             <p className="legal-p">
               Dashboard web MIRA menggunakan cookie terbatas untuk:
@@ -253,10 +253,8 @@ export function PrivacyPolicy() {
               Jika Anda memiliki pertanyaan, kekhawatiran, atau ingin mengajukan permintaan terkait privasi data Anda, silakan hubungi kami:
             </p>
             <div className="legal-contact-block">
-              <p><strong>PT. Mira Teknologi Indonesia</strong></p>
-              <p>Email privasi: <a href="mailto:privacy@getmira.id">privacy@getmira.id</a></p>
-              <p>Email umum: <a href="mailto:hi@getmira.id">hi@getmira.id</a></p>
-              <p>WhatsApp: <a href="https://wa.me/6281234567890">+62 812-3456-7890</a></p>
+              <p><strong>MIRA</strong></p>
+              <p>Email: <a href="mailto:support@halo-mira.com">support@halo-mira.com</a></p>
               <p style={{marginTop:'8px', color:'#94A3B8', fontSize:'0.8rem'}}>Jam respons: Senin–Jumat, 09.00–18.00 WIB (MIRA bot aktif 24/7)</p>
             </div>
           </section>

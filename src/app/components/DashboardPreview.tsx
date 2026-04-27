@@ -6,14 +6,13 @@ interface DashboardPreviewProps {
 }
 
 // ── static mock data that mirrors real dashboard ──
-const TREND = [38, 55, 42, 70, 48, 82, 61];
-const TREND_LABELS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+const TREND = [2, 3, 3, 3, 4, 100, 14];
+const TREND_LABELS = ['21 Apr', '22 Apr', '23 Apr', '24 Apr', '25 Apr', '26 Apr', '27 Apr'];
 const CATS = [
-  { name: 'Makanan',   pct: 38, color: '#2563EB', val: 'Rp1,1jt' },
-  { name: 'Transport', pct: 22, color: '#10B981', val: 'Rp640rb' },
-  { name: 'Belanja',   pct: 18, color: '#8B5CF6', val: 'Rp520rb' },
-  { name: 'Tagihan',   pct: 14, color: '#F59E0B', val: 'Rp410rb' },
-  { name: 'Hiburan',   pct: 8,  color: '#EC4899', val: 'Rp230rb' },
+  { name: 'Makanan',   pct: 95, color: '#2563EB', val: 'Rp14.553.013' },
+  { name: 'Kesehatan', pct: 90, color: '#EF4444', val: 'Rp8.000.000'  },
+  { name: 'Hiburan',   pct: 8,  color: '#EC4899', val: 'Rp220.000'    },
+  { name: 'Transport', pct: 2,  color: '#10B981', val: 'Rp10.000'     },
 ];
 const TXNS = [
   { emoji: '🍜', name: 'GrabFood',        cat: 'Makanan',   date: '27 Apr', amt: '−Rp45rb',   isIn: false },
@@ -25,14 +24,14 @@ const TXNS = [
 const MOB_TXNS = TXNS.slice(0, 4);
 
 const NAV_ITEMS = [
-  { icon: '📊', label: 'Dashboard',   active: true  },
-  { icon: '📋', label: 'Transaksi',   active: false },
-  { icon: '📈', label: 'Insight',     active: false },
-  { icon: '🎯', label: 'Target',      active: false },
-  { icon: '💼', label: 'Aset',        active: false },
-  { icon: '🤝', label: 'Affiliate',   active: false },
-  { icon: '📤', label: 'Export',      active: false },
-  { icon: '⚙️', label: 'Pengaturan',  active: false },
+  { icon: '📊', label: 'Dashboard',        active: true  },
+  { icon: '📋', label: 'Transaksi',        active: false },
+  { icon: '📈', label: 'Insight',          active: false },
+  { icon: '🎯', label: 'Target',           active: false },
+  { icon: '💼', label: 'Aset & Net Worth', active: false },
+  { icon: '🤝', label: 'Affiliate',        active: false },
+  { icon: '📤', label: 'Export Data',      active: false },
+  { icon: '⚙️', label: 'Pengaturan',       active: false },
 ];
 
 export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
@@ -50,6 +49,24 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
   }, []);
 
   const maxBar = Math.max(...TREND);
+
+  // SVG line chart helpers
+  const svgW = 260;
+  const svgH = 80;
+  const padX = 10;
+  const padTop = 8;
+  const padBottom = 12;
+  const chartH = svgH - padTop - padBottom;
+  const pts = TREND.map((v, i) => ({
+    x: padX + (i / (TREND.length - 1)) * (svgW - 2 * padX),
+    y: padTop + chartH - (v / maxBar) * chartH,
+  }));
+  const linePoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const areaPoints = [
+    ...pts.map(p => `${p.x},${p.y}`),
+    `${pts[pts.length - 1].x},${padTop + chartH}`,
+    `${pts[0].x},${padTop + chartH}`,
+  ].join(' ');
 
   return (
     <section className="dbprev-section" id="preview">
@@ -111,9 +128,9 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
 
                 {/* user */}
                 <div className="dbprev-sb-user">
-                  <div className="dbprev-sb-avatar">R</div>
+                  <div className="dbprev-sb-avatar">D</div>
                   <div>
-                    <div className="dbprev-sb-uname">Rizky P.</div>
+                    <div className="dbprev-sb-uname">Dio</div>
                     <div className="dbprev-sb-uplan">Personal</div>
                   </div>
                 </div>
@@ -136,7 +153,7 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
                 <div className="dbprev-content">
                   {/* greeting */}
                   <div className="dbprev-greeting">
-                    <div className="dbprev-greeting-title">Selamat siang, Rizky 👋</div>
+                    <div className="dbprev-greeting-title">Selamat pagi, Dio 👋</div>
                     <div className="dbprev-greeting-sub">Senin, 27 April 2026</div>
                   </div>
 
@@ -146,19 +163,19 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
                     <div className="dbprev-hero-bg-circle" style={{ right: 50, bottom: -60, width: 120, height: 120 }} />
                     <div>
                       <div className="dbprev-hero-label">Pengeluaran Bulan Ini</div>
-                      <div className="dbprev-hero-amount">Rp2,9 jt</div>
+                      <div className="dbprev-hero-amount">Rp22.783.013</div>
                       <div className="dbprev-hero-track">
-                        <span className="dbprev-track-ok">▲ On Track</span>
-                        <span> dari Rp5,0 jt</span>
+                        <span style={{ color: '#FCA5A5', fontWeight: 600 }}>! Over Budget</span>
+                        <span> dari Rp5.000.000</span>
                       </div>
                     </div>
                     <div className="dbprev-hero-right">
                       <div className="dbprev-hero-stat">
-                        <div className="dbprev-hero-stat-val">Rp2,1jt</div>
+                        <div className="dbprev-hero-stat-val">Rp17.783.013</div>
                         <div className="dbprev-hero-stat-lbl">Sisa limit</div>
                       </div>
                       <div className="dbprev-hero-stat">
-                        <div className="dbprev-hero-stat-val">58%</div>
+                        <div className="dbprev-hero-stat-val">100%</div>
                         <div className="dbprev-hero-stat-lbl">Goal progress</div>
                       </div>
                     </div>
@@ -168,38 +185,48 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
                   <div className="dbprev-stat3">
                     <div className="dbprev-stat3-card">
                       <div className="dbprev-stat3-ico" style={{ background: '#EFF6FF' }}>📈</div>
-                      <div className="dbprev-stat3-badge ok">▼ 58%</div>
-                      <div className="dbprev-stat3-val">Rp2,9jt</div>
+                      <div className="dbprev-stat3-badge" style={{ background: '#FEE2E2', color: '#DC2626' }}>▲ 100%</div>
+                      <div className="dbprev-stat3-val">Rp22.783.013</div>
                       <div className="dbprev-stat3-lbl">Pengeluaran</div>
                     </div>
                     <div className="dbprev-stat3-card">
                       <div className="dbprev-stat3-ico" style={{ background: '#D1FAE5' }}>⭐</div>
-                      <div className="dbprev-stat3-badge ok">▲ 58%</div>
-                      <div className="dbprev-stat3-val">Rp870rb</div>
+                      <div className="dbprev-stat3-badge ok">▲ 100%</div>
+                      <div className="dbprev-stat3-val">Rp6.834.904</div>
                       <div className="dbprev-stat3-lbl">Tabungan est.</div>
                     </div>
-                    <div className="dbprev-stat3-card" style={{ borderColor: 'rgba(16,185,129,0.25)' }}>
-                      <div className="dbprev-stat3-ico" style={{ background: '#D1FAE5', fontSize: 16 }}>✅</div>
-                      <div className="dbprev-stat3-val" style={{ color: '#065F46', fontSize: 13 }}>On Track</div>
-                      <div className="dbprev-stat3-lbl">Sesuai budget</div>
+                    <div className="dbprev-stat3-card" style={{ borderColor: 'rgba(239,68,68,0.25)' }}>
+                      <div className="dbprev-stat3-ico" style={{ background: '#FEE2E2', fontSize: 16 }}>⚠️</div>
+                      <div className="dbprev-stat3-val" style={{ color: '#DC2626', fontSize: 13 }}>Over Budget</div>
+                      <div className="dbprev-stat3-lbl">Melebihi budget</div>
                     </div>
                   </div>
 
                   {/* 2-col charts */}
                   <div className="dbprev-2col">
-                    {/* trend chart */}
+                    {/* trend LINE chart */}
                     <div className="dbprev-card">
                       <div className="dbprev-card-hdr">Tren 7 Hari</div>
-                      <div className="dbprev-bar-chart">
-                        {TREND.map((v, i) => (
-                          <div key={i} className="dbprev-bar-col">
-                            <div
-                              className="dbprev-bar-fill"
-                              style={{ height: `${(v / maxBar) * 100}%` }}
-                            />
-                            <div className="dbprev-bar-lbl">{TREND_LABELS[i]}</div>
-                          </div>
-                        ))}
+                      <div style={{ padding: '8px 0 0' }}>
+                        <svg width="100%" height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="none" style={{ display: 'block' }}>
+                          <defs>
+                            <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.15" />
+                              <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          {[0.25, 0.5, 0.75].map(f => (
+                            <line key={f} x1={padX} y1={padTop + chartH * (1 - f)} x2={svgW - padX} y2={padTop + chartH * (1 - f)} stroke="#F3F4F6" strokeWidth="1" />
+                          ))}
+                          <polygon fill="url(#lineAreaGrad)" points={areaPoints} />
+                          <polyline fill="none" stroke="#2563EB" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" points={linePoints} />
+                          {pts.map((p, i) => (
+                            <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#2563EB" />
+                          ))}
+                        </svg>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 10px 0', marginBottom: '4px' }}>
+                          {TREND_LABELS.map(l => <span key={l} style={{ fontSize: '8px', color: '#9CA3AF' }}>{l}</span>)}
+                        </div>
                       </div>
                     </div>
 
@@ -270,17 +297,17 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
               {/* mobile content */}
               <div className="dbprev-mob-content">
                 {/* greeting */}
-                <div className="dbprev-mob-greeting">Selamat siang, Rizky 👋</div>
+                <div className="dbprev-mob-greeting">Selamat pagi, Dio 👋</div>
                 <div className="dbprev-mob-date">Senin, 27 April 2026</div>
 
                 {/* hero */}
                 <div className="dbprev-mob-hero">
                   <div className="dbprev-hero-bg-circle" style={{ right: -20, top: -40, width: 120, height: 120 }} />
                   <div className="dbprev-mob-hero-lbl">Pengeluaran Bulan Ini</div>
-                  <div className="dbprev-mob-hero-amt">Rp2,9 jt</div>
+                  <div className="dbprev-mob-hero-amt">Rp22.783.013</div>
                   <div className="dbprev-mob-hero-track">
-                    <span style={{ color: '#6EE7B7', fontWeight: 600 }}>▲ On Track</span>
-                    <span style={{ opacity: 0.7 }}> · dari Rp5,0 jt</span>
+                    <span style={{ color: '#FCA5A5', fontWeight: 600 }}>! Over Budget</span>
+                    <span style={{ opacity: 0.7 }}> dari Rp5.000.000</span>
                   </div>
                 </div>
 
@@ -288,26 +315,49 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
                 <div className="dbprev-mob-stats">
                   <div className="dbprev-mob-stat">
                     <div className="dbprev-mob-stat-ico" style={{ background: '#EFF6FF' }}>📈</div>
-                    <div className="dbprev-mob-stat-val">Rp2,9jt</div>
+                    <div className="dbprev-mob-stat-val">Rp22.783.013</div>
                     <div className="dbprev-mob-stat-lbl">Pengeluaran</div>
                   </div>
                   <div className="dbprev-mob-stat">
                     <div className="dbprev-mob-stat-ico" style={{ background: '#D1FAE5' }}>⭐</div>
-                    <div className="dbprev-mob-stat-val">Rp870rb</div>
+                    <div className="dbprev-mob-stat-val">Rp6.834.904</div>
                     <div className="dbprev-mob-stat-lbl">Tabungan</div>
                   </div>
                 </div>
 
-                {/* mini bar chart */}
+                {/* mini LINE chart */}
                 <div className="dbprev-mob-card">
                   <div className="dbprev-mob-card-title">Tren 7 Hari</div>
-                  <div className="dbprev-mob-bars">
-                    {TREND.map((v, i) => (
-                      <div key={i} className="dbprev-mob-bar-col">
-                        <div className="dbprev-mob-bar-fill" style={{ height: `${(v / maxBar) * 100}%` }} />
-                        <div className="dbprev-mob-bar-lbl">{TREND_LABELS[i]}</div>
-                      </div>
-                    ))}
+                  <div style={{ padding: '4px 0 0' }}>
+                    <svg width="100%" height="54" viewBox="0 0 220 54" preserveAspectRatio="none" style={{ display: 'block' }}>
+                      <defs>
+                        <linearGradient id="mobLineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#2563EB" stopOpacity="0.15" />
+                          <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <polygon
+                        fill="url(#mobLineAreaGrad)"
+                        points={[
+                          ...TREND.map((v, i) => `${8 + (i / 6) * 204},${6 + 42 - (v / maxBar) * 42}`),
+                          '212,48', '8,48',
+                        ].join(' ')}
+                      />
+                      <polyline
+                        fill="none"
+                        stroke="#2563EB"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                        points={TREND.map((v, i) => `${8 + (i / 6) * 204},${6 + 42 - (v / maxBar) * 42}`).join(' ')}
+                      />
+                      {TREND.map((v, i) => (
+                        <circle key={i} cx={8 + (i / 6) * 204} cy={6 + 42 - (v / maxBar) * 42} r="2" fill="#2563EB" />
+                      ))}
+                    </svg>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px 0', marginBottom: '4px' }}>
+                      {TREND_LABELS.map(l => <span key={l} style={{ fontSize: '7px', color: '#9CA3AF' }}>{l}</span>)}
+                    </div>
                   </div>
                 </div>
 

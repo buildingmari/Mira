@@ -1010,19 +1010,9 @@ export function LandingPage() {
               <h3 className="text-white font-medium text-[15px] mb-4">Kontak</h3>
               <ul className="space-y-3 text-[14px] text-white/70 font-light">
                 <li>
-                  <a href="mailto:hello@mira.ai" className="hover:text-white transition-colors">
-                    hello@mira.ai
+                  <a href="mailto:support@halo-mira.com" className="hover:text-white transition-colors">
+                    support@halo-mira.com
                   </a>
-                </li>
-                <li>
-                  <a href="https://wa.me/628123456789" className="hover:text-white transition-colors">
-                    +62 812-3456-789
-                  </a>
-                </li>
-                <li className="leading-relaxed pt-2">
-                  Jl. Sudirman No. 123<br />
-                  Jakarta Selatan 12190<br />
-                  Indonesia
                 </li>
               </ul>
             </div>
@@ -1032,7 +1022,7 @@ export function LandingPage() {
           <div className="pt-8 border-t border-white/10">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-[13px] text-white/50 font-light">
-                © 2026 MIRA AI. All rights reserved.
+                © 2026 MIRA. All rights reserved.
               </p>
               <div className="flex items-center gap-6">
                 <a href="https://instagram.com/mira.ai" className="text-[13px] text-white/50 hover:text-white/80 transition-colors font-light">

@@ -9,7 +9,7 @@ const TOC = [
   { id: 'eligible',    label: 'Kondisi Refund Disetujui' },
   { id: 'ineligible',  label: 'Kondisi Refund Ditolak' },
   { id: 'table',       label: 'Tabel Refund per Skenario' },
-  { id: 'cancellation','label': 'Pembatalan Langganan' },
+  { id: 'cancellation', label: 'Pembatalan Langganan' },
   { id: 'downtime',    label: 'Kompensasi Gangguan Layanan' },
   { id: 'process',     label: 'Proses Pengajuan Refund' },
   { id: 'contact',     label: 'Hubungi Kami' },
@@ -85,7 +85,7 @@ export function RefundPolicy() {
             <ul className="legal-ul">
               <li>Pengajuan dilakukan dalam 7 hari sejak tanggal pembayaran (bukan tanggal mulai berlangganan)</li>
               <li>Akun belum digunakan secara ekstensif (tidak lebih dari 50 transaksi tercatat)</li>
-              <li>Tidak ada indikasi penyalahgunaan atau pelanggaran Syarat & Ketentuan</li>
+              <li>Tidak ada indikasi penyalahgunaan atau pelanggaran Syarat &amp; Ketentuan</li>
               <li>Satu klaim garansi per nomor WhatsApp (tidak berlaku untuk perpanjangan)</li>
             </ul>
             <p className="legal-p">
@@ -135,7 +135,7 @@ export function RefundPolicy() {
               <li>Downgrade paket dari Tahunan ke Bulanan — selisih harga tidak dapat dikembalikan</li>
               <li>Gangguan layanan WhatsApp dari pihak Meta yang bukan tanggung jawab MIRA</li>
               <li>Perubahan harga yang sudah diberitahukan 30 hari sebelumnya dan Anda tetap melanjutkan</li>
-              <li>Akun yang melanggar Syarat & Ketentuan dan ditangguhkan/dihapus akibat pelanggaran</li>
+              <li>Akun yang melanggar Syarat &amp; Ketentuan dan ditangguhkan/dihapus akibat pelanggaran</li>
             </ul>
             <div className="legal-box warning">
               <p>
@@ -284,10 +284,10 @@ export function RefundPolicy() {
             </p>
             <ul className="legal-ul">
               <li>
-                <strong>Langkah 1:</strong> Hubungi kami via WhatsApp ke <a href="https://wa.me/6281234567890" style={{color:'#2D4BFF'}}>+62 812-3456-7890</a> atau email ke <a href="mailto:refund@getmira.id" style={{color:'#2D4BFF'}}>refund@getmira.id</a>
+                <strong>Langkah 1:</strong> Hubungi kami via email ke <a href="mailto:support@halo-mira.com" style={{color:'#2D4BFF'}}>support@halo-mira.com</a>
               </li>
               <li>
-                <strong>Langkah 2:</strong> Sertakan informasi: nomor WhatsApp terdaftar, tanggal & nominal pembayaran, alasan pengajuan refund
+                <strong>Langkah 2:</strong> Sertakan informasi: nomor WhatsApp terdaftar, tanggal &amp; nominal pembayaran, alasan pengajuan refund
               </li>
               <li>
                 <strong>Langkah 3:</strong> Tim kami akan memverifikasi dan merespons dalam <strong>1×24 jam kerja</strong>
@@ -316,10 +316,8 @@ export function RefundPolicy() {
               Ada pertanyaan soal refund atau pembayaran? Tim kami siap membantu:
             </p>
             <div className="legal-contact-block">
-              <p><strong>PT. Mira Teknologi Indonesia</strong></p>
-              <p>Refund & Billing: <a href="mailto:refund@getmira.id">refund@getmira.id</a></p>
-              <p>Email umum: <a href="mailto:hi@getmira.id">hi@getmira.id</a></p>
-              <p>WhatsApp: <a href="https://wa.me/6281234567890">+62 812-3456-7890</a></p>
+              <p><strong>MIRA</strong></p>
+              <p>Email: <a href="mailto:support@halo-mira.com">support@halo-mira.com</a></p>
               <p style={{marginTop:'8px', color:'#94A3B8', fontSize:'0.8rem'}}>
                 Jam kerja tim: Senin–Jumat, 09.00–18.00 WIB<br/>
                 Target respons: &lt;4 jam di jam kerja
