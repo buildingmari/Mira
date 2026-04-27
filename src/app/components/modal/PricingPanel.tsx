@@ -46,11 +46,11 @@ export function PricingPanel({
     const code = voucherInput.trim().toUpperCase();
     if (!code) return;
 
-    // Validasi ke Supabase: cek apakah kode ini adalah affiliate_code yang valid
     setVoucherLoading(true);
     try {
-      const res = await fetch(
-        `${SUPA_URL}/rest/v1/users?affiliate_code=eq.${code}&select=primary_phone,name`,
+      // Step 1: Cek tabel vouchers dulu
+      const voucherRes = await fetch(
+        `${SUPA_URL}/rest/v1/vouchers?code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
         {
           headers: {
             'apikey'       : SUPA_ANON,
@@ -59,23 +59,51 @@ export function PricingPanel({
           },
         }
       );
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const referrer = data[0];
+
+      if (voucherRes.ok) {
+        const voucherData = await voucherRes.json();
+        if (Array.isArray(voucherData) && voucherData.length > 0) {
+          const voucher = voucherData[0];
+          const discountPercent = Number(voucher.discount_percent || 0);
+          setVoucherDiscount(discountPercent);
+          setActiveVoucher(voucher.code);
+          setAffiliateReferrerPhone('');
+          setVoucherMsg({ type: 'ok', text: `✅ Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
+          setVoucherLoading(false);
+          return;
+        }
+      }
+
+      // Step 2: Fallback — cek affiliate code di tabel users
+      const affiliateRes = await fetch(
+        `${SUPA_URL}/rest/v1/users?affiliate_code=eq.${encodeURIComponent(code)}&select=primary_phone,name`,
+        {
+          headers: {
+            'apikey'       : SUPA_ANON,
+            'Authorization': 'Bearer ' + SUPA_ANON,
+            'Accept'       : 'application/json',
+          },
+        }
+      );
+
+      if (affiliateRes.ok) {
+        const affiliateData = await affiliateRes.json();
+        if (Array.isArray(affiliateData) && affiliateData.length > 0) {
+          const referrer = affiliateData[0];
           setVoucherDiscount(10);
           setActiveVoucher(code);
           setAffiliateReferrerPhone(referrer.primary_phone || '');
           setVoucherMsg({ type: 'ok', text: `✅ Kode affiliate valid! Diskon 10% diterapkan. Referral dari: ${referrer.name || code}` });
-        } else {
-          setVoucherDiscount(0);
-          setActiveVoucher('');
-          setAffiliateReferrerPhone('');
-          setVoucherMsg({ type: 'err', text: '❌ Kode voucher tidak valid atau sudah kadaluarsa.' });
+          setVoucherLoading(false);
+          return;
         }
-      } else {
-        setVoucherMsg({ type: 'err', text: '❌ Gagal memverifikasi kode. Coba lagi.' });
       }
+
+      // Tidak ditemukan di mana-mana
+      setVoucherDiscount(0);
+      setActiveVoucher('');
+      setAffiliateReferrerPhone('');
+      setVoucherMsg({ type: 'err', text: '❌ Kode voucher tidak valid atau sudah kadaluarsa.' });
     } catch {
       setVoucherMsg({ type: 'err', text: '❌ Gagal terhubung ke server. Coba lagi.' });
     }
