@@ -30,20 +30,33 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
           dan insight personal kapanpun kamu butuhkan.
         </p>
 
-        {/* ── Device screenshots ── */}
         <div className="dbprev-devices-row">
-          <img
-            src="/assets/Desktop MIRA.png"
-            alt="MIRA Dashboard — Desktop"
-            className="dbprev-img-desktop"
-            draggable={false}
-          />
+
+          {/* ── Desktop: browser chrome frame ── */}
+          <div className="dbprev-browser-frame">
+            <div className="dbprev-chrome">
+              <div className="dbprev-dots">
+                <span /><span /><span />
+              </div>
+            </div>
+            <div className="dbprev-browser-body">
+              <img
+                src="/assets/Desktop MIRA.png"
+                alt="MIRA Dashboard — Desktop"
+                className="dbprev-img-desktop"
+                draggable={false}
+              />
+            </div>
+          </div>
+
+          {/* ── Mobile screenshot ── */}
           <img
             src="/assets/Mobile MIRA.png"
             alt="MIRA Dashboard — Mobile"
             className="dbprev-img-mobile"
             draggable={false}
           />
+
         </div>
 
         {/* ── CTA strip ── */}
