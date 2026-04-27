@@ -1,14 +1,6 @@
 {
   "routes": [
     {
-      "src": "^/admin(.*)",
-      "has": [
-        { "type": "host", "value": "halo-mira.com" }
-      ],
-      "status": 404,
-      "dest": "/404.html"
-    },
-    {
       "src": "^/$",
       "has": [
         { "type": "host", "value": "admin.halo-mira.com" }
@@ -21,10 +13,6 @@
         { "type": "host", "value": "admin.halo-mira.com" }
       ],
       "dest": "/admin/$1"
-    },
-    {
-      "src": "^/(.*)",
-      "dest": "/index.html"
     }
   ]
 }
