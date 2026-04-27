@@ -152,11 +152,25 @@ export function DashboardOverview() {
     let topCat='',topAmt=0;
     Object.entries(l7Map).forEach(([c,a])=>{if(a>topAmt){topAmt=a;topCat=c;}});
 
-    const dMap:Record<string,number>={};
-    for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dMap[d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})]=0;}
-    l7.forEach(t=>{const k=new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'});if(k in dMap)dMap[k]+=Number(t.amount||0);});
-    const trendData=Object.entries(dMap).map(([date,amount])=>({date,amount}));
+    const dMap: Record<string, any> = {};
 
+for (let i = 6; i >= 0; i--) {
+  const d = new Date();
+  d.setDate(d.getDate() - i);
+  const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+  dMap[key] = { date: key };
+}
+
+l7.forEach(t => {
+  const key = new Date(t.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  const cat = mapCat(t.category || '');
+
+  if (!dMap[key][cat]) dMap[key][cat] = 0;
+  dMap[key][cat] += Number(t.amount || 0);
+});
+
+const trendData = Object.values(dMap);
     const wMap:Record<string,number>={};
     mTxns.forEach(t=>{const w=t.wallet||'Lainnya';wMap[w]=(wMap[w]||0)+Number(t.amount||0);});
     const walletData=Object.entries(wMap).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,amount])=>({name,amount}));
