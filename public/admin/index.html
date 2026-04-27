@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIRA Admin</title>
   <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -12,12 +15,13 @@
       --surface: #1a1d27;
       --surface2: #22263a;
       --border: #2e3347;
-      --accent: #6c63ff;
-      --accent-hover: #5a52d5;
+      --accent: #6366f1;
+      --accent-hover: #4f52c9;
       --text: #e8eaf0;
       --text-muted: #8b90a0;
-      --error: #ff5c5c;
-      --success: #4caf82;
+      --error: #f87171;
+      --success: #34d399;
+      --warn: #fbbf24;
       --radius: 12px;
       --font: 'Inter', system-ui, sans-serif;
     }
@@ -26,16 +30,20 @@
       color: var(--text);
       font-family: var(--font);
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ─── AUTH SCREEN ─── */
+    #auth-screen {
       display: flex;
       align-items: center;
       justify-content: center;
-    }
-    a { color: inherit; text-decoration: none; }
-
-    /* ---------- AUTH ---------- */
-    #auth-screen {
-      width: 100%;
-      max-width: 420px;
+      min-height: 100vh;
       padding: 24px;
     }
     .auth-card {
@@ -43,27 +51,29 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
     }
-    .auth-logo {
-      font-size: 28px;
+    .brand {
+      font-size: 26px;
       font-weight: 700;
       letter-spacing: -0.5px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
-    .auth-logo span { color: var(--accent); }
-    .auth-sub {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 32px;
-    }
+    .brand em { color: var(--accent); font-style: normal; }
+    .auth-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 28px; }
+
+    /* ─── INPUTS ─── */
     label {
       display: block;
-      font-size: 13px;
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       margin-bottom: 6px;
-      font-weight: 500;
     }
-    input[type="email"], input[type="password"], input[type="text"], input[type="url"], textarea {
+    input, textarea, select {
       width: 100%;
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -75,18 +85,20 @@
       transition: border-color 0.2s;
       font-family: var(--font);
     }
-    input:focus, textarea:focus {
-      border-color: var(--accent);
-    }
-    textarea { resize: vertical; min-height: 72px; }
-    .field { margin-bottom: 20px; }
+    input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+    textarea { resize: vertical; min-height: 68px; line-height: 1.5; }
+    .field { margin-bottom: 16px; }
+    .char-count { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-align: right; }
+    .char-count.warn { color: var(--warn); }
+    .char-count.over { color: var(--error); }
+
+    /* ─── BUTTONS ─── */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      width: 100%;
-      padding: 12px 20px;
+      gap: 7px;
+      padding: 10px 20px;
       background: var(--accent);
       color: #fff;
       font-size: 14px;
@@ -96,187 +108,395 @@
       cursor: pointer;
       transition: background 0.2s, opacity 0.2s;
       font-family: var(--font);
+      white-space: nowrap;
     }
-    .btn:hover { background: var(--accent-hover); }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-outline {
+    .btn:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-full { width: 100%; }
+    .btn-sm { padding: 7px 14px; font-size: 13px; }
+    .btn-ghost {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 13px;
-      padding: 8px 16px;
-      width: auto;
     }
-    .btn-outline:hover { border-color: var(--text-muted); color: var(--text); background: transparent; }
+    .btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--text-muted); }
+    .btn-danger { background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.3); color: var(--error); }
+    .btn-danger:hover:not(:disabled) { background: rgba(248,113,113,0.25); }
+
+    /* ─── MESSAGES ─── */
     .msg {
       font-size: 13px;
       padding: 10px 14px;
       border-radius: 8px;
       margin-bottom: 16px;
-      display: none;
     }
-    .msg.error { background: rgba(255,92,92,0.12); color: var(--error); border: 1px solid rgba(255,92,92,0.25); display: block; }
-    .msg.success { background: rgba(76,175,130,0.12); color: var(--success); border: 1px solid rgba(76,175,130,0.25); display: block; }
+    .msg-error { background: rgba(248,113,113,0.1); color: var(--error); border: 1px solid rgba(248,113,113,0.25); }
+    .msg-success { background: rgba(52,211,153,0.1); color: var(--success); border: 1px solid rgba(52,211,153,0.25); }
+    .msg-info { background: rgba(99,102,241,0.1); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
 
-    /* ---------- DASHBOARD ---------- */
-    #dashboard-screen {
-      display: none;
-      width: 100%;
-      min-height: 100vh;
-      align-items: flex-start;
-      justify-content: center;
-    }
-    .dash-wrap {
-      width: 100%;
-      max-width: 760px;
-      padding: 40px 24px 80px;
-    }
-    .dash-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 40px;
-    }
-    .dash-title {
-      font-size: 22px;
-      font-weight: 700;
-    }
-    .dash-title span { color: var(--accent); }
-    .section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px;
-      margin-bottom: 20px;
-    }
-    .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-    }
-    .save-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-top: 24px;
-    }
-    .save-row .btn { width: auto; min-width: 160px; }
-    #save-msg { font-size: 13px; }
+    /* ─── SPINNER ─── */
     .spinner {
       display: inline-block;
-      width: 14px;
-      height: 14px;
+      width: 13px; height: 13px;
       border: 2px solid rgba(255,255,255,0.3);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── DASHBOARD LAYOUT ─── */
+    #dashboard-screen { display: none; }
+    .dash-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 32px;
+      background: rgba(15,17,23,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .dash-body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 720px) { .dash-body { grid-template-columns: 1fr; } }
+    .dash-body > .full { grid-column: 1 / -1; }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── IMAGE UPLOAD ─── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; border: none; padding: 0;
+    }
+    .upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; }
+    .upload-zone .uz-label { font-size: 13px; color: var(--text-muted); }
+    .upload-zone .uz-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .upload-preview {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--surface2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .upload-preview img { max-height: 32px; max-width: 60px; border-radius: 4px; object-fit: contain; }
+    .upload-preview .up-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: 13px; }
+    .upload-upload-btn { flex-shrink: 0; }
+    .upload-progress {
+      height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+      margin-top: 8px; display: none;
+    }
+    .upload-progress-bar {
+      height: 100%; background: var(--accent);
+      transition: width 0.3s; width: 0%;
+    }
+
+    /* ─── SEO PREVIEW ─── */
+    .preview-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    .ptab {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      font-family: var(--font);
+      transition: all 0.15s;
+    }
+    .ptab.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+    /* Google Preview */
+    .google-preview {
+      background: #fff;
+      border-radius: 10px;
+      padding: 18px 20px;
+      font-family: Arial, sans-serif;
+    }
+    .gp-url { font-size: 12px; color: #202124; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+    .gp-url span { color: #4d5156; }
+    .gp-title { font-size: 19px; color: #1a0dab; margin-bottom: 4px; line-height: 1.3; cursor: pointer; }
+    .gp-title:hover { text-decoration: underline; }
+    .gp-desc { font-size: 14px; color: #4d5156; line-height: 1.5; }
+    .gp-favicon { width: 18px; height: 18px; border-radius: 50%; background: #e8eaed; object-fit: contain; }
+
+    /* OG Card Preview */
+    .og-preview {
+      border: 1px solid #dbe1e8;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #fff;
+      font-family: system-ui, sans-serif;
+    }
+    .og-img-wrap { background: #f0f2f5; aspect-ratio: 1.91; display: flex; align-items: center; justify-content: center; }
+    .og-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .og-img-placeholder { color: #aaa; font-size: 13px; }
+    .og-meta { padding: 12px 14px; }
+    .og-domain { font-size: 12px; color: #606770; text-transform: uppercase; margin-bottom: 4px; }
+    .og-title { font-size: 15px; font-weight: 700; color: #1c1e21; margin-bottom: 4px; line-height: 1.35; }
+    .og-desc { font-size: 13px; color: #606770; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* ─── SAVE BAR ─── */
+    .save-bar {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+    }
+    .save-bar.visible { opacity: 1; transform: translateY(0); pointer-events: all; }
+    .save-bar-msg { font-size: 13px; color: var(--text-muted); min-width: 180px; }
+
+    /* ─── CHIP STATUS ─── */
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 100px;
+    }
+    .chip-success { background: rgba(52,211,153,0.15); color: var(--success); }
+    .chip-error { background: rgba(248,113,113,0.15); color: var(--error); }
+    .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* ─── DIVIDER ─── */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* ─── HIDDEN ─── */
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
-<!-- ========== AUTH SCREEN ========== -->
+<!-- ===== AUTH SCREEN ===== -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">MIRA <span>Admin</span></div>
-    <p class="auth-sub">Sign in to manage your site settings</p>
-    <div id="auth-msg" class="msg"></div>
+    <div class="brand">MIRA <em>Admin</em></div>
+    <p class="auth-sub">Sign in to manage your site</p>
+    <div id="auth-msg" class="msg hidden"></div>
     <div class="field">
       <label for="email">Email</label>
       <input type="email" id="email" placeholder="admin@halo-mira.com" autocomplete="username" />
     </div>
     <div class="field">
       <label for="password">Password</label>
-      <input type="password" id="password" placeholder="••••••••••" autocomplete="current-password" />
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
     </div>
-    <button class="btn" id="login-btn" onclick="handleLogin()">Sign In</button>
+    <button class="btn btn-full" id="login-btn" onclick="handleLogin()">Sign In</button>
   </div>
 </div>
 
-<!-- ========== DASHBOARD SCREEN ========== -->
+<!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboard-screen">
-  <div class="dash-wrap">
-    <div class="dash-header">
-      <div class="dash-title">MIRA <span>Admin</span></div>
-      <button class="btn btn-outline" onclick="handleLogout()">Sign Out</button>
+  <!-- Header -->
+  <div class="dash-header">
+    <div class="brand" style="font-size:18px;">MIRA <em>Admin</em></div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span id="admin-status" class="chip chip-success"><span class="chip-dot"></span>Live</span>
+      <button class="btn btn-sm btn-ghost" onclick="handleLogout()">Sign Out</button>
     </div>
+  </div>
 
-    <div class="section">
-      <div class="section-title">SEO</div>
+  <!-- Body -->
+  <div class="dash-body">
+
+    <!-- SEO Fields -->
+    <div class="card">
+      <div class="card-title">SEO</div>
       <div class="field">
-        <label for="site_title">Site Title</label>
-        <input type="text" id="site_title" placeholder="MIRA — Finance" />
+        <label for="site_title">Page Title</label>
+        <input type="text" id="site_title" placeholder="MIRA — Finance" oninput="updatePreview();markDirty()" maxlength="70" />
+        <div class="char-count" id="cc-title">0/70</div>
       </div>
       <div class="field">
         <label for="meta_description">Meta Description</label>
-        <textarea id="meta_description" placeholder="Short description for search engines..."></textarea>
+        <textarea id="meta_description" placeholder="Short description for search engines..." oninput="updatePreview();markDirty()" maxlength="160"></textarea>
+        <div class="char-count" id="cc-meta">0/160</div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Open Graph</div>
+    <!-- Open Graph Fields -->
+    <div class="card">
+      <div class="card-title">Open Graph</div>
       <div class="field">
         <label for="og_title">OG Title</label>
-        <input type="text" id="og_title" placeholder="MIRA — Finance" />
+        <input type="text" id="og_title" placeholder="MIRA — Finance" oninput="updatePreview();markDirty()" maxlength="90" />
+        <div class="char-count" id="cc-og-title">0/90</div>
       </div>
       <div class="field">
         <label for="og_description">OG Description</label>
-        <textarea id="og_description" placeholder="Description shown on social media previews..."></textarea>
+        <textarea id="og_description" placeholder="Shown on social media previews..." oninput="updatePreview();markDirty()" maxlength="200"></textarea>
+        <div class="char-count" id="cc-og-desc">0/200</div>
+      </div>
+    </div>
+
+    <!-- Favicon Upload -->
+    <div class="card">
+      <div class="card-title">Favicon</div>
+      <div class="field">
+        <label>Upload Favicon</label>
+        <div class="upload-zone" id="fav-zone" ondragover="zoneDrag(event,'fav-zone')" ondragleave="zoneDragEnd('fav-zone')" ondrop="zoneDrop(event,'favicon')">
+          <input type="file" id="fav-file" accept="image/*,.ico" onchange="fileChosen('favicon')" />
+          <div class="uz-icon">🖼️</div>
+          <div class="uz-label">Click or drag to upload favicon</div>
+          <div class="uz-sub">PNG, ICO, SVG — 512×512px recommended</div>
+        </div>
+        <div id="fav-preview" class="upload-preview hidden">
+          <img id="fav-thumb" src="" alt="Favicon" />
+          <span class="up-name" id="fav-name"></span>
+          <button class="btn btn-sm upload-upload-btn" onclick="uploadFile('favicon')" id="fav-upload-btn">Upload</button>
+        </div>
+        <div class="upload-progress" id="fav-progress"><div class="upload-progress-bar" id="fav-bar"></div></div>
+        <div id="fav-msg" class="hidden" style="font-size:12px;margin-top:6px;"></div>
+      </div>
+      <div class="field">
+        <label for="favicon_url">Favicon URL</label>
+        <input type="text" id="favicon_url" placeholder="https://..." oninput="updatePreview();markDirty()" />
+      </div>
+    </div>
+
+    <!-- OG Image Upload -->
+    <div class="card">
+      <div class="card-title">OG Image</div>
+      <div class="field">
+        <label>Upload OG Image</label>
+        <div class="upload-zone" id="og-zone" ondragover="zoneDrag(event,'og-zone')" ondragleave="zoneDragEnd('og-zone')" ondrop="zoneDrop(event,'ogimage')">
+          <input type="file" id="og-file" accept="image/*" onchange="fileChosen('ogimage')" />
+          <div class="uz-icon">🖼️</div>
+          <div class="uz-label">Click or drag to upload OG image</div>
+          <div class="uz-sub">PNG, JPG, WebP — 1200×630px recommended</div>
+        </div>
+        <div id="og-preview" class="upload-preview hidden">
+          <img id="og-thumb" src="" alt="OG Image" />
+          <span class="up-name" id="og-name"></span>
+          <button class="btn btn-sm upload-upload-btn" onclick="uploadFile('ogimage')" id="og-upload-btn">Upload</button>
+        </div>
+        <div class="upload-progress" id="og-progress"><div class="upload-progress-bar" id="og-bar"></div></div>
+        <div id="og-msg" class="hidden" style="font-size:12px;margin-top:6px;"></div>
       </div>
       <div class="field">
         <label for="og_image">OG Image URL</label>
-        <input type="url" id="og_image" placeholder="https://..." />
+        <input type="text" id="og_image" placeholder="https://..." oninput="updatePreview();markDirty()" />
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Favicon</div>
-      <div class="field">
-        <label for="favicon_url">Favicon URL</label>
-        <input type="url" id="favicon_url" placeholder="https://... (.ico or .png)" />
+    <!-- SEO Preview -->
+    <div class="card full">
+      <div class="card-title">Live Preview</div>
+      <div class="preview-tabs">
+        <button class="ptab active" onclick="switchTab('google',this)">Google Search</button>
+        <button class="ptab" onclick="switchTab('og',this)">Social Card</button>
+      </div>
+
+      <!-- Google Preview -->
+      <div id="preview-google">
+        <div class="google-preview">
+          <div class="gp-url">
+            <img id="prev-favicon" class="gp-favicon" src="" onerror="this.style.display='none'" />
+            <span>halo-mira.com</span> <span>›</span>
+          </div>
+          <div class="gp-title" id="prev-title">MIRA — Finance</div>
+          <div class="gp-desc" id="prev-desc">Kelola keuangan pribadimu dengan lebih cerdas bersama MIRA.</div>
+        </div>
+      </div>
+
+      <!-- OG Preview -->
+      <div id="preview-og" class="hidden">
+        <div class="og-preview" style="max-width:520px;">
+          <div class="og-img-wrap">
+            <img id="prev-og-img" src="" style="display:none;" onerror="this.style.display='none';document.getElementById('og-placeholder').style.display='flex';" />
+            <div id="og-placeholder" class="og-img-placeholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <span style="font-size:32px;">🖼️</span>
+              <span>No OG image set</span>
+            </div>
+          </div>
+          <div class="og-meta">
+            <div class="og-domain">halo-mira.com</div>
+            <div class="og-title" id="prev-og-title">MIRA — Finance</div>
+            <div class="og-desc" id="prev-og-desc">Kelola keuangan pribadimu dengan lebih cerdas bersama MIRA.</div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="save-row">
-      <button class="btn" id="save-btn" onclick="handleSave()">Save Changes</button>
-      <span id="save-msg"></span>
-    </div>
   </div>
+</div>
+
+<!-- Save Bar -->
+<div class="save-bar" id="save-bar">
+  <span class="save-bar-msg" id="save-bar-msg">You have unsaved changes</span>
+  <button class="btn btn-sm btn-ghost" onclick="loadSettings()">Discard</button>
+  <button class="btn btn-sm" id="save-btn" onclick="handleSave()">Save Changes</button>
 </div>
 
 <script>
   var API = 'https://vhwissutkmxyzlyzkhyt.supabase.co/functions/v1/admin-api';
   var SESSION_KEY = 'mira_admin_token';
+  var fileStore = { favicon: null, ogimage: null };
+  var dirty = false;
 
-  function getToken() {
-    return sessionStorage.getItem(SESSION_KEY);
-  }
-
-  function showDashboard() {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('dashboard-screen').style.display = 'flex';
-  }
-
-  function showAuth() {
-    document.getElementById('auth-screen').style.display = '';
-    document.getElementById('dashboard-screen').style.display = 'none';
-  }
-
-  function setAuthMsg(text, type) {
-    var el = document.getElementById('auth-msg');
-    el.textContent = text;
-    el.className = 'msg ' + (type || '');
-  }
-
-  function setSaveMsg(text, type) {
-    var el = document.getElementById('save-msg');
-    el.textContent = text;
-    el.style.color = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success)' : 'var(--text-muted)';
-  }
+  // ─── HELPERS ───────────────────────────────────────────────────────────────
+  function el(id) { return document.getElementById(id); }
+  function getToken() { return sessionStorage.getItem(SESSION_KEY); }
 
   async function api(body) {
     var res = await fetch(API, {
@@ -287,101 +507,266 @@
     return res.json();
   }
 
+  function showMsg(elemId, text, type) {
+    var e = el(elemId);
+    if (!e) return;
+    e.textContent = text;
+    e.className = 'msg ' + (type ? 'msg-'+type : '');
+    if (type) e.classList.remove('hidden'); else e.classList.add('hidden');
+  }
+
+  function setCharCount(ccId, len, max) {
+    var e = el(ccId);
+    if (!e) return;
+    e.textContent = len + '/' + max;
+    e.className = 'char-count' + (len > max ? ' over' : len > max * 0.85 ? ' warn' : '');
+  }
+
+  // ─── AUTH ───────────────────────────────────────────────────────────────────
   async function handleLogin() {
-    var email = document.getElementById('email').value.trim();
-    var password = document.getElementById('password').value;
-    var btn = document.getElementById('login-btn');
-    if (!email || !password) { setAuthMsg('Please enter your email and password.', 'error'); return; }
+    var email = el('email').value.trim();
+    var password = el('password').value;
+    var btn = el('login-btn');
+    showMsg('auth-msg', '', '');
+    if (!email || !password) { showMsg('auth-msg', 'Please enter email and password.', 'error'); return; }
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>';
-    setAuthMsg('', '');
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
     try {
-      var data = await api({ action: 'login', email: email, password: password });
+      var data = await api({ action: 'login', email, password });
       if (data.success) {
         sessionStorage.setItem(SESSION_KEY, data.token);
         await loadSettings();
         showDashboard();
       } else {
-        setAuthMsg(data.message || 'Invalid credentials.', 'error');
+        showMsg('auth-msg', data.message || 'Invalid credentials.', 'error');
       }
-    } catch (e) {
-      setAuthMsg('Connection error. Please try again.', 'error');
+    } catch {
+      showMsg('auth-msg', 'Connection error. Please try again.', 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = 'Sign In';
     }
   }
 
+  function handleLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    el('password').value = '';
+    dirty = false;
+    el('save-bar').classList.remove('visible');
+    el('dashboard-screen').style.display = 'none';
+    el('auth-screen').style.display = 'flex';
+  }
+
+  function showDashboard() {
+    el('auth-screen').style.display = 'none';
+    el('dashboard-screen').style.display = 'block';
+  }
+
+  // ─── SETTINGS ───────────────────────────────────────────────────────────────
   async function loadSettings() {
     try {
       var data = await api({ action: 'get_settings' });
       if (data.success && data.settings) {
         var s = data.settings;
-        document.getElementById('site_title').value = s.site_title || '';
-        document.getElementById('meta_description').value = s.meta_description || '';
-        document.getElementById('og_title').value = s.og_title || '';
-        document.getElementById('og_description').value = s.og_description || '';
-        document.getElementById('og_image').value = s.og_image || '';
-        document.getElementById('favicon_url').value = s.favicon_url || '';
+        el('site_title').value = s.site_title || '';
+        el('meta_description').value = s.meta_description || '';
+        el('og_title').value = s.og_title || '';
+        el('og_description').value = s.og_description || '';
+        el('og_image').value = s.og_image || '';
+        el('favicon_url').value = s.favicon_url || '';
+        updateCharCounts();
+        updatePreview();
+        dirty = false;
+        el('save-bar').classList.remove('visible');
       }
-    } catch (e) {}
+    } catch {}
   }
 
   async function handleSave() {
     var token = getToken();
-    if (!token) { showAuth(); return; }
-    var btn = document.getElementById('save-btn');
+    if (!token) { handleLogout(); return; }
+    var btn = el('save-btn');
+    var bar = el('save-bar-msg');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Saving...';
-    setSaveMsg('', '');
+    btn.innerHTML = '<span class="spinner"></span>';
+    bar.textContent = 'Saving...';
     var settings = {
-      site_title: document.getElementById('site_title').value.trim(),
-      meta_description: document.getElementById('meta_description').value.trim(),
-      og_title: document.getElementById('og_title').value.trim(),
-      og_description: document.getElementById('og_description').value.trim(),
-      og_image: document.getElementById('og_image').value.trim(),
-      favicon_url: document.getElementById('favicon_url').value.trim()
+      site_title: el('site_title').value.trim(),
+      meta_description: el('meta_description').value.trim(),
+      og_title: el('og_title').value.trim(),
+      og_description: el('og_description').value.trim(),
+      og_image: el('og_image').value.trim(),
+      favicon_url: el('favicon_url').value.trim()
     };
     try {
-      var data = await api({ action: 'update_settings', token: token, settings: settings });
+      var data = await api({ action: 'update_settings', token, settings });
       if (data.success) {
-        setSaveMsg('Changes saved successfully.', 'success');
+        dirty = false;
+        el('save-bar').classList.remove('visible');
       } else if (data.message === 'Unauthorized') {
-        sessionStorage.removeItem(SESSION_KEY);
-        showAuth();
+        handleLogout();
       } else {
-        setSaveMsg('Failed to save. Please try again.', 'error');
+        bar.textContent = 'Failed to save. Try again.';
+        bar.style.color = 'var(--error)';
       }
-    } catch (e) {
-      setSaveMsg('Connection error. Please try again.', 'error');
+    } catch {
+      bar.textContent = 'Connection error.';
     } finally {
       btn.disabled = false;
       btn.textContent = 'Save Changes';
+      bar.style.color = '';
     }
   }
 
-  function handleLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
-    document.getElementById('password').value = '';
-    showAuth();
+  function markDirty() {
+    if (!dirty) { dirty = true; el('save-bar').classList.add('visible'); }
+    updateCharCounts();
   }
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      if (document.getElementById('auth-screen').style.display !== 'none' ||
-          !document.getElementById('auth-screen').style.display) {
-        handleLogin();
+  function updateCharCounts() {
+    setCharCount('cc-title', el('site_title').value.length, 70);
+    setCharCount('cc-meta', el('meta_description').value.length, 160);
+    setCharCount('cc-og-title', el('og_title').value.length, 90);
+    setCharCount('cc-og-desc', el('og_description').value.length, 200);
+  }
+
+  // ─── PREVIEW ────────────────────────────────────────────────────────────────
+  function updatePreview() {
+    var title = el('site_title').value || 'MIRA — Finance';
+    var desc = el('meta_description').value || 'Kelola keuangan pribadimu dengan lebih cerdas bersama MIRA.';
+    var ogTitle = el('og_title').value || title;
+    var ogDesc = el('og_description').value || desc;
+    var ogImg = el('og_image').value;
+    var favicon = el('favicon_url').value;
+
+    // Google preview
+    el('prev-title').textContent = title.length > 60 ? title.slice(0, 57) + '...' : title;
+    el('prev-desc').textContent = desc.length > 155 ? desc.slice(0, 152) + '...' : desc;
+    var fi = el('prev-favicon');
+    if (favicon) { fi.src = favicon; fi.style.display = ''; } else { fi.style.display = 'none'; }
+
+    // OG preview
+    el('prev-og-title').textContent = ogTitle.length > 80 ? ogTitle.slice(0, 77) + '...' : ogTitle;
+    el('prev-og-desc').textContent = ogDesc;
+    var oi = el('prev-og-img');
+    var op = el('og-placeholder');
+    if (ogImg) {
+      oi.src = ogImg;
+      oi.style.display = 'block';
+      op.style.display = 'none';
+    } else {
+      oi.style.display = 'none';
+      op.style.display = 'flex';
+    }
+  }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.ptab').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    el('preview-google').classList.toggle('hidden', tab !== 'google');
+    el('preview-og').classList.toggle('hidden', tab !== 'og');
+  }
+
+  // ─── FILE UPLOAD ─────────────────────────────────────────────────────────────
+  function fileChosen(type) {
+    var inputId = type === 'favicon' ? 'fav-file' : 'og-file';
+    var file = el(inputId).files[0];
+    if (!file) return;
+    fileStore[type] = file;
+    var thumbId = type === 'favicon' ? 'fav-thumb' : 'og-thumb';
+    var nameId = type === 'favicon' ? 'fav-name' : 'og-name';
+    var prevId = type === 'favicon' ? 'fav-preview' : 'og-preview';
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      el(thumbId).src = e.target.result;
+      el(nameId).textContent = file.name;
+      el(prevId).classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function zoneDrag(e, zoneId) {
+    e.preventDefault();
+    el(zoneId).classList.add('drag');
+  }
+  function zoneDragEnd(zoneId) { el(zoneId).classList.remove('drag'); }
+  function zoneDrop(e, type) {
+    e.preventDefault();
+    var zoneId = type === 'favicon' ? 'fav-zone' : 'og-zone';
+    zoneDragEnd(zoneId);
+    var file = e.dataTransfer.files[0];
+    if (!file) return;
+    var inputId = type === 'favicon' ? 'fav-file' : 'og-file';
+    var dt = new DataTransfer();
+    dt.items.add(file);
+    el(inputId).files = dt.files;
+    fileChosen(type);
+  }
+
+  async function uploadFile(type) {
+    var token = getToken();
+    if (!token) { handleLogout(); return; }
+    var file = fileStore[type];
+    if (!file) return;
+    var btnId = type === 'favicon' ? 'fav-upload-btn' : 'og-upload-btn';
+    var progId = type === 'favicon' ? 'fav-progress' : 'og-progress';
+    var barId = type === 'favicon' ? 'fav-bar' : 'og-bar';
+    var msgId = type === 'favicon' ? 'fav-msg' : 'og-msg';
+    var urlFieldId = type === 'favicon' ? 'favicon_url' : 'og_image';
+    var btn = el(btnId);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    el(progId).style.display = 'block';
+    el(barId).style.width = '30%';
+    showMsg(msgId, '', '');
+    try {
+      // Convert file to base64
+      var base64 = await new Promise(function(resolve, reject) {
+        var r = new FileReader();
+        r.onload = function() { resolve(r.result.split(',')[1]); };
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      el(barId).style.width = '60%';
+      var data = await api({
+        action: 'upload_file',
+        token,
+        filename: file.name,
+        content_type: file.type,
+        data: base64
+      });
+      el(barId).style.width = '100%';
+      if (data.success) {
+        el(urlFieldId).value = data.url;
+        markDirty();
+        updatePreview();
+        showMsg(msgId, '✓ Uploaded successfully', 'success');
+      } else {
+        showMsg(msgId, 'Upload failed: ' + (data.message || 'Unknown error'), 'error');
       }
+    } catch (err) {
+      showMsg(msgId, 'Upload error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Upload';
+      setTimeout(function() { el(progId).style.display = 'none'; el(barId).style.width = '0%'; }, 800);
     }
+  }
+
+  // ─── KEYBOARD ────────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && el('auth-screen').style.display !== 'none') handleLogin();
+    if ((e.ctrlKey || e.metaKey) && e.key === 's' && dirty) { e.preventDefault(); handleSave(); }
   });
 
-  // Init
-  (function () {
+  // ─── INIT ────────────────────────────────────────────────────────────────────
+  (function() {
     var token = getToken();
     if (token) {
-      loadSettings().then(showDashboard);
+      showDashboard();
+      loadSettings();
     } else {
-      showAuth();
+      el('auth-screen').style.display = 'flex';
     }
   })();
 </script>
