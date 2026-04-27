@@ -1,77 +1,128 @@
-Di form pilih paket, ada input voucher dengan tombol "Terapkan". 
-Saat ini sudah ada UI-nya tapi belum ada logic yang benar. Fix berikut:
+import { SUPA_URL, SUPA_ANON } from './supabase-config.js';
 
-1. SAAT TOMBOL "TERAPKAN" DIKLIK — fetch ke Supabase untuk validasi kode:
+/* ================================
+   GLOBAL STATE
+================================ */
+window._voucherCode = null;
+window._voucherDiscount = 0;
+window._selectedPlanPrice = window._selectedPlanPrice || 0;
+window._finalPrice = window._selectedPlanPrice || 0;
 
+/* ================================
+   APPLY VOUCHER
+================================ */
 async function applyVoucher() {
-  const code = document.getElementById('voucher-input').value.trim().toUpperCase();
+  const input = document.getElementById('voucher-input');
+  const code = input.value.trim().toUpperCase();
+
   if (!code) return;
 
-  const res = await fetch(
-    `https://vhwissutkmxyzlyzkhyt.supabase.co/rest/v1/users?affiliate_code=eq.${code}&select=primary_phone,name`,
-    {
-      headers: {
-        'apikey': 'ANON_KEY_KAMU',
-        'Authorization': 'Bearer ANON_KEY_KAMU'
+  try {
+    const res = await fetch(
+      `${SUPA_URL}/rest/v1/vouchers?code=eq.${encodeURIComponent(code)}&is_active=eq.true&limit=1`,
+      {
+        headers: {
+          'apikey': SUPA_ANON,
+          'Authorization': 'Bearer ' + SUPA_ANON,
+          'Accept': 'application/json'
+        }
       }
-    }
-  );
-  const data = await res.json();
+    );
 
-  if (data.length > 0) {
-    // Voucher valid
-    window._voucherCode = code;
-    window._voucherDiscount = 10;
-    window._referrerPhone = data[0].primary_phone;
-    showVoucherSuccess();
-    updatePriceDisplay();
-  } else {
-    // Voucher tidak valid
-    window._voucherCode = null;
-    window._voucherDiscount = 0;
-    window._referrerPhone = null;
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      const voucher = data[0];
+
+      window._voucherCode = voucher.code;
+      window._voucherDiscount = Number(voucher.discount_percent || 0);
+
+      showVoucherSuccess(voucher.discount_percent);
+    } else {
+      resetVoucher();
+      showVoucherError();
+    }
+
+  } catch (err) {
+    resetVoucher();
     showVoucherError();
-    updatePriceDisplay();
   }
+
+  updatePriceDisplay();
 }
 
-2. UPDATE TAMPILAN HARGA setelah voucher valid:
-
+/* ================================
+   PRICE UPDATE
+================================ */
 function updatePriceDisplay() {
-  const basePrice = window._selectedPlanPrice; // harga paket yang sedang dipilih
+  const basePrice = window._selectedPlanPrice || 0;
   const discount = window._voucherDiscount || 0;
+
   const finalPrice = Math.round(basePrice * (1 - discount / 100));
 
-  // Tampilkan harga original dicoret jika ada diskon
+  const originalEl = document.getElementById('price-original-display');
+  const totalEl = document.getElementById('total-price-display');
+  const badgeEl = document.getElementById('discount-badge');
+
   if (discount > 0) {
-    document.getElementById('price-original-display').innerHTML = 
-      `<span style="text-decoration:line-through;color:#999">Rp${basePrice.toLocaleString('id-ID')}</span>`;
-    document.getElementById('discount-badge').style.display = 'inline-block';
-    document.getElementById('discount-badge').textContent = `Hemat ${discount}%`;
+    originalEl.innerHTML = `
+      <span style="text-decoration:line-through;color:#999">
+        Rp${basePrice.toLocaleString('id-ID')}
+      </span>
+    `;
+    badgeEl.style.display = 'inline-block';
+    badgeEl.textContent = `Hemat ${discount}%`;
   } else {
-    document.getElementById('price-original-display').innerHTML = 
-      `Rp${basePrice.toLocaleString('id-ID')}`;
-    document.getElementById('discount-badge').style.display = 'none';
+    originalEl.innerHTML = `Rp${basePrice.toLocaleString('id-ID')}`;
+    badgeEl.style.display = 'none';
   }
 
-  document.getElementById('total-price-display').textContent = 
-    `Rp${finalPrice.toLocaleString('id-ID')}`;
+  totalEl.textContent = `Rp${finalPrice.toLocaleString('id-ID')}`;
 
   window._finalPrice = finalPrice;
 }
 
-// Panggil updatePriceDisplay() juga setiap kali user ganti pilihan paket
-
-3. SAAT SUBMIT FORM — kirim field berikut ke backend:
-
-{
-  ...formData,
-  voucher_code: window._voucherCode || null,
-  voucher_discount_percent: window._voucherDiscount || 0,
-  price_original: window._selectedPlanPrice,
-  price_final: window._finalPrice || window._selectedPlanPrice
+/* ================================
+   HELPERS
+================================ */
+function resetVoucher() {
+  window._voucherCode = null;
+  window._voucherDiscount = 0;
 }
 
-Sesuaikan nama ID element (voucher-input, price-original-display, 
-total-price-display, discount-badge) dengan yang sudah ada di HTML ini.
-Pastikan updatePriceDisplay() juga dipanggil saat user ganti paket/durasi.
+function showVoucherSuccess(percent) {
+  const el = document.getElementById('voucher-message');
+  if (!el) return;
+
+  el.style.display = 'block';
+  el.style.color = 'green';
+  el.textContent = `Voucher berhasil! Diskon ${percent}% diterapkan`;
+}
+
+function showVoucherError() {
+  const el = document.getElementById('voucher-message');
+  if (!el) return;
+
+  el.style.display = 'block';
+  el.style.color = 'red';
+  el.textContent = `Kode voucher tidak valid atau sudah kadaluarsa`;
+}
+
+/* ================================
+   INIT (AUTO BIND)
+================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('apply-voucher-btn');
+
+  if (btn) {
+    btn.addEventListener('click', applyVoucher);
+  }
+});
+
+/* ================================
+   OPTIONAL: CALL WHEN PLAN CHANGES
+================================ */
+window.updateVoucherPrice = function(price) {
+  window._selectedPlanPrice = price;
+  updatePriceDisplay();
+};
