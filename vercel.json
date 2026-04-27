@@ -1,7 +1,12 @@
 {
   "rewrites": [
     {
-      "has": [{ "type": "host", "value": "admin.halo-mira.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.halo-mira.com"
+        }
+      ],
       "source": "/(.*)",
       "destination": "/admin/index.html"
     },
