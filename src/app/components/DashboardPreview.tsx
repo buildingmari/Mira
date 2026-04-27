@@ -79,15 +79,14 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
           dan insight personal kapanpun kamu butuhkan.
         </p>
 
-        {/* ══ DEVICE SHOWCASE ROW ══ */}
-        <div className="dbprev-devices-row">
+        {/* ══ DEVICE SHOWCASE ROW — pointer-events:none = static screenshot style ══ */}
+        <div className="dbprev-devices-row" style={{ pointerEvents: 'none', userSelect: 'none' }}>
 
           {/* ── Desktop browser mockup ── */}
           <div className="dbprev-browser">
-            {/* chrome bar */}
+            {/* chrome bar — no URL text */}
             <div className="dbprev-chrome">
               <div className="dbprev-dots"><span /><span /><span /></div>
-              <div className="dbprev-url">app.halo-mira.com/dashboard</div>
             </div>
 
             {/* dashboard shell */}
@@ -128,9 +127,9 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
 
                 {/* user */}
                 <div className="dbprev-sb-user">
-                  <div className="dbprev-sb-avatar">D</div>
+                  <div className="dbprev-sb-avatar">R</div>
                   <div>
-                    <div className="dbprev-sb-uname">Dio</div>
+                    <div className="dbprev-sb-uname">Radit</div>
                     <div className="dbprev-sb-uplan">Personal</div>
                   </div>
                 </div>
@@ -153,7 +152,7 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
                 <div className="dbprev-content">
                   {/* greeting */}
                   <div className="dbprev-greeting">
-                    <div className="dbprev-greeting-title">Selamat pagi, Dio 👋</div>
+                    <div className="dbprev-greeting-title">Selamat pagi, Radit 👋</div>
                     <div className="dbprev-greeting-sub">Senin, 27 April 2026</div>
                   </div>
 
@@ -297,7 +296,7 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
               {/* mobile content */}
               <div className="dbprev-mob-content">
                 {/* greeting */}
-                <div className="dbprev-mob-greeting">Selamat pagi, Dio 👋</div>
+                <div className="dbprev-mob-greeting">Selamat pagi, Radit 👋</div>
                 <div className="dbprev-mob-date">Senin, 27 April 2026</div>
 
                 {/* hero */}
