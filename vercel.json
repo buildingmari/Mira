@@ -10,6 +10,11 @@
     },
 
     {
+      "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))",
+      "dest": "/$1"
+    },
+
+    {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "admin.halo-mira.com" }],
       "dest": "/admin/index.html"
