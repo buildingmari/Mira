@@ -8,6 +8,14 @@ import './LoginModal.css';
 
 interface Props { isOpen: boolean; onClose: () => void; }
 
+// MIRA's WhatsApp Business number, used to build the "Login OTP" deep link.
+// Set VITE_MIRA_WHATSAPP_NUMBER in your .env / hosting dashboard (digits
+// only, international format without "+", e.g. 6281234567890).
+const MIRA_WHATSAPP_NUMBER = import.meta.env.VITE_MIRA_WHATSAPP_NUMBER || '';
+
+const buildLoginWhatsAppLink = (prefilledText: string) =>
+  `https://wa.me/${MIRA_WHATSAPP_NUMBER}?text=${encodeURIComponent(prefilledText)}`;
+
 export function LoginModal({ isOpen, onClose }: Props) {
   const navigate = useNavigate();
   const [step, setStep]       = useState<'phone' | 'otp' | 'loading'>('phone');
@@ -42,26 +50,50 @@ export function LoginModal({ isOpen, onClose }: Props) {
     return p;
   };
 
-  /* ── Send OTP ── */
+  /* ── Send OTP ──
+   * The backend (/webhook/login-mira) only validates the phone number and
+   * responds { status: "ok", next_step: "open_whatsapp", ... } — it no
+   * longer pushes the OTP directly. The OTP itself is sent as a WhatsApp
+   * reply once the user actually sends "Login OTP" from their own number
+   * (required by WhatsApp Business API's messaging rules). So on success we
+   * must (1) open WhatsApp with that pre-filled message, then (2) move the
+   * modal to the OTP-entry step ourselves — the backend response is only a
+   * "number is registered, go ahead" signal, not a "message delivered" one.
+   */
   const sendOTP = async () => {
     if (phone.length < 9) { setErr('Nomor minimal 9 digit'); return; }
-    setErr(''); setStep('loading'); setLoadTxt('Mengirim OTP...');
+    setErr('');
+
+    const normalized = normalizePhone(phone);
+
+    // Open a blank tab synchronously — still inside the click's user
+    // gesture — then point it at WhatsApp once the number is confirmed
+    // valid. Opening it AFTER the awaited fetch below gets blocked by most
+    // browsers' popup blockers (Safari in particular).
+    const waWindow = window.open('', '_blank');
+
+    setStep('loading'); setLoadTxt('Memeriksa nomor...');
     try {
-      const normalized = normalizePhone(phone);
       const res  = await fetch('https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/login-mira', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone_number: normalized }),
       });
       const data = await res.json().catch(() => ({}));
-      if (data.status === 'otp_sent') {
+
+      if (data.status === 'ok') {
+        const waLink = buildLoginWhatsAppLink(data.whatsapp_prefilled_text || 'Login OTP');
+        if (waWindow) waWindow.location.href = waLink;
+        else window.open(waLink, '_blank'); // popup was blocked — try once more anyway
         setStep('otp');
         setTimeout(() => refs[0].current?.focus(), 60);
       } else {
+        if (waWindow) waWindow.close();
         setErr(data.message || 'Nomor tidak terdaftar. Silakan daftar terlebih dahulu.');
         setStep('phone');
       }
     } catch {
+      if (waWindow) waWindow.close();
       setErr('Gagal terhubung ke server. Periksa koneksi internetmu.');
       setStep('phone');
     }
@@ -122,6 +154,15 @@ export function LoginModal({ isOpen, onClose }: Props) {
   };
 
   const verify = () => verifyWithCode(otp.join(''));
+
+  /* ── Resend: reopen WhatsApp with the "Login OTP" trigger so the user can
+   * send it again (a fresh OTP is only generated when that message actually
+   * arrives on WhatsApp) ── */
+  const resend = () => {
+    setOtp(['','','','']);
+    refs[0].current?.focus();
+    window.open(buildLoginWhatsAppLink('Login OTP'), '_blank');
+  };
 
   /* ── Shared styles ── */
   const mainBtn = (disabled = false): React.CSSProperties => ({
@@ -245,7 +286,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
             <button style={mainBtn()} onClick={verify}>Verifikasi & Masuk</button>
 
             <button
-              onClick={() => { setOtp(['','','','']); refs[0].current?.focus(); }}
+              onClick={resend}
               style={{
                 display: 'block', width: '100%', textAlign: 'center',
                 fontSize: '.82rem', color: '#2D4BFF', cursor: 'pointer',
