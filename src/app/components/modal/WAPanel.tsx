@@ -20,6 +20,14 @@ const MIRA_WHATSAPP_NUMBER = import.meta.env.VITE_MIRA_WHATSAPP_NUMBER || '';
 const buildRegisterWhatsAppLink = (prefilledText: string) =>
   `https://wa.me/${MIRA_WHATSAPP_NUMBER}?text=${encodeURIComponent(prefilledText)}`;
 
+// Always use this exact trigger text for the REGISTER flow's WhatsApp
+// message. We deliberately do NOT use whatever whatsapp_prefilled_text the
+// backend happens to return here — if that field is ever missing, stale,
+// or (as seen in testing) mistakenly set to "Login OTP" by the backend,
+// hardcoding it on the frontend guarantees users registering always see
+// the correct "Register OTP" trigger message, regardless of backend state.
+const REGISTER_OTP_TRIGGER_TEXT = 'Register OTP';
+
 interface WAPanelProps {
   selectedPlan: string;
   selectedDuration: string;
@@ -63,8 +71,7 @@ export function WAPanel({
   const [savedPayload, setSavedPayload] = useState<any>(null);
 
   // ── OTP entry state ────────────────────────────────────────────
-  const [otp, setOtp]                     = useState(['', '', '', '']);
-  const [otpPrefilledText, setOtpPrefilledText] = useState('Register OTP');
+  const [otp, setOtp] = useState(['', '', '', '']);
   const otpRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -173,12 +180,10 @@ export function WAPanel({
       return;
     }
 
-    const prefilledText = otpReqData.whatsapp_prefilled_text || 'Register OTP';
-    const waLink = buildRegisterWhatsAppLink(prefilledText);
+    const waLink = buildRegisterWhatsAppLink(REGISTER_OTP_TRIGGER_TEXT);
     if (waWindow) waWindow.location.href = waLink;
     else window.open(waLink, '_blank'); // popup was blocked — try once more anyway
 
-    setOtpPrefilledText(prefilledText);
     setSavedPayload(payloadFinal);
     setOtp(['', '', '', '']);
     setStep('awaiting_otp');
@@ -276,7 +281,7 @@ export function WAPanel({
   const resendOtp = () => {
     setOtp(['', '', '', '']);
     setErrorMsg('');
-    window.open(buildRegisterWhatsAppLink(otpPrefilledText), '_blank');
+    window.open(buildRegisterWhatsAppLink(REGISTER_OTP_TRIGGER_TEXT), '_blank');
     otpRefs[0].current?.focus();
   };
 
