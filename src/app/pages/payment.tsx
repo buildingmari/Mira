@@ -88,8 +88,8 @@ export function PaymentPage() {
   // Load Midtrans Snap.js script
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-    script.setAttribute("data-client-key", "SB-Mid-client-_XBF0U4zdQDmvVdT");
+    script.src = "https://app.midtrans.com/snap/snap.js";
+    script.setAttribute("data-client-key", "Mid-client-7FjyW-EnrZA8HvP-");
     script.async = true;
     script.onload = () => setSnapLoaded(true);
     script.onerror = () => {
