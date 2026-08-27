@@ -396,11 +396,11 @@ export function WAPanel({
           </svg>
         </div>
         <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-dark)', margin: 0 }}>
-          {showOtpPanel ? 'Verifikasi Kode OTP' : 'Daftarkan Nomor WhatsApp'}
+          {showOtpPanel ? 'Masukkan Kode OTP' : 'Daftarkan Nomor WhatsApp'}
         </h2>
         <p style={{ fontSize: '0.85rem', color: '#64748B', marginTop: '4px' }}>
           {showOtpPanel
-            ? `Kode dikirim ke WhatsApp ${savedPayload ? maskPhone(savedPayload.primary_phone) : ''}`
+            ? `Kode OTP ada di chat WhatsApp dari MIRA ke ${savedPayload ? maskPhone(savedPayload.primary_phone) : ''}`
             : getSubLabel()}
         </p>
       </div>
@@ -426,6 +426,24 @@ export function WAPanel({
 
       {showOtpPanel ? (
         <>
+          {/* ── Reminder: what to do in the WhatsApp tab that just opened ── */}
+          <div style={{
+            background  : '#F0FDF4',
+            border      : '1px solid #BBF7D0',
+            borderRadius: '10px',
+            padding     : '12px 14px',
+            marginBottom: '18px',
+            fontSize    : '0.83rem',
+            color       : '#166534',
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '6px' }}>📲 Tab WhatsApp baru saja terbuka</div>
+            <ol style={{ margin: 0, paddingLeft: '18px', lineHeight: 1.6 }}>
+              <li>Di tab WhatsApp itu, tekan tombol <strong>Kirim ▶</strong> pada pesan yang sudah terisi otomatis.</li>
+              <li>MIRA akan membalas dengan <strong>kode OTP 4 digit</strong> — tunggu beberapa detik.</li>
+              <li>Kembali ke tab ini (browser ini) dan masukkan kodenya di bawah.</li>
+            </ol>
+          </div>
+
           {/* ── OTP entry ── */}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }}>
             {otp.map((digit, i) => (
@@ -580,10 +598,17 @@ export function WAPanel({
             </div>
           )}
 
-          {/* Info box (hanya saat idle / checking / error) */}
+          {/* Reminder (hanya saat idle / checking / error) — jelaskan apa yang
+              akan terjadi SEBELUM tombol diklik, supaya tidak membingungkan
+              saat tab WhatsApp tiba-tiba terbuka. */}
           {!isVerified && !isPaying && (
             <div style={{ background: 'var(--blue-ultra)', borderRadius: '10px', padding: '12px 14px', fontSize: '0.82rem', color: '#334155', marginTop: '4px', marginBottom: '20px' }}>
-              ℹ️ MIRA akan mengirim kode OTP via WhatsApp untuk verifikasi nomor sebelum akun dibuat.
+              <div style={{ fontWeight: 700, marginBottom: '4px' }}>ℹ️ Yang akan terjadi setelah klik tombol:</div>
+              <ol style={{ margin: 0, paddingLeft: '18px', lineHeight: 1.6 }}>
+                <li>Tab WhatsApp baru otomatis terbuka dengan pesan siap kirim.</li>
+                <li>Tekan <strong>Kirim</strong> di WhatsApp untuk menerima kode OTP dari MIRA.</li>
+                <li>Kembali ke tab ini untuk memasukkan kodenya.</li>
+              </ol>
             </div>
           )}
 

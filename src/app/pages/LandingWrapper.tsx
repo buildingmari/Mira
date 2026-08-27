@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
 import { ValueProps } from '../components/ValueProps';
@@ -12,24 +12,15 @@ import { Upsell } from '../components/Upsell';
 import { Footer } from '../components/Footer';
 import { Modal } from '../components/Modal';
 import { LoginModal } from '../components/LoginModal';
-import { Loader } from '../components/Loader';
 import '../../styles/mira-theme.css';
 import '../../styles/mira-landing.css';
 
 export function LandingWrapper() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    const t = setTimeout(() => setLoading(false), 1800);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <>
-      <Loader visible={loading} />
       <div id="page" className="visible">
         <Navigation
           onCTAClick={() => setModalOpen(true)}
