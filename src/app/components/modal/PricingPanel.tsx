@@ -68,7 +68,16 @@ export function PricingPanel({
           setVoucherDiscount(discountPercent);
           setActiveVoucher(voucher.code);
           setAffiliateReferrerPhone('');
-          setVoucherMsg({ type: 'ok', text: `✅ Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
+          if (voucher.code === 'MIRA100') {
+            // Special-cased on purpose: this exact code grants a 1-bulan
+            // free trial, never whatever duration was selected before it
+            // was applied — force-select the hidden 1-bulan entry so the
+            // 100% discount can't be combined with a 3/6/12 bulan plan.
+            setSelectedDuration('1');
+            setVoucherMsg({ type: 'ok', text: '🎉 Selamat! Kamu dapat 1 bulan MIRA gratis.' });
+          } else {
+            setVoucherMsg({ type: 'ok', text: `✅ Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
+          }
           setVoucherLoading(false);
           return;
         }
@@ -147,11 +156,27 @@ export function PricingPanel({
           <p>{currentPlan.desc}</p>
         </div>
         <div className="duration-opts">
-          {currentPlan.durations.map((d) => (
+          {currentPlan.durations
+            .filter((d) => d.id !== '1' || selectedDuration === '1')
+            .map((d) => {
+              const isFreeTrial = d.id === '1';
+              return (
             <div
               key={d.id}
               className={`dur-opt ${selectedDuration === d.id ? 'selected' : ''}`}
-              onClick={() => setSelectedDuration(d.id)}
+              style={isFreeTrial ? { cursor: 'default' } : undefined}
+              onClick={() => {
+                if (isFreeTrial) return; // locked while the free-trial voucher is active
+                setSelectedDuration(d.id);
+                if (activeVoucher === 'MIRA100') {
+                  // Switching away from the free trial's forced duration
+                  // drops the 100%-off voucher too, so it can't leak onto
+                  // a paid 3/6/12 bulan plan.
+                  setVoucherDiscount(0);
+                  setActiveVoucher('');
+                  setVoucherMsg(null);
+                }
+              }}
             >
               <div className="dur-left">
                 <div className="dur-check"></div>
@@ -170,7 +195,8 @@ export function PricingPanel({
                 {d.save && <div className="dur-save">{d.save}</div>}
               </div>
             </div>
-          ))}
+              );
+            })}
         </div>
       </div>
 

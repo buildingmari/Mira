@@ -45,22 +45,22 @@ const planConfig: Record<string, PlanDetails> = {
     id: "3months",
     packageId: 1,
     name: "💎 3 Bulan",
-    price: 69000,
-    priceLabel: "69.000",
+    price: 99000,
+    priceLabel: "99.000",
   },
   "6months": {
     id: "6months",
     packageId: 2,
     name: "💎 6 Bulan ⭐ Lebih Hemat",
-    price: 109000,
-    priceLabel: "109.000",
+    price: 159000,
+    priceLabel: "159.000",
   },
   "12months": {
     id: "12months",
     packageId: 3,
     name: "💎 12 Bulan 🔥 Paling Hemat",
-    price: 199000,
-    priceLabel: "199.000",
+    price: 249000,
+    priceLabel: "249.000",
   },
 };
 

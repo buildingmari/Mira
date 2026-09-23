@@ -7,6 +7,7 @@ const REGISTER_URL             = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/we
 const REGISTER_REQUEST_OTP_URL = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-request-otp';
 const VERIFY_OTP_URL           = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/verify-otp';
 const PAYMENT_URL              = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/create-transaction';
+const MIDTRANS_NOTIFICATION_URL = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/midtrans-notification';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -302,6 +303,31 @@ export function WAPanel({
     setErrorMsg('');
     setStep('paying');
 
+    // 100%-off vouchers (MIRA100) never touch Midtrans — activate the
+    // account directly by calling the exact same notification endpoint
+    // Midtrans itself POSTs to on a real payment, with a synthetic
+    // "settlement" status. n8n's Check Payment node only reads
+    // transaction_status off the body (no signature check), so this
+    // reuses the whole existing Create User / expiry-extension path
+    // instead of duplicating it.
+    if (final === 0) {
+      try {
+        const res = await fetch(MIDTRANS_NOTIFICATION_URL, {
+          method : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body   : JSON.stringify({ order_id: savedPayload.subs_id, transaction_status: 'settlement' }),
+        });
+        if (!res.ok) throw new Error('activation failed');
+      } catch {
+        setStep('error');
+        setErrorMsg('Gagal mengaktifkan akun gratis. Coba lagi atau hubungi support.');
+        return;
+      }
+      setStep('done');
+      window.location.href = '/payment-success';
+      return;
+    }
+
     let payData: any = {};
     try {
       const payRes = await fetch(PAYMENT_URL, {
@@ -377,10 +403,11 @@ export function WAPanel({
   const inputLocked  = isVerified || isBusy || showOtpPanel;
 
   // Label & handler tombol utama (panel nomor WA)
+  const isFreeCheckout = final === 0;
   const btnLabel =
     isChecking  ? 'Memeriksa nomor…'
-    : isVerified  ? 'Bayar Sekarang 🔒'
-    : isPaying    ? (step === 'done' ? 'Mengalihkan ke pembayaran…' : 'Memproses pembayaran…')
+    : isVerified  ? (isFreeCheckout ? 'Aktifkan Gratis 🎉' : 'Bayar Sekarang 🔒')
+    : isPaying    ? (isFreeCheckout ? 'Mengaktifkan akun…' : step === 'done' ? 'Mengalihkan ke pembayaran…' : 'Memproses pembayaran…')
     : 'Daftar & Verifikasi Nomor';
 
   const handleBtn = isVerified ? handleBayar : handleDaftar;
@@ -594,7 +621,7 @@ export function WAPanel({
                 <circle cx="8" cy="8" r="8" fill="#16A34A"/>
                 <path d="M4.5 8.5L6.5 10.5L11.5 5.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Nomor terverifikasi! Klik <strong style={{ marginLeft: '3px' }}>Bayar Sekarang</strong> untuk melanjutkan pembayaran.
+              Nomor terverifikasi! Klik <strong style={{ marginLeft: '3px' }}>{isFreeCheckout ? 'Aktifkan Gratis' : 'Bayar Sekarang'}</strong> untuk {isFreeCheckout ? 'mengaktifkan 1 bulan MIRA gratis.' : 'melanjutkan pembayaran.'}
             </div>
           )}
 

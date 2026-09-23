@@ -23,11 +23,16 @@ export const plans: Record<string, Plan> = {
     icon: '👤',
     desc: 'Untuk kamu yang ingin mulai sendiri. Kontrol penuh atas keuangan pribadi.',
     members: 1,
-    baseMonthly: 23000,
+    baseMonthly: 33000,
     durations: [
-      { id: '3', label: '3 Bulan', price: 69000, per: '≈ Rp23.000 / bulan', save: '', vsPersonal: '' },
-      { id: '6', label: '6 Bulan', price: 109000, per: '≈ Rp18.000 / bulan', save: 'Hemat 22%', vsPersonal: '' },
-      { id: '12', label: '12 Bulan ⭐', price: 199000, per: '≈ Rp16.500 / bulan', save: 'Hemat 28%', note: 'Cuma setara harga 1 kopi kekinian', vsPersonal: '' }
+      // Hidden 1-bulan trial — never rendered as a normal pickable option.
+      // Only reachable by applying the MIRA100 (100%-off) voucher code,
+      // which force-selects this id so the promo can't be combined with a
+      // longer (3/6/12 bulan) duration. See PricingPanel.tsx.
+      { id: '1', label: '1 Bulan', price: 39000, per: '≈ Rp39.000 / bulan', save: 'GRATIS 🎉', vsPersonal: '' },
+      { id: '3', label: '3 Bulan', price: 99000, per: '≈ Rp33.000 / bulan', save: '', vsPersonal: '' },
+      { id: '6', label: '6 Bulan', price: 159000, per: '≈ Rp26.500 / bulan', save: 'Hemat 20%', vsPersonal: '' },
+      { id: '12', label: '12 Bulan ⭐', price: 249000, per: '≈ Rp20.750 / bulan', save: 'Hemat 37%', note: 'Cuma setara harga 1 kopi kekinian', vsPersonal: '' }
     ]
   },
   duo: {
