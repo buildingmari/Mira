@@ -18,6 +18,7 @@ import { DashboardSettings }     from './pages/dashboard/settings';
 import { DashboardExport }       from './pages/dashboard/export';
 import { DashboardAffiliate }    from './pages/dashboard/affiliate';
 import { DashboardAssets }       from './pages/dashboard/assets';
+import { DashboardChat }         from './pages/dashboard/chat';
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
         Component: DashboardLayout,
         children: [
           { index: true,                Component: DashboardOverview },
+          { path: 'chat',                Component: DashboardChat },
           { path: 'transactions',       Component: DashboardTransactions },
           { path: 'goals',              Component: DashboardGoals },
           { path: 'insights',           Component: DashboardInsights },

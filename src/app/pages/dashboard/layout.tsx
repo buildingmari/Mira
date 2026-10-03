@@ -2,7 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Receipt, TrendingUp, Target,
   Download, Settings, LogOut, Moon, Sun, Menu, Plus, X,
-  Gift, Briefcase,
+  Gift, Briefcase, MessageCircle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../components/theme-provider';
@@ -94,6 +94,7 @@ const LAYOUT_CSS = `
 const NAV_SECTIONS = [
   { label: 'Overview', items: [
     { path: '/dashboard',              label: 'Dashboard',  Icon: LayoutDashboard },
+    { path: '/dashboard/chat',         label: 'Chat MIRA',  Icon: MessageCircle },
     { path: '/dashboard/transactions', label: 'Transaksi',  Icon: Receipt },
   ]},
   { label: 'Analitik', items: [
@@ -117,6 +118,7 @@ const MOB_NAV = [
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/dashboard':              { title: 'Dashboard',        sub: '' },
+  '/dashboard/chat':         { title: 'Chat MIRA',        sub: 'Catat pengeluaran lewat chat' },
   '/dashboard/transactions': { title: 'Transaksi',        sub: 'Riwayat pengeluaran' },
   '/dashboard/insights':     { title: 'Insight',          sub: 'Analisis keuangan' },
   '/dashboard/goals':        { title: 'Target',           sub: 'Progress goal kamu' },

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Paperclip, Mic, Square, X, Loader2 } from 'lucide-react';
 
-// NOTE: not yet linked from the sidebar/routes — see the comment block at the
-// bottom of this file for why, and what has to land before it's wired in.
+// Live — see the status comment at the bottom of this file for what's
+// shipped vs. still WhatsApp-only in v1.
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -13,8 +13,14 @@ const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 const CHAT_FN_URL = `${SUPA_URL}/functions/v1/chat-send`;
 
 const CHAT_CSS = `
-  .mc-wrap { display:flex; flex-direction:column; height:calc(100vh - 58px); max-width:820px; margin:0 auto; font-family:'DM Sans',sans-serif; }
-  .mc-log  { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
+  /* This dashboard uses normal page scroll (sticky desktop topbar, fixed
+     mobile bottom-nav reserved via padding on the Outlet wrapper) rather
+     than a fixed-height app shell — so the chat log is NOT a separately
+     scrolling pane. Only the composer is pinned, via position:sticky,
+     offset on mobile to clear #mira-mobile-nav (68px + safe-area, same
+     value dashboard/layout.tsx already reserves). */
+  .mc-wrap { display:flex; flex-direction:column; min-height:60vh; max-width:820px; margin:0 auto; font-family:'DM Sans',sans-serif; }
+  .mc-log  { padding:20px 24px; display:flex; flex-direction:column; gap:14px; }
   .mc-row  { display:flex; gap:10px; max-width:78%; }
   .mc-row.user { align-self:flex-end; flex-direction:row-reverse; }
   .mc-row.mira { align-self:flex-start; }
@@ -33,7 +39,11 @@ const CHAT_CSS = `
   .mc-typing span:nth-child(2) { animation-delay:.15s; }
   .mc-typing span:nth-child(3) { animation-delay:.3s; }
   @keyframes mc-bounce { 0%,60%,100%{ transform:translateY(0); opacity:.5; } 30%{ transform:translateY(-4px); opacity:1; } }
-  .mc-composer { border-top:1px solid rgba(0,0,0,0.07); background:#fff; padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); }
+  .mc-composer { position:sticky; bottom:0; border-top:1px solid rgba(0,0,0,0.07); background:#fff;
+                 padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px)); z-index:10; }
+  @media (max-width: 900px) {
+    .mc-composer { bottom: calc(68px + env(safe-area-inset-bottom,0px)); }
+  }
   .mc-preview { display:flex; align-items:center; gap:8px; padding:6px 10px; margin-bottom:8px; background:#F8F9FB; border-radius:10px; font-size:12px; color:#374151; }
   .mc-bar { display:flex; align-items:flex-end; gap:8px; }
   .mc-input { flex:1; border:1px solid rgba(0,0,0,0.12); border-radius:12px; padding:10px 14px; font-size:14px;
@@ -63,9 +73,12 @@ interface ChatMsg {
 }
 
 function useAutoScroll(dep: unknown) {
+  // The log is part of normal page flow (see CHAT_CSS comment), so "auto
+  // scroll" means scrolling the page itself to the end of the log, not an
+  // inner pane.
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.scrollTo({ top: ref.current.scrollHeight, behavior: 'smooth' });
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [dep]);
   return ref;
 }
@@ -312,17 +325,13 @@ export function DashboardChat() {
 }
 
 /**
- * STATUS: UI complete, chat-send Edge Function deployed (supabase/functions/
- * chat-send) and reachable — but deliberately NOT yet linked into the
- * sidebar/mobile nav or routes.tsx, because the function still needs its
- * OPENROUTER_API_KEY and GEMINI_API_KEY secrets set before it can actually
- * call the AI. Until then it responds with a clear 503, which this page
- * already handles gracefully (see the res.status === 503 branch above)
- * rather than hanging or crashing.
+ * STATUS: LIVE. chat-send Edge Function deployed, secrets configured, and
+ * verified end-to-end against a real account (text, photo, voice, store/
+ * confirm/edit/cancel, a spending query) before this page was linked into
+ * routes.tsx and dashboard/layout.tsx's NAV_SECTIONS.
  *
- * To go live: `supabase secrets set OPENROUTER_API_KEY=... GEMINI_API_KEY=...`
- * on project vhwissutkmxyzlyzkhyt, test end-to-end against a real account
- * (text, photo, voice, confirm/edit/cancel, query), THEN add a route for
- * this page in routes.tsx and a nav entry in dashboard/layout.tsx's
- * NAV_SECTIONS.
+ * Known v1 gaps (the model declines these via chat_response rather than
+ * emitting an action this backend can't handle): split bill, investment
+ * logging, reminders, export, insight reports — WhatsApp still has these,
+ * the web chat doesn't yet.
  */
