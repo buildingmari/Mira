@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban, SlidersHorizontal } from 'lucide-react';
 import { compressImage } from '../lib/image';
+import { useVoiceRecorder, fmtSeconds } from '../lib/voice';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -98,22 +99,12 @@ export function MiraChat() {
   const [text, setText] = useState('');
   const [pendingAttachment, setPendingAttachment] = useState<Attachment | null>(null);
   const [sending, setSending] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [recordSec, setRecordSec] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordChunksRef = useRef<Blob[]>([]);
-  const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { injectCssOnce(); }, []);
-
-  useEffect(() => () => {
-    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-    mediaRecorderRef.current?.state === 'recording' && mediaRecorderRef.current.stop();
-  }, []);
 
   // Load the last 24h of chat history, and reconstruct whether the most
   // recent MIRA message is still an open draft (so Simpan/Batal buttons
@@ -176,42 +167,18 @@ export function MiraChat() {
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      recordChunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) recordChunksRef.current.push(e.data); };
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(recordChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        const reader = new FileReader();
-        reader.onload = () => {
-          setPendingAttachment({ kind: 'audio', dataUrl: reader.result as string, durationSec: recordSec });
-        };
-        reader.readAsDataURL(blob);
-      };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setRecording(true);
-      setRecordSec(0);
-      recordTimerRef.current = setInterval(() => setRecordSec((s) => s + 1), 1000);
-    } catch {
-      setMessages((m) => [...m, {
-        id: crypto.randomUUID(), from: 'mira', error: true,
-        text: 'MIRA butuh izin mikrofon buat rekam voice note. Izinkan dulu ya di pengaturan browser.',
-      }]);
-    }
-  };
-
-  const stopRecording = () => {
-    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
-  };
+  // Voice notes are converted to WAV in the browser (see lib/voice.ts) —
+  // Chrome records webm, which the AI side doesn't accept.
+  const voice = useVoiceRecorder(
+    ({ dataUrl, seconds }) => setPendingAttachment({ kind: 'audio', dataUrl, durationSec: seconds }),
+    (message) => setMessages((m) => [...m, { id: crypto.randomUUID(), from: 'mira', error: true, text: message }]),
+  );
+  const recording = voice.recording;
+  const startRecording = voice.start;
+  const stopRecording = voice.stop;
 
   const clearAttachment = () => setPendingAttachment(null);
-  const fmtSec = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const fmtSec = fmtSeconds;
 
   /** Clears any `awaiting:'confirm'` left on prior messages once the user
    *  moves on, so stale buttons never linger under an old draft bubble. */
@@ -410,14 +377,14 @@ export function MiraChat() {
             ref={textareaRef}
             className="mirac-input"
             rows={1}
-            placeholder={recording ? `Merekam… ${fmtSec(recordSec)}` : 'Tulis pesan ke MIRA…'}
+            placeholder={recording ? `Merekam… ${fmtSec(voice.seconds)} — tap ■ kalau udah` : voice.preparing ? 'Nyiapin voice note…' : 'Tulis pesan ke MIRA…'}
             value={text}
             disabled={recording}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
           />
 
-          <button className="mirac-send-btn" onClick={handleSend} disabled={sending || recording || (!text.trim() && !pendingAttachment)}>
+          <button className="mirac-send-btn" onClick={handleSend} disabled={sending || recording || voice.preparing || (!text.trim() && !pendingAttachment)}>
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>

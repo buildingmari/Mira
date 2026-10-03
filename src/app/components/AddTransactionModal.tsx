@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { X, Check, Sparkles, Camera, Loader2, Users, Pencil } from 'lucide-react';
+import { X, Check, Sparkles, Camera, Loader2, Users, Pencil, Mic, Square } from 'lucide-react';
 import { compressImage } from '../lib/image';
+import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../lib/voice';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -194,7 +195,9 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
   const [aiBusy,   setAiBusy]   = useState(false);
   const [aiNote,   setAiNote]   = useState<string | null>(null);
   const [aiTxs,    setAiTxs]    = useState<AiTx[] | null>(null);
+  const [aiVoice,  setAiVoice]  = useState<VoiceNote | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const voice = useVoiceRecorder((note) => { setAiVoice(note); setErr(null); }, (message) => setErr(message));
 
   const today = todayWIB();
   const [type,     setType]     = useState<'expense' | 'income'>('expense');
@@ -259,7 +262,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
   };
 
   const runAi = async () => {
-    if (aiBusy || (!aiText.trim() && !aiPhoto)) return;
+    if (aiBusy || voice.recording || (!aiText.trim() && !aiPhoto && !aiVoice)) return;
     if (!phone) { setErr('Sesi tidak ditemukan. Silakan login ulang.'); return; }
     setAiBusy(true); setErr(null); setAiNote(null);
     try {
@@ -270,6 +273,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
           op: 'parse_expense', phone_number: phone,
           ...(aiText.trim() ? { text: aiText.trim() } : {}),
           ...(aiPhoto ? { image_base64: aiPhoto } : {}),
+          ...(aiVoice ? { audio_base64: aiVoice.dataUrl } : {}),
         }),
       });
       const data = await r.json().catch(() => ({}));
@@ -362,7 +366,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runAi(); } }}
                   />
                 </div>
-                {!aiText && !aiPhoto && (
+                {!aiText && !aiPhoto && !aiVoice && !voice.recording && (
                   <div className="atm-examples">
                     {AI_EXAMPLES.map(ex => (
                       <button key={ex} className="atm-ex" onClick={() => setAiText(ex)}>{ex}</button>
@@ -376,13 +380,36 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                     <button className="atm-close" onClick={() => setAiPhoto(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
                   </div>
                 )}
+                {(aiVoice || voice.recording || voice.preparing) && (
+                  <div className="atm-row" style={{ background: voice.recording ? '#FEF2F2' : '#F8F9FB', borderRadius: 12, padding: '10px 12px' }}>
+                    <Mic style={{ width: 16, height: 16, color: voice.recording ? '#DC2626' : '#2563EB' }} />
+                    <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>
+                      {voice.recording ? `Merekam… ${fmtSeconds(voice.seconds)} — tap ■ kalau udah`
+                        : voice.preparing ? 'Nyiapin voice note…'
+                        : `Voice note ${fmtSeconds(aiVoice!.seconds)} siap ✨`}
+                    </span>
+                    {aiVoice && !voice.recording && (
+                      <button className="atm-close" onClick={() => setAiVoice(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
+                    )}
+                  </div>
+                )}
                 {aiNote && <div className="atm-err" style={{ color: '#92400E', background: '#FFFBEB' }}>{aiNote}</div>}
                 {err && <div className="atm-err">{err}</div>}
                 <div className="atm-row">
-                  <button className="atm-photo-btn" onClick={() => photoRef.current?.click()} disabled={aiBusy}>
-                    <Camera style={{ width: 16, height: 16 }} /> Struk
+                  <button className="atm-photo-btn" onClick={() => photoRef.current?.click()} disabled={aiBusy || voice.recording} title="Foto struk / bukti transfer">
+                    <Camera style={{ width: 16, height: 16 }} />
                   </button>
-                  <button className="atm-submit" style={{ marginTop: 0, flex: 1 }} onClick={runAi} disabled={aiBusy || (!aiText.trim() && !aiPhoto)}>
+                  <button
+                    className="atm-photo-btn"
+                    style={voice.recording ? { background: '#FEE2E2', borderColor: 'rgba(239,68,68,0.35)', color: '#DC2626' } : undefined}
+                    onClick={voice.recording ? voice.stop : voice.start}
+                    disabled={aiBusy || voice.preparing}
+                    title={voice.recording ? 'Berhenti merekam' : 'Rekam voice note'}
+                  >
+                    {voice.recording ? <Square style={{ width: 14, height: 14 }} /> : <Mic style={{ width: 16, height: 16 }} />}
+                  </button>
+                  <button className="atm-submit" style={{ marginTop: 0, flex: 1 }} onClick={runAi}
+                    disabled={aiBusy || voice.recording || voice.preparing || (!aiText.trim() && !aiPhoto && !aiVoice)}>
                     {aiBusy
                       ? <><Loader2 className="atm-spin" style={{ width: 16, height: 16 }} /> MIRA lagi baca…</>
                       : <><Sparkles style={{ width: 16, height: 16 }} /> Proses</>}

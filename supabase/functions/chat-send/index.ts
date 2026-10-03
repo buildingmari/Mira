@@ -35,9 +35,8 @@
  * user_states.state 'waiting_split_confirm' holds a SplitDraft object in
  * draft_data. It's web-only; WhatsApp's own split flow uses its own state.
  *
- * Required secrets (`supabase secrets set`):
- *   OPENROUTER_API_KEY  – https://openrouter.ai/keys
- *   GEMINI_API_KEY      – https://aistudio.google.com/apikey
+ * Required secret (`supabase secrets set`):
+ *   OPENROUTER_API_KEY  – https://openrouter.ai/keys (all models, incl. Gemini, go through OpenRouter)
  * Auto-injected by the Supabase runtime: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -50,12 +49,11 @@ import {
 import { computeFinancialScores } from './scoring.ts';
 import { formatSplitSummary, saveSplit, totalOf, type SplitDraft } from '../_shared/split.ts';
 import { parseSplitWithAI } from '../_shared/split_ai.ts';
-import { analyzeMedia, callGemini, callOpenRouter, stripCodeFence } from '../_shared/ai.ts';
+import { analyzeMedia, callGemini, callOpenRouter, stripCodeFence, UnsupportedMediaError } from '../_shared/ai.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? '';
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -94,10 +92,10 @@ interface BrainResult {
   delete_search?: string;
 }
 
-// ─── MIRA AI Brain (OpenRouter; Gemini/OpenRouter plumbing in ../_shared/ai.ts) ─
+// ─── MIRA AI Brain (all models via OpenRouter — plumbing in ../_shared/ai.ts) ─
 
-/** OpenRouter (same model as n8n) with Gemini as a fallback, so the chat
- *  keeps working through an OpenRouter outage or an empty credit balance. */
+/** gpt-4o-mini (same brain as n8n) with Gemini as a fallback model, so a
+ *  single provider outage doesn't take the chat down. */
 async function llm(system: string, user: string, json = false): Promise<string> {
   try {
     return await callOpenRouter(system, user);
@@ -336,16 +334,24 @@ Deno.serve(async (req: Request) => {
 
     // 2. normalize input
     let normalizedText = textIn;
-    if (messageType === 'image') {
-      if (!GEMINI_API_KEY) return await reply('Fitur foto struk belum aktif sepenuhnya, coba lagi nanti ya 🙏');
-      const ocr = (await analyzeMedia(imageB64, IMAGE_OCR_PROMPT)).trim();
-      if (!ocr && !textIn) return await reply('Fotonya kurang jelas nih 😅 Bisa kasih tau nominalnya berapa?');
-      // Keep the caption (e.g. "split sama Raras") — same as n8n's WhatsApp flow.
-      normalizedText = textIn ? `${textIn}\n${ocr}` : ocr;
-    } else if (messageType === 'audio') {
-      if (!GEMINI_API_KEY) return await reply('Fitur voice note belum aktif sepenuhnya, coba lagi nanti ya 🙏');
-      normalizedText = (await analyzeMedia(audioB64, AUDIO_TRANSCRIBE_PROMPT)).trim();
-      if (!normalizedText) return await reply('Voice note-nya kurang jelas nih, coba rekam ulang ya 🙏');
+    try {
+      if (messageType === 'image') {
+        const ocr = (await analyzeMedia(imageB64, IMAGE_OCR_PROMPT)).trim();
+        if (!ocr && !textIn) return await reply('Fotonya kurang jelas nih 😅 Bisa kasih tau nominalnya berapa?');
+        // Keep the caption (e.g. "split sama Raras") — same as n8n's WhatsApp flow.
+        normalizedText = textIn ? `${textIn}\n${ocr}` : ocr;
+      } else if (messageType === 'audio') {
+        const heard = (await analyzeMedia(audioB64, AUDIO_TRANSCRIBE_PROMPT)).trim();
+        if (!heard) return await reply('Voice note-nya kurang jelas nih, coba rekam ulang ya 🙏');
+        normalizedText = textIn ? `${textIn}\n${heard}` : heard;
+      }
+    } catch (e) {
+      if (e instanceof UnsupportedMediaError) {
+        return await reply(messageType === 'audio'
+          ? 'Format voice note-nya belum kebaca nih 😅 Coba rekam ulang langsung dari tombol mic ya.'
+          : 'Format filenya belum didukung — kirim foto JPG/PNG ya 🙏');
+      }
+      throw e;
     }
 
     // 3. conversation state

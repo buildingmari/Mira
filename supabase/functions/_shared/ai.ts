@@ -1,10 +1,14 @@
 /**
- * Shared AI plumbing for the MIRA Edge Functions (chat-send, mira-tools):
- * Gemini for receipt OCR / voice transcription, OpenRouter for the LLM
- * calls. Prompts here are extracted from the n8n WhatsApp workflow.
+ * Shared AI plumbing for the MIRA Edge Functions (chat-send, mira-tools).
+ * Everything goes through OpenRouter (one key, one bill):
+ *   - GEMINI_MODEL (google/gemini-3.8-flash) for receipt OCR, voice-note
+ *     transcription and structured parsing — it reads images/audio and is
+ *     strong at Indonesian context,
+ *   - BRAIN_MODEL (openai/gpt-4o-mini) for the chat brain, same as n8n.
+ * Prompts here are extracted from the n8n WhatsApp workflow.
  */
 
-export const GEMINI_MODEL = 'gemini-3.8-flash';
+export const GEMINI_MODEL = 'google/gemini-3.8-flash';
 export const BRAIN_MODEL = 'openai/gpt-4o-mini';
 
 /** "Today" in WIB (UTC+7), independent of the server clock. */
@@ -72,81 +76,136 @@ Status: [status]
 
 Jika bukan dokumen keuangan: deskripsikan singkat isi gambar.`;
 
-function splitDataUrl(dataUrl: string): { mimeType: string; data: string } {
-  const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/s);
+export const AUDIO_PROMPT = 'Transkripsikan voice note berbahasa Indonesia ini apa adanya (angka ditulis sebagai angka). Balas hanya dengan teks transkripnya.';
+
+/** Splits a data URL. Tolerates MIME parameters — Safari records voice notes
+ *  as "data:audio/mp4; codecs=mp4a.40.2;base64,...". */
+export function splitDataUrl(dataUrl: string): { mimeType: string; data: string } {
+  const m = /^data:([^,]*?);base64,(.*)$/s.exec(dataUrl);
   if (!m) return { mimeType: 'application/octet-stream', data: dataUrl };
-  return { mimeType: m[1], data: m[2] };
+  return { mimeType: m[1].split(';')[0].trim().toLowerCase(), data: m[2] };
 }
+
+// OpenRouter input_audio formats (Gemini): wav, mp3, aiff, aac, ogg, flac, m4a.
+const AUDIO_FORMATS: Record<string, string> = {
+  'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav',
+  'audio/mpeg': 'mp3', 'audio/mp3': 'mp3',
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/m4a': 'm4a',
+  'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/flac': 'flac', 'audio/aiff': 'aiff', 'audio/x-aiff': 'aiff',
+};
+
+export class UnsupportedMediaError extends Error {}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** generateContent with retries: Gemini returns 503 "high demand" / 429 in
- *  short bursts, and one retry almost always gets through. */
-async function geminiGenerate(body: unknown): Promise<string> {
-  const key = Deno.env.get('GEMINI_API_KEY') ?? '';
-  if (!key) throw new Error('gemini_not_configured');
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+// deno-lint-ignore no-explicit-any
+type Message = { role: 'system' | 'user'; content: string | any[] };
+
+/** OpenRouter chat completion with retries on rate limits / provider hiccups. */
+async function openRouter(
+  model: string, messages: Message[], opts: { json?: boolean; maxTokens?: number } = {},
+): Promise<string> {
+  const key = Deno.env.get('OPENROUTER_API_KEY') ?? '';
+  if (!key) throw new Error('openrouter_not_configured');
   let last = '';
-  for (const wait of [0, 700, 1800]) {
+  for (const wait of [0, 800, 2000]) {
     if (wait) await sleep(wait);
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://halo-mira.com',
+        'X-Title': 'MIRA',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        // Without an explicit cap OpenRouter reserves the model's max output
+        // against the account balance and rejects with 402 when credits are low.
+        max_tokens: opts.maxTokens ?? 2048,
+        temperature: 0.1,
+        ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+      }),
+    });
     if (res.ok) {
-      const out = await res.json();
-      return (out?.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || '').join('');
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) return content.map((p: { text?: string }) => p?.text || '').join('');
+      // 200 with an error body happens when the upstream provider fails mid-way.
+      last = `openrouter_empty:${JSON.stringify(data?.error || data).slice(0, 300)}`;
+      continue;
     }
-    last = `gemini_failed:${res.status}:${(await res.text().catch(() => '')).slice(0, 300)}`;
-    if (res.status !== 503 && res.status !== 429 && res.status !== 500) break;
+    last = `openrouter_failed:${res.status}:${(await res.text().catch(() => '')).slice(0, 300)}`;
+    if (![408, 429, 500, 502, 503, 504].includes(res.status)) break;
   }
   throw new Error(last);
 }
 
-export async function analyzeMedia(dataUrl: string, prompt: string): Promise<string> {
+/** OpenRouter content part for a photo or a voice note (data URL). */
+// deno-lint-ignore no-explicit-any
+function mediaPart(dataUrl: string): any {
   const { mimeType, data } = splitDataUrl(dataUrl);
-  return geminiGenerate({
-    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data } }] }],
-  });
+  if (mimeType.startsWith('image/')) {
+    return { type: 'image_url', image_url: { url: `data:${mimeType};base64,${data}` } };
+  }
+  if (mimeType.startsWith('audio/') || mimeType === 'video/mp4' || mimeType === 'video/webm') {
+    const format = AUDIO_FORMATS[mimeType] || (mimeType === 'video/mp4' ? 'm4a' : '');
+    if (!format) throw new UnsupportedMediaError(`unsupported_audio:${mimeType}`);
+    return { type: 'input_audio', input_audio: { data, format } };
+  }
+  throw new UnsupportedMediaError(`unsupported_media:${mimeType}`);
 }
 
-/** Text-only Gemini call; with json=true the model is constrained to emit JSON. */
-export async function callGemini(system: string, user: string, opts: { json?: boolean } = {}): Promise<string> {
-  return geminiGenerate({
-    system_instruction: { parts: [{ text: system }] },
-    contents: [{ role: 'user', parts: [{ text: user }] }],
-    generationConfig: { temperature: 0.1, ...(opts.json ? { responseMimeType: 'application/json' } : {}) },
-  });
+const isAudio = (dataUrl: string) => !splitDataUrl(dataUrl).mimeType.startsWith('image/');
+
+/** Reads a photo (OCR) or a voice note (transcription) with Gemini. */
+export async function analyzeMedia(dataUrl: string, prompt: string): Promise<string> {
+  const out = await openRouter(GEMINI_MODEL, [{ role: 'user', content: [{ type: 'text', text: prompt }, mediaPart(dataUrl)] }], { maxTokens: 4096 });
+  return out.trim();
 }
 
-/** Structured extraction: Gemini first (better at Indonesian context), OpenRouter as fallback. */
-export async function callStructured(system: string, user: string): Promise<string> {
+/** Text-only Gemini call; with json=true the model is asked for a JSON object. */
+export function callGemini(system: string, user: string, opts: { json?: boolean } = {}): Promise<string> {
+  return openRouter(GEMINI_MODEL, [{ role: 'system', content: system }, { role: 'user', content: user }], opts);
+}
+
+/**
+ * Structured extraction: Gemini first (better at Indonesian context).
+ * Attached media (receipt photos, voice notes) are read in that SAME call —
+ * one round trip instead of OCR/transcribe-then-parse. If Gemini fails, the
+ * media is turned into text separately and gpt-4o-mini parses that.
+ */
+export async function callStructured(system: string, user: string, media: string[] = []): Promise<string> {
+  const parts = media.map(mediaPart); // unsupported formats fail fast, before any AI call
   try {
-    const out = await callGemini(system, user, { json: true });
+    const content = parts.length ? [{ type: 'text', text: user }, ...parts] : user;
+    const out = await openRouter(GEMINI_MODEL, [{ role: 'system', content: system }, { role: 'user', content }], { json: true, maxTokens: 4096 });
     if (out.trim()) return out;
   } catch (e) {
-    console.warn('callStructured: gemini failed, falling back to openrouter', String(e).slice(0, 200));
+    if (e instanceof UnsupportedMediaError) throw e;
+    console.warn('callStructured: gemini failed, falling back to gpt-4o-mini', String(e).slice(0, 200));
   }
-  return callOpenRouter(system, user, { json: true });
+  let text = user;
+  if (media.length) {
+    const read = await Promise.all(media.map((m) => analyzeMedia(m, isAudio(m) ? AUDIO_PROMPT : IMAGE_OCR_PROMPT)));
+    text = [user, ...read.map((r, i) => (isAudio(media[i]) ? `VOICE NOTE:\n${r}` : `HASIL SCAN STRUK:\n${r}`))].join('\n\n');
+  }
+  return callOpenRouter(system, text, { json: true });
 }
 
-export async function callOpenRouter(
+/** Tells the parser what's attached, so it reads the media as the main input. */
+export function mediaNote(media: { image?: string; audio?: string }): string {
+  const what = [media.image && 'foto struk/bukti transaksi', media.audio && 'voice note'].filter(Boolean);
+  return what.length ? `[Lampiran dari user: ${what.join(' + ')} — baca/dengarkan isinya, itu sumber data utama.]` : '';
+}
+
+/** The chat brain model (gpt-4o-mini, same as n8n). */
+export function callOpenRouter(
   system: string, user: string, opts: { json?: boolean; maxTokens?: number } = {},
 ): Promise<string> {
-  const key = Deno.env.get('OPENROUTER_API_KEY') ?? '';
-  if (!key) throw new Error('openrouter_not_configured');
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: BRAIN_MODEL,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      // Without an explicit cap OpenRouter reserves the model's max (16k)
-      // against the account balance and rejects with 402 when credits run low.
-      max_tokens: opts.maxTokens ?? 2048,
-      ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
-    }),
-  });
-  if (!res.ok) throw new Error(`openrouter_failed:${res.status}:${await res.text().catch(() => '')}`);
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || '';
+  return openRouter(BRAIN_MODEL, [{ role: 'system', content: system }, { role: 'user', content: user }], opts);
 }
 
 export function stripCodeFence(s: string): string {

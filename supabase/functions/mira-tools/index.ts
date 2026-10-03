@@ -9,8 +9,8 @@
  *     own labels (Makanan, Transport, …) so it can map them with CAT_TO_DB.
  *     Nothing is saved here — the modal shows editable cards first.
  *
- *   { op: 'parse_split', phone_number, text?, image_base64?, current? }
- *     -> { draft: SplitDraft, ocr_text? }
+ *   { op: 'parse_split', phone_number, text?, image_base64?, audio_base64?, current? }
+ *     -> { draft: SplitDraft }
  *     Split Bill page: scan a receipt and/or describe who had what. With
  *     `current`, `text` is applied as an edit to that draft.
  *
@@ -20,12 +20,14 @@
  *   { op: 'settle_piutang', phone_number, asset_id } -> { ok }
  *
  * Writes go through here (service role) because user_reminders has RLS with
- * no anon policy. Secrets: OPENROUTER_API_KEY, GEMINI_API_KEY.
+ * no anon policy. Secret: OPENROUTER_API_KEY (every model, Gemini included, goes through OpenRouter).
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { analyzeMedia, callStructured, parseJsonLoose, sanitizeDate, todayWIB, IMAGE_OCR_PROMPT } from '../_shared/ai.ts';
+import {
+  callStructured, mediaNote, parseJsonLoose, sanitizeDate, todayWIB, UnsupportedMediaError,
+} from '../_shared/ai.ts';
 import { saveSplit, settlePiutang, computeSplit, type SplitDraft } from '../_shared/split.ts';
 import { parseSplitWithAI } from '../_shared/split_ai.ts';
 
@@ -47,10 +49,8 @@ function json(body: unknown, status = 200): Response {
 const CATEGORIES = ['Makanan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pemasukan', 'Lainnya'];
 const WALLETS = ['BCA', 'BRI', 'Mandiri', 'BNI', 'CIMB', 'Jenius', 'GoPay', 'OVO', 'DANA', 'ShopeePay', 'LinkAja', 'Cash'];
 
-const AUDIO_PROMPT = 'Transkripsikan voice note berbahasa Indonesia ini apa adanya. Balas hanya dengan teks transkripnya.';
-
 const EXPENSE_PARSE_SYSTEM = `Kamu parser transaksi keuangan untuk MIRA, asisten keuangan Indonesia.
-Ekstrak SEMUA transaksi dari teks user (bisa berisi hasil OCR struk/bukti transfer).
+Ekstrak SEMUA transaksi dari teks user dan lampirannya (foto struk/bukti transfer, voice note).
 
 Balas HANYA JSON valid:
 {"expenses":[{"item":string,"merchant":string|null,"amount":number,"category":string,"wallet":string|null,"date":"YYYY-MM-DD","transaction_type":"expense"|"income"}],"note":string|null}
@@ -89,12 +89,6 @@ function isActiveMember(user: any): boolean {
   if (user.valid_to && new Date(user.valid_to) < new Date()) return false;
   const s = String(user.account_status || '').toLowerCase();
   return s === 'pro' || s === 'paid';
-}
-
-async function mediaToText(image: string, audio: string): Promise<string> {
-  if (image) return (await analyzeMedia(image, IMAGE_OCR_PROMPT)).trim();
-  if (audio) return (await analyzeMedia(audio, AUDIO_PROMPT)).trim();
-  return '';
 }
 
 // deno-lint-ignore no-explicit-any
@@ -186,13 +180,9 @@ Deno.serve(async (req: Request) => {
         const audio = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
         if (!text && !image && !audio) return json({ error: 'empty' }, 400);
 
-        const media = await mediaToText(image, audio);
-        if ((image || audio) && !media && !text) {
-          return json({ expenses: [], note: image ? 'Fotonya kurang jelas nih 😅 Coba foto ulang atau ketik nominalnya ya.' : 'Voice note-nya kurang jelas, coba ulang ya 🙏' });
-        }
-        const input = [text, media].filter(Boolean).join('\n\n');
+        const input = [text, mediaNote({ image, audio })].filter(Boolean).join('\n\n');
         const system = EXPENSE_PARSE_SYSTEM.replace('{{TODAY}}', todayWIB()).replace('{{YESTERDAY}}', todayWIB(-1));
-        const raw = await callStructured(system, input);
+        const raw = await callStructured(system, input, [image, audio].filter(Boolean));
         const parsed = parseJsonLoose<{ note?: string }>(raw);
         const expenses = normalizeExpenses(parsed, user.primary_wallet || 'Cash');
         return json({
@@ -205,13 +195,12 @@ Deno.serve(async (req: Request) => {
         if (!isActiveMember(user)) return json({ error: 'inactive', message: 'Langganan MIRA kamu belum aktif.' }, 403);
         const text = typeof body.text === 'string' ? body.text.trim() : '';
         const image = typeof body.image_base64 === 'string' ? body.image_base64 : '';
-        if (!text && !image) return json({ error: 'empty' }, 400);
-        const ocr = image ? (await analyzeMedia(image, IMAGE_OCR_PROMPT)).trim() : '';
-        if (image && !ocr && !text) return json({ error: 'ocr_failed', message: 'Struknya kurang kebaca 😅 Coba foto ulang lebih dekat & terang ya.' }, 422);
-        const input = [text, ocr && `HASIL SCAN STRUK:\n${ocr}`].filter(Boolean).join('\n\n');
+        const audio = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
+        if (!text && !image && !audio) return json({ error: 'empty' }, 400);
+        const input = [text, mediaNote({ image, audio })].filter(Boolean).join('\n\n');
         const current = body.current && typeof body.current === 'object' ? (body.current as SplitDraft) : null;
-        const draft = await parseSplitWithAI(input, { current, wallet: user.primary_wallet || 'Cash' });
-        return json({ draft, ocr_text: ocr || null });
+        const draft = await parseSplitWithAI(input, { current, wallet: user.primary_wallet || 'Cash', media: [image, audio].filter(Boolean) });
+        return json({ draft });
       }
 
       case 'save_split': {
@@ -242,6 +231,9 @@ Deno.serve(async (req: Request) => {
         return json({ error: 'unknown_op' }, 400);
     }
   } catch (err) {
+    if (err instanceof UnsupportedMediaError) {
+      return json({ error: 'unsupported_media', message: 'Format file/voice note-nya belum didukung 😅 Coba foto JPG/PNG atau rekam ulang dari tombol mic ya.' }, 422);
+    }
     console.error('mira-tools error:', op, err);
     return json({ error: 'internal', message: 'Waduh, ada gangguan di sisi MIRA. Coba lagi ya 🙏' }, 500);
   }

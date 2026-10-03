@@ -10,7 +10,7 @@ import { callStructured, parseJsonLoose, sanitizeDate, todayWIB } from './ai.ts'
 import { computeSplit, isFixed, totalOf, type SplitDraft, type SplitItem, type SplitParticipant } from './split.ts';
 
 const SPLIT_PARSE_SYSTEM = `Kamu parser split bill (patungan) untuk MIRA, asisten keuangan Indonesia.
-Dari teks user (bisa berisi hasil OCR struk), ekstrak data patungan.
+Dari teks user (dan lampiran foto struk / voice note kalau ada), ekstrak data patungan.
 
 Balas HANYA JSON valid dengan struktur:
 {
@@ -147,19 +147,19 @@ export function normalizeSplit(raw: any, defaults: { wallet?: string } = {}): Sp
 /** Parse a fresh split from text, or apply `text` as an edit to `current`. */
 export async function parseSplitWithAI(
   text: string,
-  opts: { current?: SplitDraft | null; wallet?: string } = {},
+  opts: { current?: SplitDraft | null; wallet?: string; media?: string[] } = {},
 ): Promise<SplitDraft> {
   const system = SPLIT_PARSE_SYSTEM.replace('{{TODAY}}', todayWIB()).replace('{{YESTERDAY}}', todayWIB(-1));
   const user = opts.current
     ? `DRAFT SAAT INI:\n${JSON.stringify(toLLMShape(opts.current))}\n\nINSTRUKSI USER:\n${text}`
     : `TEKS USER:\n${text}`;
-  const raw = await callStructured(system, user);
+  const raw = await callStructured(system, user, opts.media || []);
   const next = normalizeSplit(parseJsonLoose(raw), { wallet: opts.current?.wallet || opts.wallet });
 
   // Guard: an edit about WHO pays must not silently change HOW MUCH the bill
   // is (models sometimes "helpfully" subtract a fixed share from the total).
   const cur = opts.current;
-  if (cur && totalOf(cur) > 0 && next.mode !== 'manual' && !BILL_CHANGE.test(text)) {
+  if (cur && totalOf(cur) > 0 && next.mode !== 'manual' && !opts.media?.length && !BILL_CHANGE.test(text)) {
     const sameItems = next.items.length === cur.items.length &&
       next.items.every((it, i) => it.name.toLowerCase() === cur.items[i].name.toLowerCase());
     if (sameItems && totalOf(next) !== totalOf(cur)) {

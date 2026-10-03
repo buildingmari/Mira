@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Users, Receipt, Share2, Lock, Send, Trash2,
+  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Users, Receipt, Share2, Lock, Send, Trash2, Mic, Square,
 } from 'lucide-react';
 import { compressImage } from '../../lib/image';
+import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../../lib/voice';
 import { SPLIT_PREFILL_KEY } from '../../components/MiraChat';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -254,6 +255,8 @@ export function DashboardSplitBill() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [story, setStory] = useState('');
+  const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
+  const voice = useVoiceRecorder((n) => { setVoiceNote(n); setErr(null); }, (m) => setErr(m));
   const [aiEdit, setAiEdit] = useState('');
   const [newFriend, setNewFriend] = useState('');
   const [editingFixed, setEditingFixed] = useState<string | null>(null);
@@ -315,7 +318,7 @@ export function DashboardSplitBill() {
     try { setPhoto(await compressImage(f)); } catch { setErr('Fotonya gagal dibuka, coba pilih ulang ya.'); }
   };
 
-  const parse = async (payload: { text?: string; image_base64?: string }) => {
+  const parse = async (payload: { text?: string; image_base64?: string; audio_base64?: string }) => {
     setBusy('parse'); setErr(null); setSaved(null);
     try {
       const res = await callTools<{ draft: Draft }>({ op: 'parse_split', ...payload });
@@ -328,6 +331,28 @@ export function DashboardSplitBill() {
       setBusy('');
     }
   };
+
+  /** Mic button + status chip for telling MIRA who had what by voice. */
+  const voiceControl = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+      <button
+        className="sb-btn light"
+        style={{ height: 38, padding: '0 12px', fontSize: 13, ...(voice.recording ? { background: '#FEE2E2', color: '#DC2626' } : {}) }}
+        onClick={voice.recording ? voice.stop : voice.start}
+        disabled={busy === 'parse' || voice.preparing}
+      >
+        {voice.recording ? <><Square size={13} /> Stop {fmtSeconds(voice.seconds)}</> : <><Mic size={15} /> {voiceNote ? 'Rekam ulang' : 'Rekam suara'}</>}
+      </button>
+      <span style={{ fontSize: 12, color: '#6B7280', flex: 1 }}>
+        {voice.recording ? 'Ceritain siapa aja & siapa makan apa…'
+          : voice.preparing ? 'Nyiapin voice note…'
+          : voiceNote ? `🎤 Voice note ${fmtSeconds(voiceNote.seconds)} siap` : 'atau ceritain pakai suara'}
+      </span>
+      {voiceNote && !voice.recording && (
+        <button className="sb-icon" onClick={() => setVoiceNote(null)} title="Hapus voice note"><X size={15} /></button>
+      )}
+    </div>
+  );
 
   const startManual = () => { setDraft(emptyDraft()); setFromChat(false); setSaved(null); setErr(null); scrollToEditor(); };
 
@@ -405,7 +430,7 @@ export function DashboardSplitBill() {
         op: 'save_split', draft: { ...draft, merchant: draft.merchant.trim() || 'Split Bill' }, clear_chat_state: fromChat,
       });
       setSaved({ message: res.message, draft });
-      setDraft(null); setPhoto(null); setNote(''); setStory(''); setFromChat(false);
+      setDraft(null); setPhoto(null); setNote(''); setStory(''); setVoiceNote(null); setFromChat(false);
       window.dispatchEvent(new CustomEvent('mira:tx-added'));
       loadLists();
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -505,9 +530,10 @@ export function DashboardSplitBill() {
                   <label className="sb-label" style={{ marginTop: 12 }}>Siapa aja yang ikut? (opsional)</label>
                   <textarea className="sb-textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)}
                     placeholder='Misal: "sama Raras & Taufan. Gua nasi goreng, Raras mie ayam, es teh buat semua"' />
+                  {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
-                    disabled={!photo || busy === 'parse'}
-                    onClick={() => photo && parse({ image_base64: photo, text: note.trim() || undefined })}>
+                    disabled={!photo || busy === 'parse' || voice.recording || voice.preparing}
+                    onClick={() => photo && parse({ image_base64: photo, text: note.trim() || undefined, audio_base64: voiceNote?.dataUrl })}>
                     {busy === 'parse' ? <><Loader2 size={16} className="sb-spin" /> MIRA lagi baca struk…</> : <><Sparkles size={16} /> Bagi pakai MIRA</>}
                   </button>
                 </>
@@ -517,9 +543,10 @@ export function DashboardSplitBill() {
                 <>
                   <textarea className="sb-textarea" rows={4} value={story} onChange={(e) => setStory(e.target.value)}
                     placeholder='Contoh: "Makan di Solaria 156rb bertiga sama Raras & Taufan. Gua nasi goreng 35rb, Raras mie ayam 30rb, Taufan ayam bakar 45rb, es teh 3 buat semua. Taufan bayar 50rb aja."' />
+                  {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
-                    disabled={!story.trim() || busy === 'parse'}
-                    onClick={() => parse({ text: story.trim() })}>
+                    disabled={(!story.trim() && !voiceNote) || busy === 'parse' || voice.recording || voice.preparing}
+                    onClick={() => parse({ text: story.trim() || undefined, audio_base64: voiceNote?.dataUrl })}>
                     {busy === 'parse' ? <><Loader2 size={16} className="sb-spin" /> MIRA lagi ngitung…</> : <><Sparkles size={16} /> Bagi pakai MIRA</>}
                   </button>
                 </>
