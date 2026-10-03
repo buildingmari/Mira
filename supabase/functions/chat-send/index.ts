@@ -245,7 +245,7 @@ function splitPrompt(d: SplitDraft, edited = false): string {
   if (edited) lines.push('✏️ Split bill diperbarui', '');
   lines.push(formatSplitSummary(d));
   if (d.participants.some((p) => !p.is_me)) {
-    lines.push('', 'Udah pas? Tinggal Simpan — atau bilang aja kalau mau diubah (misal "Raras ga ikut minum" atau "bagi rata aja").');
+    lines.push('', 'Udah pas? Tinggal Simpan — atau bilang aja kalau mau diubah (misal "Budi ga ikut minum" atau "bagi rata aja").');
   }
   return lines.join('\n');
 }
@@ -338,7 +338,7 @@ Deno.serve(async (req: Request) => {
       if (messageType === 'image') {
         const ocr = (await analyzeMedia(imageB64, IMAGE_OCR_PROMPT)).trim();
         if (!ocr && !textIn) return await reply('Fotonya kurang jelas nih 😅 Bisa kasih tau nominalnya berapa?');
-        // Keep the caption (e.g. "split sama Raras") — same as n8n's WhatsApp flow.
+        // Keep the caption (e.g. "split sama Budi") — same as n8n's WhatsApp flow.
         normalizedText = textIn ? `${textIn}\n${ocr}` : ocr;
       } else if (messageType === 'audio') {
         const heard = (await analyzeMedia(audioB64, AUDIO_TRANSCRIBE_PROMPT)).trim();
@@ -364,7 +364,7 @@ Deno.serve(async (req: Request) => {
     if (currentState === SPLIT_STATE && !splitDraft) currentState = 'idle';
 
     // A receipt photo / voice note while a split is being set up fills in
-    // that split (e.g. "split sama Raras & Taufan" first, then the struk).
+    // that split (e.g. "split sama Budi & Adi" first, then the struk).
     if (splitDraft && messageType !== 'text') {
       const edited = await parseSplitWithAI(normalizedText, { current: splitDraft });
       await upsertState(phone_number, SPLIT_STATE, edited);
@@ -441,7 +441,7 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'edit_split': {
-        if (!splitDraft) return await reply('Gak ada split bill yang lagi dibuat nih 🤔 Mau split apa? Ceritain aja, misal "makan 300rb bertiga sama Raras & Taufan".');
+        if (!splitDraft) return await reply('Gak ada split bill yang lagi dibuat nih 🤔 Mau split apa? Ceritain aja, misal "makan 300rb bertiga sama Budi & Adi".');
         // The user's own words, not the brain's paraphrase of them — the
         // paraphrase tends to drop names ("Dimas ikut" -> "tambah 1 orang").
         const edited = await parseSplitWithAI(normalizedText, { current: splitDraft });

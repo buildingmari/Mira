@@ -1,382 +1,474 @@
 /* ======================================================================
    MIRA Dashboard — Dark Mode
-   Applies when <html class="dark"> (set by ThemeProvider)
+   Applies when <html class="dark"> (ThemeProvider), and ONLY inside the
+   dashboard (#mira-dash-layout) so it can never leak into the landing page.
+
+   Pages are styled with React inline styles. The browser serializes those
+   as "color: rgb(17, 24, 39)", never "#111827" — so the inline overrides
+   below match the rgb() form, anchored on "; " / start-of-attribute so a
+   text-color rule can't hit background-color/border-color by accident.
+   The inline blocks are generated from one color map; keep it that way
+   (see git history: scripts in the commit that introduced this header).
    ====================================================================== */
 
-/* ── Layout shell ──────────────────────────────────────────────────── */
-.dark #mira-dash-layout {
-  background: #0F172A;
-}
+.dark #mira-dash-layout { background: #0F172A; color: #E2E8F0; color-scheme: dark; }
+.dark #mira-dash-layout :is(h1, h2, h3, h4, h5, h6) { color: #F1F5F9; }
 
 /* ── Sidebar ───────────────────────────────────────────────────────── */
-.dark #mira-sidebar {
-  background: #1E293B;
-  border-right-color: rgba(255,255,255,0.07);
-}
-.dark .mira-nav-btn { color: #CBD5E1; }
-.dark .mira-nav-btn:hover { background: rgba(255,255,255,0.06); color: #F1F5F9; }
-.dark .mira-nav-btn.active { background: rgba(37,99,235,0.18); color: #93C5FD; }
+.dark #mira-dash-layout #mira-sidebar { background: #1E293B; border-right-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .mira-nav-btn { color: #CBD5E1; }
+.dark #mira-dash-layout .mira-nav-btn:hover { background: rgba(255,255,255,0.06); color: #F1F5F9; }
+.dark #mira-dash-layout .mira-nav-btn.active { background: rgba(37,99,235,0.18); color: #93C5FD; }
 
-/* Sidebar — text nodes */
-.dark #mira-sidebar [style*="color: #111827"],
-.dark #mira-sidebar [style*="color:#111827"] { color: #F1F5F9 !important; }
-.dark #mira-sidebar [style*="color: #6B7280"],
-.dark #mira-sidebar [style*="color:#6B7280"] { color: #64748B !important; }
-.dark #mira-sidebar [style*="color: #9CA3AF"],
-.dark #mira-sidebar [style*="color:#9CA3AF"] { color: #64748B !important; }
-
-/* Sidebar — border separators */
-.dark #mira-sidebar [style*="border-bottom: 1px solid rgba(0,0,0"],
-.dark #mira-sidebar [style*="borderBottom: 1px solid rgba(0,0,0"],
-.dark #mira-sidebar [style*="border-top: 1px solid rgba(0,0,0"],
-.dark #mira-sidebar [style*="borderTop: 1px solid rgba(0,0,0"] {
-  border-color: rgba(255,255,255,0.07) !important;
-}
-
-/* ── Top bar ───────────────────────────────────────────────────────── */
-.dark #mira-topbar {
-  background: rgba(15,23,42,0.92);
-  border-bottom-color: rgba(255,255,255,0.07);
-}
-.dark #mira-topbar h1 { color: #F1F5F9; }
-.dark #mira-topbar p  { color: #94A3B8; }
-
-/* Topbar buttons (theme-toggle white bg, logout transparent bg) */
-.dark #mira-topbar button[style*="background: #fff"],
-.dark #mira-topbar button[style*="background:#fff"] {
-  background: #1E293B !important;
-  border-color: rgba(255,255,255,0.12) !important;
-  color: #94A3B8 !important;
-}
-.dark #mira-topbar button[style*="background: transparent"] {
-  color: #94A3B8 !important;
-  border-color: rgba(255,255,255,0.12) !important;
-}
-
-/* ── Mobile top bar ────────────────────────────────────────────────── */
-.dark #mira-mobile-topbar {
-  background: rgba(15,23,42,0.96);
-  border-bottom-color: rgba(255,255,255,0.07);
-}
-.dark #mira-mobile-topbar span { color: #F1F5F9; }
-.dark #mira-mobile-topbar button[style*="background: #fff"],
-.dark #mira-mobile-topbar button[style*="background:#fff"] {
-  background: #1E293B !important;
-  border-color: rgba(255,255,255,0.12) !important;
-  color: #94A3B8 !important;
-}
-
-/* ── Mobile nav bar ────────────────────────────────────────────────── */
-.dark #mira-mobile-nav {
-  background: rgba(30,41,59,0.96);
-  border-top-color: rgba(255,255,255,0.07);
-}
-.dark .mira-mob-btn { color: #64748B; }
-.dark .mira-mob-btn.active { color: #60A5FA; }
+/* ── Top bars + mobile nav ─────────────────────────────────────────── */
+.dark #mira-dash-layout #mira-topbar { background: rgba(15,23,42,0.92); border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout #mira-mobile-topbar { background: rgba(15,23,42,0.96); border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout #mira-mobile-nav { background: rgba(30,41,59,0.96); border-top-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .mira-mob-btn { color: #64748B; }
+.dark #mira-dash-layout .mira-mob-btn.active { color: #60A5FA; }
+.dark #mira-dash-layout #mira-mobile-nav svg[style*="stroke: rgb(156, 163, 175)"] { stroke: #64748B !important; }
 
 /* ======================================================================
-   GLOBAL CARD OVERRIDE
-   Catches every element inside #mira-main that carries an inline
-   background: #fff / #ffffff / white  (from CARD constant pattern)
-   Also catches backgroundColor: #fff used in recharts TT tooltips
+   INLINE STYLE OVERRIDES (generated)
    ====================================================================== */
-.dark #mira-main [style*="background: #fff"],
-.dark #mira-main [style*="background:#fff"],
-.dark #mira-main [style*="background: #ffffff"],
-.dark #mira-main [style*="background:#ffffff"],
-.dark #mira-main [style*="background: #FFFFFF"],
-.dark #mira-main [style*="background: white"],
-.dark #mira-main [style*="background:white"] {
+.dark #mira-dash-layout [style^="color: rgb(17, 24, 39)"], .dark #mira-dash-layout [style*="; color: rgb(17, 24, 39)"] { color: #F1F5F9 !important; }
+.dark #mira-dash-layout [style^="color: rgb(15, 23, 42)"], .dark #mira-dash-layout [style*="; color: rgb(15, 23, 42)"] { color: #F1F5F9 !important; }
+.dark #mira-dash-layout [style^="color: rgb(31, 41, 55)"], .dark #mira-dash-layout [style*="; color: rgb(31, 41, 55)"] { color: #E2E8F0 !important; }
+.dark #mira-dash-layout [style^="color: rgb(30, 41, 59)"], .dark #mira-dash-layout [style*="; color: rgb(30, 41, 59)"] { color: #E2E8F0 !important; }
+.dark #mira-dash-layout [style^="color: rgb(55, 65, 81)"], .dark #mira-dash-layout [style*="; color: rgb(55, 65, 81)"] { color: #CBD5E1 !important; }
+.dark #mira-dash-layout [style^="color: rgb(51, 65, 85)"], .dark #mira-dash-layout [style*="; color: rgb(51, 65, 85)"] { color: #CBD5E1 !important; }
+.dark #mira-dash-layout [style^="color: rgb(75, 85, 99)"], .dark #mira-dash-layout [style*="; color: rgb(75, 85, 99)"] { color: #A3B0C2 !important; }
+.dark #mira-dash-layout [style^="color: rgb(71, 85, 105)"], .dark #mira-dash-layout [style*="; color: rgb(71, 85, 105)"] { color: #A3B0C2 !important; }
+.dark #mira-dash-layout [style^="color: rgb(107, 114, 128)"], .dark #mira-dash-layout [style*="; color: rgb(107, 114, 128)"] { color: #94A3B8 !important; }
+.dark #mira-dash-layout [style^="color: rgb(100, 116, 139)"], .dark #mira-dash-layout [style*="; color: rgb(100, 116, 139)"] { color: #94A3B8 !important; }
+.dark #mira-dash-layout [style^="color: rgb(156, 163, 175)"], .dark #mira-dash-layout [style*="; color: rgb(156, 163, 175)"] { color: #7C8BA1 !important; }
+.dark #mira-dash-layout [style^="color: rgb(29, 78, 216)"], .dark #mira-dash-layout [style*="; color: rgb(29, 78, 216)"] { color: #93C5FD !important; }
+.dark #mira-dash-layout [style^="color: rgb(30, 64, 175)"], .dark #mira-dash-layout [style*="; color: rgb(30, 64, 175)"] { color: #93C5FD !important; }
+.dark #mira-dash-layout [style^="color: rgb(37, 99, 235)"], .dark #mira-dash-layout [style*="; color: rgb(37, 99, 235)"] { color: #60A5FA !important; }
+.dark #mira-dash-layout [style^="color: rgb(21, 128, 61)"], .dark #mira-dash-layout [style*="; color: rgb(21, 128, 61)"] { color: #4ADE80 !important; }
+.dark #mira-dash-layout [style^="color: rgb(22, 101, 52)"], .dark #mira-dash-layout [style*="; color: rgb(22, 101, 52)"] { color: #4ADE80 !important; }
+.dark #mira-dash-layout [style^="color: rgb(22, 163, 74)"], .dark #mira-dash-layout [style*="; color: rgb(22, 163, 74)"] { color: #4ADE80 !important; }
+.dark #mira-dash-layout [style^="color: rgb(5, 150, 105)"], .dark #mira-dash-layout [style*="; color: rgb(5, 150, 105)"] { color: #34D399 !important; }
+.dark #mira-dash-layout [style^="color: rgb(4, 120, 87)"], .dark #mira-dash-layout [style*="; color: rgb(4, 120, 87)"] { color: #34D399 !important; }
+.dark #mira-dash-layout [style^="color: rgb(220, 38, 38)"], .dark #mira-dash-layout [style*="; color: rgb(220, 38, 38)"] { color: #F87171 !important; }
+.dark #mira-dash-layout [style^="color: rgb(185, 28, 28)"], .dark #mira-dash-layout [style*="; color: rgb(185, 28, 28)"] { color: #F87171 !important; }
+.dark #mira-dash-layout [style^="color: rgb(153, 27, 27)"], .dark #mira-dash-layout [style*="; color: rgb(153, 27, 27)"] { color: #FCA5A5 !important; }
+.dark #mira-dash-layout [style^="color: rgb(239, 68, 68)"], .dark #mira-dash-layout [style*="; color: rgb(239, 68, 68)"] { color: #F87171 !important; }
+.dark #mira-dash-layout [style^="color: rgb(146, 64, 14)"], .dark #mira-dash-layout [style*="; color: rgb(146, 64, 14)"] { color: #FBBF24 !important; }
+.dark #mira-dash-layout [style^="color: rgb(180, 83, 9)"], .dark #mira-dash-layout [style*="; color: rgb(180, 83, 9)"] { color: #FBBF24 !important; }
+.dark #mira-dash-layout [style^="color: rgb(217, 119, 6)"], .dark #mira-dash-layout [style*="; color: rgb(217, 119, 6)"] { color: #FBBF24 !important; }
+.dark #mira-dash-layout [style^="color: rgb(124, 58, 237)"], .dark #mira-dash-layout [style*="; color: rgb(124, 58, 237)"] { color: #A78BFA !important; }
+.dark #mira-dash-layout [style^="color: rgb(109, 40, 217)"], .dark #mira-dash-layout [style*="; color: rgb(109, 40, 217)"] { color: #A78BFA !important; }
+.dark #mira-dash-layout [style^="color: rgb(6, 95, 70)"], .dark #mira-dash-layout [style*="; color: rgb(6, 95, 70)"] { color: #34D399 !important; }
+.dark #mira-dash-layout [style^="color: rgb(147, 51, 234)"], .dark #mira-dash-layout [style*="; color: rgb(147, 51, 234)"] { color: #C084FC !important; }
+.dark #mira-dash-layout [style^="color: rgb(219, 39, 119)"], .dark #mira-dash-layout [style*="; color: rgb(219, 39, 119)"] { color: #F472B6 !important; }
+.dark #mira-dash-layout [style^="color: rgb(8, 145, 178)"], .dark #mira-dash-layout [style*="; color: rgb(8, 145, 178)"] { color: #22D3EE !important; }
+
+.dark #mira-dash-layout [style^="background: rgb(255, 255, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(255, 255, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(255, 255, 255)"],
+.dark #mira-dash-layout [style^="background: white"],
+.dark #mira-dash-layout [style*="; background: white"] {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
-
-/* Recharts TT tooltip uses backgroundColor not background */
-.dark #mira-main [style*="background-color: #fff"],
-.dark #mira-main [style*="background-color:#fff"],
-.dark #mira-main [style*="background-color: #ffffff"],
-.dark #mira-main [style*="background-color: rgb(255, 255, 255)"] {
-  background-color: #1E293B !important;
-  border-color: rgba(255,255,255,0.08) !important;
-}
-
-/* ── Class-based generic card override ─────────────────────────────── */
-.dark .mira-card,
-.dark [class*="-card"]:not(.aff-card-body):not(.set-err) {
-  background: #1E293B !important;
-  border-color: rgba(255,255,255,0.08) !important;
-}
-.dark [class*="-card-hdr"] {
-  border-bottom-color: rgba(255,255,255,0.07) !important;
-}
-.dark [class*="-card-hdr"] h3 { color: #F1F5F9 !important; }
-
-/* ======================================================================
-   GLOBAL INLINE BORDER OVERRIDES  (rgba(0,0,*) → white equivalent)
-   ====================================================================== */
-.dark #mira-main [style*="border-bottom: 1px solid rgba(0,0,0"],
-.dark #mira-main [style*="border-top: 1px solid rgba(0,0,0"],
-.dark #mira-main [style*="border: 1px solid rgba(0,0,0"] {
-  border-color: rgba(255,255,255,0.07) !important;
-}
-
-/* ======================================================================
-   GLOBAL TEXT COLOR OVERRIDES
-   Catches all hardcoded light-mode text on inline-styled elements
-   ====================================================================== */
-.dark [style*="color: #111827"],
-.dark [style*="color:#111827"] { color: #F1F5F9 !important; }
-.dark [style*="color: #1F2937"],
-.dark [style*="color:#1F2937"] { color: #E2E8F0 !important; }
-.dark [style*="color: #374151"],
-.dark [style*="color:#374151"] { color: #CBD5E1 !important; }
-.dark [style*="color: #4B5563"],
-.dark [style*="color:#4B5563"] { color: #94A3B8 !important; }
-.dark [style*="color: #6B7280"],
-.dark [style*="color:#6B7280"] { color: #94A3B8 !important; }
-.dark [style*="color: #9CA3AF"],
-.dark [style*="color:#9CA3AF"] { color: #94A3B8 !important; }
-
-/* Semantic tag overrides */
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #F1F5F9; }
-.dark p   { color: #CBD5E1; }
-.dark label { color: #CBD5E1; }
-.dark span  { color: inherit; }
-
-/* ── Specific page wrappers ────────────────────────────────────────── */
-.dark .ast-wrap, .dark .txn-wrap, .dark .exp-wrap, .dark .set-wrap,
-.dark .aff-wrap, .dark .ovr-wrap, .dark .ins-wrap, .dark .gls-wrap,
-.dark .gl-wrap,  .dark .ov-wrap  { color: #F1F5F9; }
-
-/* ======================================================================
-   LIGHT-TINT COLORED CARDS  (insight + goal status blocks)
-   Replace pastel fills with dark semi-transparent equivalents
-   ====================================================================== */
-
-/* Blue-tint cards */
-.dark #mira-main [style*="background: #EFF6FF"],
-.dark #mira-main [style*="background:#EFF6FF"] {
-  background: rgba(37,99,235,0.15) !important;
-  border-color: rgba(59,130,246,0.25) !important;
-}
-/* Red-tint cards */
-.dark #mira-main [style*="background: #FFF1F2"],
-.dark #mira-main [style*="background:#FFF1F2"] {
-  background: rgba(239,68,68,0.12) !important;
-  border-color: rgba(239,68,68,0.2) !important;
-}
-/* Yellow-tint cards */
-.dark #mira-main [style*="background: #FFFBEB"],
-.dark #mira-main [style*="background:#FFFBEB"] {
-  background: rgba(245,158,11,0.12) !important;
-  border-color: rgba(245,158,11,0.2) !important;
-}
-/* Green-tint cards */
-.dark #mira-main [style*="background: #F0FDF4"],
-.dark #mira-main [style*="background:#F0FDF4"] {
-  background: rgba(22,163,74,0.12) !important;
-  border-color: rgba(22,163,74,0.2) !important;
-}
-
-/* ======================================================================
-   PROGRESS BAR TRACKS  (all pages)
-   ====================================================================== */
-.dark #mira-main [style*="background: #F1F4F8"],
-.dark #mira-main [style*="background:#F1F4F8"] {
-  background: rgba(255,255,255,0.08) !important;
-}
-.dark #mira-main [style*="background: #F8F9FB"],
-.dark #mira-main [style*="background:#F8F9FB"] {
+.dark #mira-dash-layout [style^="background: rgb(248, 249, 251)"],
+.dark #mira-dash-layout [style*="; background: rgb(248, 249, 251)"],
+.dark #mira-dash-layout [style*="background-color: rgb(248, 249, 251)"] {
   background: #0F172A !important;
 }
+.dark #mira-dash-layout [style^="background: rgb(249, 250, 251)"],
+.dark #mira-dash-layout [style*="; background: rgb(249, 250, 251)"],
+.dark #mira-dash-layout [style*="background-color: rgb(249, 250, 251)"] {
+  background: #172033 !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(248, 250, 252)"],
+.dark #mira-dash-layout [style*="; background: rgb(248, 250, 252)"],
+.dark #mira-dash-layout [style*="background-color: rgb(248, 250, 252)"] {
+  background: #0F172A !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(241, 244, 248)"],
+.dark #mira-dash-layout [style*="; background: rgb(241, 244, 248)"],
+.dark #mira-dash-layout [style*="background-color: rgb(241, 244, 248)"] {
+  background: rgba(255,255,255,0.06) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(243, 244, 246)"],
+.dark #mira-dash-layout [style*="; background: rgb(243, 244, 246)"],
+.dark #mira-dash-layout [style*="background-color: rgb(243, 244, 246)"] {
+  background: rgba(255,255,255,0.06) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(229, 231, 235)"],
+.dark #mira-dash-layout [style*="; background: rgb(229, 231, 235)"],
+.dark #mira-dash-layout [style*="background-color: rgb(229, 231, 235)"] {
+  background: rgba(255,255,255,0.12) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(226, 232, 240)"],
+.dark #mira-dash-layout [style*="; background: rgb(226, 232, 240)"],
+.dark #mira-dash-layout [style*="background-color: rgb(226, 232, 240)"] {
+  background: rgba(255,255,255,0.12) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(239, 246, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(239, 246, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(239, 246, 255)"] {
+  background: rgba(37,99,235,0.16) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(219, 234, 254)"],
+.dark #mira-dash-layout [style*="; background: rgb(219, 234, 254)"],
+.dark #mira-dash-layout [style*="background-color: rgb(219, 234, 254)"] {
+  background: rgba(37,99,235,0.24) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(248, 250, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(248, 250, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(248, 250, 255)"] {
+  background: rgba(37,99,235,0.10) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(254, 242, 242)"],
+.dark #mira-dash-layout [style*="; background: rgb(254, 242, 242)"],
+.dark #mira-dash-layout [style*="background-color: rgb(254, 242, 242)"] {
+  background: rgba(239,68,68,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(255, 241, 242)"],
+.dark #mira-dash-layout [style*="; background: rgb(255, 241, 242)"],
+.dark #mira-dash-layout [style*="background-color: rgb(255, 241, 242)"] {
+  background: rgba(239,68,68,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(254, 226, 226)"],
+.dark #mira-dash-layout [style*="; background: rgb(254, 226, 226)"],
+.dark #mira-dash-layout [style*="background-color: rgb(254, 226, 226)"] {
+  background: rgba(239,68,68,0.20) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(240, 253, 244)"],
+.dark #mira-dash-layout [style*="; background: rgb(240, 253, 244)"],
+.dark #mira-dash-layout [style*="background-color: rgb(240, 253, 244)"] {
+  background: rgba(22,163,74,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(220, 252, 231)"],
+.dark #mira-dash-layout [style*="; background: rgb(220, 252, 231)"],
+.dark #mira-dash-layout [style*="background-color: rgb(220, 252, 231)"] {
+  background: rgba(22,163,74,0.20) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(236, 253, 245)"],
+.dark #mira-dash-layout [style*="; background: rgb(236, 253, 245)"],
+.dark #mira-dash-layout [style*="background-color: rgb(236, 253, 245)"] {
+  background: rgba(16,185,129,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(255, 251, 235)"],
+.dark #mira-dash-layout [style*="; background: rgb(255, 251, 235)"],
+.dark #mira-dash-layout [style*="background-color: rgb(255, 251, 235)"] {
+  background: rgba(245,158,11,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(254, 243, 199)"],
+.dark #mira-dash-layout [style*="; background: rgb(254, 243, 199)"],
+.dark #mira-dash-layout [style*="background-color: rgb(254, 243, 199)"] {
+  background: rgba(245,158,11,0.20) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(255, 247, 237)"],
+.dark #mira-dash-layout [style*="; background: rgb(255, 247, 237)"],
+.dark #mira-dash-layout [style*="background-color: rgb(255, 247, 237)"] {
+  background: rgba(249,115,22,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(245, 243, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(245, 243, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(245, 243, 255)"] {
+  background: rgba(124,58,237,0.16) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(237, 233, 254)"],
+.dark #mira-dash-layout [style*="; background: rgb(237, 233, 254)"],
+.dark #mira-dash-layout [style*="background-color: rgb(237, 233, 254)"] {
+  background: rgba(124,58,237,0.22) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(209, 250, 229)"],
+.dark #mira-dash-layout [style*="; background: rgb(209, 250, 229)"],
+.dark #mira-dash-layout [style*="background-color: rgb(209, 250, 229)"] {
+  background: rgba(16,185,129,0.18) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(253, 242, 248)"],
+.dark #mira-dash-layout [style*="; background: rgb(253, 242, 248)"],
+.dark #mira-dash-layout [style*="background-color: rgb(253, 242, 248)"] {
+  background: rgba(236,72,153,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(252, 231, 243)"],
+.dark #mira-dash-layout [style*="; background: rgb(252, 231, 243)"],
+.dark #mira-dash-layout [style*="background-color: rgb(252, 231, 243)"] {
+  background: rgba(236,72,153,0.2) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(253, 244, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(253, 244, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(253, 244, 255)"] {
+  background: rgba(192,38,211,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(254, 249, 195)"],
+.dark #mira-dash-layout [style*="; background: rgb(254, 249, 195)"],
+.dark #mira-dash-layout [style*="background-color: rgb(254, 249, 195)"] {
+  background: rgba(234,179,8,0.18) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(236, 254, 255)"],
+.dark #mira-dash-layout [style*="; background: rgb(236, 254, 255)"],
+.dark #mira-dash-layout [style*="background-color: rgb(236, 254, 255)"] {
+  background: rgba(6,182,212,0.14) !important;
+}
+.dark #mira-dash-layout [style^="background: rgb(209, 213, 219)"],
+.dark #mira-dash-layout [style*="; background: rgb(209, 213, 219)"],
+.dark #mira-dash-layout [style*="background-color: rgb(209, 213, 219)"] {
+  background: rgba(255,255,255,0.18) !important;
+}
+
+/* light borders (rgba(0,0,0,x) / gray-200) */
+.dark #mira-dash-layout [style*="solid rgba(0, 0, 0"],
+.dark #mira-dash-layout [style*="border-color: rgba(0, 0, 0"],
+.dark #mira-dash-layout [style*="solid rgb(229, 231, 235)"],
+.dark #mira-dash-layout [style*="solid rgb(226, 232, 240)"] { border-color: rgba(255,255,255,0.09) !important; }
 
 /* ======================================================================
-   PAGE-SPECIFIC OVERRIDES
+   COMPONENTS
    ====================================================================== */
 
+/* ── Chat MIRA (page + floating widget) ── */
+.dark #mira-dash-layout .mirac-root { background: #0F172A; }
+.dark #mira-dash-layout .mirac-head, .dark #mira-dash-layout .mirac-composer { background: #1E293B; border-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .mirac-head-title { color: #F1F5F9; }
+.dark #mira-dash-layout .mirac-bubble.mira { background: #1E293B; color: #E2E8F0; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .mirac-bubble.error { background: rgba(239,68,68,0.14); color: #FCA5A5; border-color: rgba(239,68,68,0.3); }
+.dark #mira-dash-layout .mirac-avatar.user { background: rgba(37,99,235,0.25); color: #93C5FD; }
+.dark #mira-dash-layout .mirac-act-btn { background: #1E293B; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
+.dark #mira-dash-layout .mirac-act-btn:hover { background: #273449; }
+.dark #mira-dash-layout .mirac-act-btn.primary { background: #16A34A; border-color: #16A34A; color: #fff; }
+.dark #mira-dash-layout .mirac-act-btn.danger { color: #F87171; }
+.dark #mira-dash-layout .mirac-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+.dark #mira-dash-layout .mirac-icon-btn { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #94A3B8; }
+.dark #mira-dash-layout .mirac-icon-btn:hover { background: #273449; }
+.dark #mira-dash-layout .mirac-icon-btn.recording { background: rgba(239,68,68,0.18); color: #F87171; }
+.dark #mira-dash-layout .mirac-icon-btn-sm:hover { background: rgba(255,255,255,0.06); }
+.dark #mira-dash-layout .mirac-preview { background: #0F172A; color: #CBD5E1; }
+.dark #mira-dash-layout .mirac-empty { color: #94A3B8; }
+.dark #mira-dash-layout .mirac-hint { color: #64748B; }
+.dark #mira-dash-layout .mirac-typing span { background: #64748B; }
+.dark #mira-dash-layout .atm-pill.exp { background: rgba(239,68,68,0.16); color: #F87171; }
+.dark #mira-dash-layout .atm-pill.inc { background: rgba(22,163,74,0.16); color: #4ADE80; }
+.dark #mira-dash-layout .atm-link { color: #60A5FA; }
+.dark #mira-dash-layout .atm-amount-prefix { color: #94A3B8; }
+.dark #mira-dash-layout .mcw-panel { border-color: rgba(255,255,255,0.1); }
+
+/* ── "+" Catat modal ── */
+.dark #mira-dash-layout .atm-sheet { background: #1E293B; }
+.dark #mira-dash-layout .atm-handle { background: #334155; }
+.dark #mira-dash-layout .atm-header { border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .atm-title { color: #F1F5F9; }
+.dark #mira-dash-layout .atm-close { background: #0F172A; border-color: rgba(255,255,255,0.12); }
+.dark #mira-dash-layout .atm-label { color: #94A3B8; }
+.dark #mira-dash-layout .atm-input, .dark #mira-dash-layout .atm-select, .dark #mira-dash-layout .atm-amount-input, .dark #mira-dash-layout .atm-textarea {
+  background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9;
+}
+.dark #mira-dash-layout .atm-type-btn { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #94A3B8; }
+.dark #mira-dash-layout .atm-type-btn.active-expense { background: rgba(239,68,68,0.14); border-color: #EF4444; color: #F87171; }
+.dark #mira-dash-layout .atm-type-btn.active-income { background: rgba(22,163,74,0.14); border-color: #16A34A; color: #4ADE80; }
+.dark #mira-dash-layout .atm-seg { background: #0F172A; }
+.dark #mira-dash-layout .atm-seg button { color: #94A3B8; }
+.dark #mira-dash-layout .atm-seg button.on { background: #1E293B; color: #F1F5F9; }
+.dark #mira-dash-layout .atm-ex, .dark #mira-dash-layout .atm-photo-btn { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
+.dark #mira-dash-layout .atm-card { background: #0F172A; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .atm-err { background: rgba(239,68,68,0.14); color: #FCA5A5; }
+
+/* ── Split Bill ── */
+.dark #mira-dash-layout .sb-wrap { color: #F1F5F9; }
+.dark #mira-dash-layout .sb-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .sb-card-hd { border-bottom-color: rgba(255,255,255,0.06); }
+.dark #mira-dash-layout .sb-tab { background: #0F172A; border-color: rgba(255,255,255,0.1); color: #CBD5E1; }
+.dark #mira-dash-layout .sb-tab small { color: #94A3B8; }
+.dark #mira-dash-layout .sb-tab.on { background: rgba(37,99,235,0.18); color: #93C5FD; border-color: #2563EB; }
+.dark #mira-dash-layout .sb-drop { background: rgba(37,99,235,0.08); color: #93C5FD; }
+.dark #mira-dash-layout .sb-label { color: #94A3B8; }
+.dark #mira-dash-layout .sb-input, .dark #mira-dash-layout .sb-select, .dark #mira-dash-layout .sb-textarea, .dark #mira-dash-layout .sb-money { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+.dark #mira-dash-layout .sb-money input { color: #F1F5F9; }
+.dark #mira-dash-layout .sb-money span { color: #94A3B8; }
+.dark #mira-dash-layout .sb-chip { background: rgba(37,99,235,0.18); color: #93C5FD; border-color: rgba(59,130,246,0.3); }
+.dark #mira-dash-layout .sb-chip.me { background: #2563EB; color: #fff; }
+.dark #mira-dash-layout .sb-seg { background: #0F172A; }
+.dark #mira-dash-layout .sb-seg button { color: #94A3B8; }
+.dark #mira-dash-layout .sb-seg button.on { background: #1E293B; color: #F1F5F9; }
+.dark #mira-dash-layout .sb-item { background: #0F172A; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .sb-mini { background: #1E293B; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
+.dark #mira-dash-layout .sb-mini.on { background: #2563EB; border-color: #2563EB; color: #fff; }
+.dark #mira-dash-layout .sb-ghost { border-color: rgba(255,255,255,0.2); color: #CBD5E1; }
+.dark #mira-dash-layout .sb-icon:hover { background: rgba(255,255,255,0.06); }
+.dark #mira-dash-layout .sb-btn.light { background: #273449; color: #E2E8F0; }
+.dark #mira-dash-layout .sb-sum { color: #94A3B8; }
+.dark #mira-dash-layout .sb-sum.total { color: #F1F5F9; border-top-color: rgba(255,255,255,0.12); }
+.dark #mira-dash-layout .sb-person, .dark #mira-dash-layout .sb-row { border-bottom-color: rgba(255,255,255,0.06); }
+.dark #mira-dash-layout .sb-tag { background: rgba(245,158,11,0.18); color: #FBBF24; }
+.dark #mira-dash-layout .sb-err { background: rgba(239,68,68,0.14); color: #FCA5A5; border-color: rgba(239,68,68,0.3); }
+.dark #mira-dash-layout .sb-warn { background: rgba(245,158,11,0.14); color: #FCD34D; border-color: rgba(245,158,11,0.3); }
+.dark #mira-dash-layout .sb-empty { color: #64748B; }
+
+/* ======================================================================
+   PAGE-SPECIFIC (class-based)
+   ====================================================================== */
 /* ── Transactions ──────────────────────────────────────────────────── */
-.dark .txn-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
-.dark .txn-hdr   { border-bottom-color: rgba(255,255,255,0.07) !important; }
-.dark .txn-hdr h3 { color: #F1F5F9 !important; }
-.dark .txn-hdr span { color: #94A3B8 !important; }
-.dark .txn-row   { border-bottom-color: rgba(255,255,255,0.05); color: #F1F5F9; }
-.dark .txn-row:hover { background: rgba(255,255,255,0.04) !important; }
-.dark .txn-ctrl {
+.dark #mira-dash-layout .txn-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark #mira-dash-layout .txn-hdr   { border-bottom-color: rgba(255,255,255,0.07) !important; }
+.dark #mira-dash-layout .txn-hdr h3 { color: #F1F5F9 !important; }
+.dark #mira-dash-layout .txn-hdr span { color: #94A3B8 !important; }
+.dark #mira-dash-layout .txn-row   { border-bottom-color: rgba(255,255,255,0.05); color: #F1F5F9; }
+.dark #mira-dash-layout .txn-row:hover { background: rgba(255,255,255,0.04) !important; }
+.dark #mira-dash-layout .txn-ctrl {
   background: #0F172A !important;
   border-color: rgba(255,255,255,0.12) !important;
   color: #F1F5F9 !important;
   -webkit-text-fill-color: #F1F5F9 !important;
   color-scheme: dark;
 }
-.dark .txn-ctrl::placeholder { color: #475569; -webkit-text-fill-color: #475569; }
-.dark .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
-.dark .txn-chip-active {
+.dark #mira-dash-layout .txn-ctrl::placeholder { color: #475569; -webkit-text-fill-color: #475569; }
+.dark #mira-dash-layout .txn-ctrl option { background: #1E293B; color: #F1F5F9; }
+.dark #mira-dash-layout .txn-chip-active {
   background: rgba(37,99,235,0.2) !important;
   border-color: rgba(59,130,246,0.4) !important;
   color: #93C5FD !important;
 }
-.dark .txn-reset {
+.dark #mira-dash-layout .txn-reset {
   background: rgba(239,68,68,0.12) !important;
   border-color: rgba(239,68,68,0.3) !important;
   color: #FCA5A5 !important;
 }
 /* Transaction filter bar outer container */
-.dark .txn-wrap > div[style*="background: #fff"],
-.dark .txn-wrap > div[style*="background:#fff"] {
+.dark #mira-dash-layout .txn-wrap > div[style*="background: #fff"],
+.dark #mira-dash-layout .txn-wrap > div[style*="background:#fff"] {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
 /* Category chip inactive */
-.dark .txn-wrap button[style*="background: #F8F9FB"],
-.dark .txn-wrap button[style*="background:#F8F9FB"] {
+.dark #mira-dash-layout .txn-wrap button[style*="background: #F8F9FB"],
+.dark #mira-dash-layout .txn-wrap button[style*="background:#F8F9FB"] {
   background: #0F172A !important;
   border-color: rgba(255,255,255,0.12) !important;
   color: #CBD5E1 !important;
 }
 
 /* ── Assets ────────────────────────────────────────────────────────── */
-.dark .ast-group { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .ast-group-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-.dark .ast-group-hdr:hover { background: rgba(255,255,255,0.04); }
-.dark .ast-item  { border-bottom-color: rgba(255,255,255,0.05); }
+.dark #mira-dash-layout .ast-group { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .ast-group-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .ast-group-hdr:hover { background: rgba(255,255,255,0.04); }
+.dark #mira-dash-layout .ast-item  { border-bottom-color: rgba(255,255,255,0.05); }
 
 /* ── Settings ──────────────────────────────────────────────────────── */
-.dark .set-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .set-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-.dark .set-card-hdr h3 { color: #F1F5F9; }
-.dark .set-label { color: #CBD5E1; }
-.dark .set-hint  { color: #94A3B8; }
-.dark .set-input {
+.dark #mira-dash-layout .set-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .set-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .set-card-hdr h3 { color: #F1F5F9; }
+.dark #mira-dash-layout .set-label { color: #CBD5E1; }
+.dark #mira-dash-layout .set-hint  { color: #94A3B8; }
+.dark #mira-dash-layout .set-input {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
-.dark .set-input::placeholder { color: #475569; }
-.dark .set-chip  { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
-.dark .set-chip.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
-.dark .set-trow  { border-bottom-color: rgba(255,255,255,0.05); }
-.dark .savings-slider {
+.dark #mira-dash-layout .set-input::placeholder { color: #475569; }
+.dark #mira-dash-layout .set-chip  { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #CBD5E1; }
+.dark #mira-dash-layout .set-chip.active { background: #1E3A5F; border-color: #3B82F6; color: #93C5FD; }
+.dark #mira-dash-layout .set-trow  { border-bottom-color: rgba(255,255,255,0.05); }
+.dark #mira-dash-layout .savings-slider {
   background: linear-gradient(to right, #3B82F6 0%, #3B82F6 var(--thumb-pct,20%), #334155 var(--thumb-pct,20%), #334155 100%);
 }
 
 /* ── Export ────────────────────────────────────────────────────────── */
-.dark .exp-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .exp-qcard { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .exp-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-.dark .exp-card-hdr h3 { color: #F1F5F9; }
-.dark .exp-card-hdr p  { color: #94A3B8; }
-.dark .exp-ctrl {
+.dark #mira-dash-layout .exp-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .exp-qcard { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .exp-card-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .exp-card-hdr h3 { color: #F1F5F9; }
+.dark #mira-dash-layout .exp-card-hdr p  { color: #94A3B8; }
+.dark #mira-dash-layout .exp-ctrl {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
-.dark .exp-month-row { border-bottom-color: rgba(255,255,255,0.05); }
+.dark #mira-dash-layout .exp-month-row { border-bottom-color: rgba(255,255,255,0.05); }
 
 /* ── Affiliate ─────────────────────────────────────────────────────── */
-.dark .aff-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
-.dark .aff-card-hdr { border-bottom-color: rgba(255,255,255,0.07) !important; }
-.dark .aff-card-hdr h3 { color: #F1F5F9 !important; }
-.dark .aff-card-body { color: #CBD5E1; }
-.dark .aff-stat > div { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
-.dark .aff-stat-val { color: #F1F5F9 !important; }
-.dark .aff-stat-lbl { color: #94A3B8 !important; }
-.dark .aff-ref-name { color: #F1F5F9 !important; }
-.dark .aff-ref-phone { color: #94A3B8 !important; }
+.dark #mira-dash-layout .aff-card  { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark #mira-dash-layout .aff-card-hdr { border-bottom-color: rgba(255,255,255,0.07) !important; }
+.dark #mira-dash-layout .aff-card-hdr h3 { color: #F1F5F9 !important; }
+.dark #mira-dash-layout .aff-card-body { color: #CBD5E1; }
+.dark #mira-dash-layout .aff-stat > div { background: #1E293B !important; border-color: rgba(255,255,255,0.08) !important; }
+.dark #mira-dash-layout .aff-stat-val { color: #F1F5F9 !important; }
+.dark #mira-dash-layout .aff-stat-lbl { color: #94A3B8 !important; }
+.dark #mira-dash-layout .aff-ref-name { color: #F1F5F9 !important; }
+.dark #mira-dash-layout .aff-ref-phone { color: #94A3B8 !important; }
 
 /* ── Goal cards ────────────────────────────────────────────────────── */
-.dark .goal-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .gl-wrap .gl-modal { background: #1E293B !important; }
-.dark .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-.dark .gl-label { color: #94A3B8; }
-.dark .gl-input {
+.dark #mira-dash-layout .goal-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .gl-wrap .gl-modal { background: #1E293B !important; }
+.dark #mira-dash-layout .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
+.dark #mira-dash-layout .gl-label { color: #94A3B8; }
+.dark #mira-dash-layout .gl-input {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
-.dark .gl-input::placeholder { color: #475569; }
-.dark .gl-progress-input {
+.dark #mira-dash-layout .gl-input::placeholder { color: #475569; }
+.dark #mira-dash-layout .gl-progress-input {
   background: #0F172A !important;
   border-color: rgba(255,255,255,0.12) !important;
   color: #F1F5F9 !important;
 }
-.dark .gl-progress-input::placeholder { color: #475569; }
-.dark .gl-quick-btn {
+.dark #mira-dash-layout .gl-progress-input::placeholder { color: #475569; }
+.dark #mira-dash-layout .gl-quick-btn {
   background: #0F172A !important;
   border-color: rgba(255,255,255,0.10) !important;
   color: #CBD5E1 !important;
 }
-.dark .gl-quick-btn:hover {
+.dark #mira-dash-layout .gl-quick-btn:hover {
   background: rgba(37,99,235,0.15) !important;
   border-color: rgba(59,130,246,0.4) !important;
   color: #93C5FD !important;
 }
-.dark .gl-reset-btn {
+.dark #mira-dash-layout .gl-reset-btn {
   background: rgba(239,68,68,0.12) !important;
   border-color: rgba(239,68,68,0.3) !important;
   color: #FCA5A5 !important;
 }
 
 /* ── Modal overlays ────────────────────────────────────────────────── */
-.dark .ast-modal { background: #1E293B; }
-.dark .ast-input, .dark .ast-select {
+.dark #mira-dash-layout .ast-modal { background: #1E293B; }
+.dark #mira-dash-layout .ast-input, .dark #mira-dash-layout .ast-select {
   background: #0F172A;
   border-color: rgba(255,255,255,0.12);
   color: #F1F5F9;
 }
 
 /* ── Overview stat / chart cards (class-named) ─────────────────────── */
-.dark .ovr-stat-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
-.dark .ovr-chart-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .ovr-stat-card  { background: #1E293B; border-color: rgba(255,255,255,0.08); }
+.dark #mira-dash-layout .ovr-chart-card { background: #1E293B; border-color: rgba(255,255,255,0.08); }
 
 /* ── Overview "Lihat semua" button ─────────────────────────────────── */
-.dark .ov-wrap button[style*="background: none"],
-.dark .ov-wrap button[style*="background:none"] { color: #94A3B8 !important; }
+.dark #mira-dash-layout .ov-wrap button[style*="background: none"],
+.dark #mira-dash-layout .ov-wrap button[style*="background:none"] { color: #94A3B8 !important; }
 
 /* ======================================================================
    RECHARTS — Charts, Axes, Tooltips
    ====================================================================== */
-.dark .recharts-cartesian-grid-horizontal line,
-.dark .recharts-cartesian-grid-vertical line {
+.dark #mira-dash-layout .recharts-cartesian-grid-horizontal line,
+.dark #mira-dash-layout .recharts-cartesian-grid-vertical line {
   stroke: rgba(255,255,255,0.06);
 }
-.dark .recharts-text { fill: #94A3B8 !important; }
-.dark .recharts-label { fill: #94A3B8 !important; }
+.dark #mira-dash-layout .recharts-text { fill: #94A3B8 !important; }
+.dark #mira-dash-layout .recharts-label { fill: #94A3B8 !important; }
 
 /* Tooltip wrapper — both inline bg variants */
-.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+.dark #mira-dash-layout .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: #1E293B !important;
   border-color: rgba(255,255,255,0.12) !important;
   color: #F1F5F9 !important;
 }
-.dark .recharts-tooltip-label { color: #F1F5F9 !important; }
-.dark .recharts-tooltip-item  { color: #CBD5E1 !important; }
+.dark #mira-dash-layout .recharts-tooltip-label { color: #F1F5F9 !important; }
+.dark #mira-dash-layout .recharts-tooltip-item  { color: #CBD5E1 !important; }
 
 /* BarChart cursor fill (hover highlight) */
-.dark .recharts-rectangle.recharts-tooltip-cursor {
+.dark #mira-dash-layout .recharts-rectangle.recharts-tooltip-cursor {
   fill: rgba(255,255,255,0.04) !important;
 }
 
+
 /* ======================================================================
-   INPUTS — Global dark base
+   FORM CONTROLS
    ====================================================================== */
-.dark input[type="date"],
-.dark input[type="text"],
-.dark input[type="number"],
-.dark input[type="email"],
-.dark select {
-  color-scheme: dark;
-  color: #F1F5F9;
-  background-color: #0F172A;
-}
-.dark input::placeholder,
-.dark textarea::placeholder { color: #475569; }
-
-/* ── Topbar button generic override ───────────────────────────────── */
-.dark #mira-topbar button:not([style*="background: #2563EB"]):not([style*="background:#2563EB"]) {
-  background: #1E293B;
-  border-color: rgba(255,255,255,0.12);
-  color: #94A3B8;
-}
-
-/* ── Page/body background ──────────────────────────────────────────── */
-.dark body { background: #0F172A; color: #F1F5F9; }
+.dark #mira-dash-layout input, .dark #mira-dash-layout select, .dark #mira-dash-layout textarea { color-scheme: dark; }
+.dark #mira-dash-layout input::placeholder, .dark #mira-dash-layout textarea::placeholder { color: #64748B; }
+.dark #mira-dash-layout select option { background: #1E293B; color: #F1F5F9; }

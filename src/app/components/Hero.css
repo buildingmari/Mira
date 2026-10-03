@@ -162,6 +162,7 @@
    iPHONE SHELL MOCKUP
 ══════════════════════════════════════════ */
 .iphone-wrap {
+  text-align: left; /* the hero centers its text on mobile — keep the chat UI left-aligned */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -201,7 +202,7 @@
 }
 
 .iphone-screen {
-  background: #000;
+  background: #F8F9FB;
   border-radius: 36px;
   overflow: hidden;
   display: flex;
@@ -218,66 +219,103 @@
   z-index: 10; box-shadow: 0 0 0 2px #1a1a1a;
 }
 
-.wa-status-bar {
-  background: #075E54; padding: 32px 16px 4px;
+/* ══════════════════════════════════════════
+   MIRA WEB CHAT — mirrors the real Chat MIRA screen (MiraChat.tsx)
+══════════════════════════════════════════ */
+.mc-status-bar {
+  background: #fff; padding: 32px 18px 6px;
   display: flex; justify-content: space-between; align-items: center;
 }
-.wa-time { font-size: 0.72rem; font-weight: 600; color: #fff; letter-spacing: 0.3px; }
-.wa-status-icons { display: flex; gap: 5px; align-items: center; }
+.mc-time { font-size: 0.72rem; font-weight: 700; color: #111827; letter-spacing: 0.3px; }
+.mc-status-icons { display: flex; gap: 5px; align-items: center; color: #111827; }
 
-.wa-app-header {
-  background: #075E54; padding: 6px 12px 10px;
+.mc-head {
+  background: #fff; padding: 6px 14px 11px;
   display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
 }
-.wa-contact-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
+.mc-head-avatar {
+  width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0;
   background: var(--gradient);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Sora', sans-serif; font-weight: 800; font-size: 0.82rem; color: #fff; flex-shrink: 0;
+  font-family: 'Sora', sans-serif; font-weight: 800; font-size: 0.8rem; color: #fff;
 }
-.wa-contact-info { flex: 1; }
-.wa-contact-name { font-size: 0.86rem; font-weight: 600; color: #fff; }
-.wa-contact-status { font-size: 0.68rem; color: rgba(255,255,255,.75); }
-.wa-header-icons { display: flex; gap: 16px; }
+.mc-head-info { flex: 1; min-width: 0; }
+.mc-head-name { font-family: 'Sora', sans-serif; font-size: 0.84rem; font-weight: 700; color: #111827; letter-spacing: -0.01em; }
+.mc-head-status { display: flex; align-items: center; gap: 5px; font-size: 0.64rem; color: #6B7280; }
+.mc-head-dot { width: 6px; height: 6px; border-radius: 50%; background: #16A34A; }
 
-.wa-chat-area {
-  background: #ECE5DD; padding: 10px 8px;
-  display: flex; flex-direction: column; gap: 4px;
-  min-height: 280px; flex: 1;
+.mc-log {
+  padding: 12px 10px; display: flex; flex-direction: column; gap: 9px;
+  min-height: 330px; flex: 1;
 }
-.wa-date-badge {
-  text-align: center; margin: 0 auto 6px;
-  background: rgba(225,245,254,.85); color: #546E7A;
-  font-size: 0.58rem; font-weight: 600; letter-spacing: 0.5px;
-  padding: 3px 8px; border-radius: 8px;
-  display: inline-block; align-self: center;
-}
-.wa-bubble-row { display: flex; margin-bottom: 3px; }
-.wa-outgoing { justify-content: flex-end; }
-.wa-incoming { justify-content: flex-start; }
-.wa-bubble { max-width: 82%; border-radius: 8px; padding: 6px 9px; position: relative; }
-.wa-bubble-out { background: #DCF8C6; color: #111; border-top-right-radius: 2px; font-size: 0.74rem; line-height: 1.4; }
-.wa-bubble-in  { background: #fff; color: #111; border-top-left-radius: 2px; font-size: 0.72rem; line-height: 1.45; }
-.wa-bot-header { font-weight: 700; color: #075E54; margin-bottom: 3px; font-size: 0.74rem; }
-.wa-bot-item { font-size: 0.68rem; color: #333; margin-bottom: 2px; }
-.wa-label { font-weight: 600; color: #666; }
-.wa-today-total { margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee; font-size: 0.68rem; }
-.wa-bubble-meta { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 2px; }
-.wa-bubble-time { font-size: 0.58rem; color: #999; }
-.wa-check { margin-top: 1px; }
+.mc-row { display: flex; max-width: 86%; animation: mc-in .5s ease both; }
+.mc-row.user { align-self: flex-end; }
+.mc-row.mira { align-self: flex-start; flex-direction: column; gap: 6px; }
+.mc-row:nth-child(2) { animation-delay: .5s; }
+.mc-row:nth-child(3) { animation-delay: 1.1s; }
+.mc-row:nth-child(4) { animation-delay: 1.6s; }
+@keyframes mc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-.wa-input-bar-hero { background: #F0F0F0; padding: 7px 10px; display: flex; align-items: center; gap: 8px; }
-.wa-input-field-hero { flex: 1; background: #fff; border-radius: 22px; padding: 7px 12px; font-size: 0.72rem; }
-.wa-placeholder { color: #999; }
-.wa-send-btn {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: #25D366; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+.mc-bubble { padding: 8px 11px; border-radius: 13px; font-size: 0.72rem; line-height: 1.5; }
+.mc-bubble.user { background: #2563EB; color: #fff; border-bottom-right-radius: 4px; }
+.mc-bubble.mira { background: #fff; color: #111827; border: 1px solid rgba(0,0,0,0.07); border-bottom-left-radius: 4px; }
+
+.mc-draft { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.mc-draft-item {
+  display: flex; align-items: center; gap: 7px;
+  background: #F8F9FB; border-radius: 8px; padding: 5px 7px;
+}
+.mc-draft-ic { font-size: 0.8rem; }
+.mc-draft-name { flex: 1; font-weight: 600; font-size: 0.68rem; color: #111827; }
+.mc-draft-meta { display: block; font-weight: 400; font-size: 0.6rem; color: #6B7280; }
+.mc-draft-amt { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 0.68rem; color: #DC2626; }
+
+.mc-actions { display: flex; gap: 5px; }
+.mc-btn {
+  border-radius: 8px; padding: 5px 9px; font-size: 0.64rem; font-weight: 600;
+  border: 1px solid rgba(0,0,0,0.1); background: #fff; color: #374151;
+}
+.mc-btn.primary { background: #16A34A; border-color: #16A34A; color: #fff; }
+.mc-btn.danger { color: #DC2626; }
+
+.mc-voice { display: flex; align-items: center; gap: 7px; }
+.mc-voice-play {
+  width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.22);
+  display: flex; align-items: center; justify-content: center;
+}
+.mc-wave { display: flex; align-items: center; gap: 2px; height: 16px; }
+.mc-wave i { display: block; width: 2.5px; border-radius: 2px; background: rgba(255,255,255,0.85); }
+.mc-voice-len { font-size: 0.62rem; opacity: .85; }
+
+.mc-total { margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(0,0,0,0.06); font-size: 0.66rem; color: #6B7280; }
+.mc-total strong { color: #16A34A; font-family: 'Sora', sans-serif; }
+
+.mc-composer {
+  background: #fff; border-top: 1px solid rgba(0,0,0,0.07);
+  padding: 8px 9px; display: flex; align-items: center; gap: 6px;
+}
+.mc-icon {
+  width: 28px; height: 28px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.12);
+  display: flex; align-items: center; justify-content: center; color: #6B7280; flex-shrink: 0;
+}
+.mc-input {
+  flex: 1; border: 1px solid rgba(0,0,0,0.12); border-radius: 10px;
+  padding: 6px 10px; font-size: 0.66rem; color: #9CA3AF; white-space: nowrap; overflow: hidden;
+}
+.mc-send {
+  width: 28px; height: 28px; border-radius: 8px; background: #2563EB;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
-.iphone-home-bar { background: #ECE5DD; padding: 8px 0 14px; display: flex; justify-content: center; }
+.iphone-home-bar { background: #fff; padding: 8px 0 14px; display: flex; justify-content: center; }
 .iphone-home-bar::before {
   content: ''; display: block; width: 100px; height: 4px;
   background: rgba(0,0,0,.25); border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-row { animation: none; }
 }
 
 /* ── Responsive ── */
@@ -295,5 +333,5 @@
   .hero-cta-row { justify-content: center; }
   .hero-trust { text-align: center; }
   .hero-right { display: flex; justify-content: center; }
-  .iphone-wrap { padding: 0; transform: scale(0.78); transform-origin: top center; margin-bottom: -60px; }
+  .iphone-wrap { padding: 0; transform: scale(0.78); transform-origin: top center; margin-bottom: -125px; }
 }

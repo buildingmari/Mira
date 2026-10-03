@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
+import { normalizeCategory } from '../../lib/category';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   ResponsiveContainer, XAxis, YAxis, Tooltip,
@@ -20,22 +21,10 @@ const fmtK = (n: number) => {
 const CAT_COLOR: Record<string, string> = {
   Makanan: '#2563EB', Transport: '#10B981', Belanja: '#8B5CF6',
   Tagihan: '#F59E0B', Kesehatan: '#EF4444', Hiburan: '#EC4899',
-  Pemasukan: '#16A34A', Lainnya: '#6B7280',
+  Pemasukan: '#16A34A', Investasi: '#0891B2', Lainnya: '#6B7280',
 };
 
-function mapCat(c: string) {
-  const m: Record<string, string> = {
-    food: 'Makanan', Food: 'Makanan', makanan: 'Makanan', Makanan: 'Makanan',
-    transport: 'Transport', Transport: 'Transport',
-    shopping: 'Belanja', Shopping: 'Belanja', Belanja: 'Belanja',
-    bills: 'Tagihan', Bills: 'Tagihan', Tagihan: 'Tagihan', utilities: 'Tagihan',
-    health: 'Kesehatan', Health: 'Kesehatan', Kesehatan: 'Kesehatan',
-    entertainment: 'Hiburan', Entertainment: 'Hiburan', Hiburan: 'Hiburan',
-    income: 'Pemasukan', Income: 'Pemasukan', Pemasukan: 'Pemasukan', salary: 'Pemasukan',
-    others: 'Lainnya', Others: 'Lainnya', Lainnya: 'Lainnya',
-  };
-  return m[c] || 'Lainnya';
-}
+const mapCat = (c: string) => normalizeCategory(c, 'Lainnya');
 
 const INS_CSS = `
   .ins-wrap { padding: 28px 32px 40px; max-width: 960px; margin: 0 auto; font-family: 'DM Sans', sans-serif; }

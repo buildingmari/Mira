@@ -41,21 +41,23 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
             </div>
             <div className="dbprev-browser-body">
               <img
-                src="/assets/Desktop MIRA.png"
-                alt="MIRA Dashboard — Desktop"
+                src="/assets/dashboard-desktop.jpg"
+                alt="Dashboard MIRA di desktop"
                 className="dbprev-img-desktop"
                 draggable={false}
               />
             </div>
           </div>
 
-          {/* ── Mobile screenshot ── */}
-          <img
-            src="/assets/Mobile MIRA.png"
-            alt="MIRA Dashboard — Mobile"
-            className="dbprev-img-mobile"
-            draggable={false}
-          />
+          {/* ── Mobile: two phones with real screenshots ── */}
+          <div className="dbprev-img-mobile dbprev-phones">
+            <div className="dbprev-phone dbprev-phone-back">
+              <img src="/assets/dashboard-mobile-home.jpg" alt="Dashboard MIRA di HP" draggable={false} loading="lazy" />
+            </div>
+            <div className="dbprev-phone dbprev-phone-front">
+              <img src="/assets/dashboard-mobile-insight.jpg" alt="Insight kategori pengeluaran di MIRA" draggable={false} loading="lazy" />
+            </div>
+          </div>
 
         </div>
 

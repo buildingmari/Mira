@@ -25,6 +25,12 @@ function decodeUnicode(str: string): string {
 }
 
 const LAYOUT_CSS = `
+  .mira-wordmark {
+    font-family: 'Sora', sans-serif; font-weight: 800; letter-spacing: -0.04em; line-height: 1;
+    background: linear-gradient(135deg, #2D4BFF 0%, #22D3EE 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
   #mira-dash-layout {
     display: flex; min-height: 100vh;
     background: #F8F9FB; font-family: 'DM Sans', sans-serif;
@@ -189,7 +195,7 @@ export function DashboardLayout() {
 
   if (!ready) return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FB' }}>
-      <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 24, color: '#2563EB' }}>MIRA</div>
+      <span className="mira-wordmark" style={{ fontSize: 28 }}>MIRA</span>
     </div>
   );
 
@@ -241,12 +247,8 @@ export function DashboardLayout() {
 
       <nav id="mira-sidebar" className={sbOpen ? 'mobile-open' : ''}>
         <div style={{ padding: '22px 20px 18px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: '#2563EB', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span style={{ color: '#fff', fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: -0.5 }}>M</span>
-          </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontWeight: 600, fontSize: 16, letterSpacing: -0.5, color: '#111827' }}>MIRA</div>
-            <div style={{ fontWeight: 300, fontSize: 10, letterSpacing: 0.5, color: '#6B7280' }}>FINANCE</div>
+            <span className="mira-wordmark" style={{ fontSize: 24 }}>MIRA</span>
           </div>
           <button className="sb-x-btn" onClick={() => setSbOpen(false)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: '#6B7280', alignItems: 'center', justifyContent: 'center' }}>
@@ -326,10 +328,7 @@ export function DashboardLayout() {
                 style={{ background: 'none', border: 'none', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#111827' }}>
                 <Menu style={{ width: 22, height: 22 }} strokeWidth={1.8} />
               </button>
-              <div style={{ width: 28, height: 28, background: '#2563EB', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#fff', fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 12 }}>M</span>
-              </div>
-              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 17, fontWeight: 600, letterSpacing: -0.5, color: '#111827' }}>MIRA</span>
+              <span className="mira-wordmark" style={{ fontSize: 20 }}>MIRA</span>
             </div>
             <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid rgba(0,0,0,0.12)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>

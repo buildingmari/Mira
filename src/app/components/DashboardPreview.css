@@ -116,6 +116,37 @@
   pointer-events: none;
 }
 
+/* Two phone frames holding real mobile screenshots (390×844) */
+.dbprev-phones {
+  position: relative;
+  aspect-ratio: 310 / 470;
+}
+.dbprev-phone {
+  position: absolute;
+  width: 60%;
+  padding: 2.4%;
+  background: #111827;
+  border-radius: 13% / 6%;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 24px 48px rgba(15,23,42,0.22), 0 8px 16px rgba(15,23,42,0.12);
+}
+.dbprev-phone img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 390 / 844;
+  object-fit: cover;
+  border-radius: 11% / 5.1%;
+  user-select: none;
+  pointer-events: none;
+}
+.dbprev-phone::before {
+  content: '';
+  position: absolute; top: 3.2%; left: 50%; transform: translateX(-50%);
+  width: 30%; height: 2.6%;
+  background: #111827; border-radius: 99px; z-index: 1;
+}
+.dbprev-phone-back  { left: 0; top: 0; }
+.dbprev-phone-front { right: 0; bottom: 0; }
+
 /* ══════════════════════════════
    CTA STRIP
 ══════════════════════════════ */

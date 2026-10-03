@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { normalizeCategory } from '../../lib/category';
 import { X, SlidersHorizontal, ChevronDown, Pencil } from 'lucide-react';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -24,20 +25,7 @@ const CAT_EMOJI: Record<string, string> = {
   Pemasukan: '💰', Investasi: '📈', Others: '✨',
 };
 
-function mapCat(c: string) {
-  const m: Record<string, string> = {
-    food: 'Makanan', Food: 'Makanan', makanan: 'Makanan', Makanan: 'Makanan',
-    'food & drinks': 'Makanan', 'Food & Drinks': 'Makanan', 'makanan & minuman': 'Makanan',
-    transport: 'Transport', Transport: 'Transport', transportation: 'Transport', Transportation: 'Transport',
-    shopping: 'Belanja', Shopping: 'Belanja', Belanja: 'Belanja',
-    bills: 'Tagihan', Bills: 'Tagihan', Tagihan: 'Tagihan', utilities: 'Tagihan',
-    health: 'Kesehatan', Health: 'Kesehatan', Kesehatan: 'Kesehatan',
-    entertainment: 'Hiburan', Entertainment: 'Hiburan', Hiburan: 'Hiburan',
-    income: 'Pemasukan', Income: 'Pemasukan', Pemasukan: 'Pemasukan', salary: 'Pemasukan',
-    'savings & investment': 'Investasi', investasi: 'Investasi', investment: 'Investasi',
-  };
-  return m[c] || m[c?.toLowerCase()] || 'Others';
-}
+const mapCat = (c: string) => normalizeCategory(c, 'Others');
 
 const CATEGORIES = ['Makanan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pemasukan', 'Investasi', 'Others'];
 const FILTER_CATEGORIES = CATEGORIES;

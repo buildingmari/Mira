@@ -2,7 +2,7 @@
  * Natural-language / receipt -> SplitDraft, shared by mira-tools (Split Bill
  * page "ceritain ke MIRA" + scan struk) and chat-send (split bill via chat).
  * Also handles edits: pass the current draft and the user's instruction
- * ("Raras ga makan nasi goreng", "bagi rata aja") and get the full updated
+ * ("Budi ga makan nasi goreng", "bagi rata aja") and get the full updated
  * draft back.
  */
 
@@ -36,7 +36,7 @@ ATURAN:
 - total = total akhir yang dibayar (Grand Total). 0 kalau tidak diketahui.
 - assignees = siapa yang makan/pakai item itu (pakai "Kamu" untuk user). Item yang tidak jelas siapa → [] (dibagi semua).
 - mode: "item" kalau user menyebut siapa pesan apa, selain itu "equal" (bagi rata).
-- fixed_amounts = nominal TETAP per orang yang disebut user ("Bayu bayar 400rb aja", "Raras 50rb"), pakai "Kamu" untuk user.
+- fixed_amounts = nominal TETAP per orang yang disebut user ("Bayu bayar 400rb aja", "Budi 50rb"), pakai "Kamu" untuk user.
   Orang yang TIDAK ada di fixed_amounts otomatis membagi SISA tagihan sesuai mode. Kosongkan {} kalau tidak ada.
   HANYA isi nominal yang user sebut EKSPLISIT untuk orang itu. JANGAN hitung sisa sendiri, JANGAN isi "Kamu" kecuali user menyebut nominal untuk dirinya.
   Contoh: total 2,4jt berempat, "Bayu cuma 400rb sisanya bagi rata" → fixed_amounts {"Bayu":400000}, mode "equal".
@@ -45,7 +45,7 @@ ATURAN:
 - wallet: hanya kalau disebut/terlihat (BCA, GoPay, OVO, DANA, ShopeePay, Cash, dll), selain itu null.
 - Kalau ada DRAFT SAAT INI: terapkan instruksi user sebagai PERUBAHAN ke draft tersebut dan kembalikan draft LENGKAP hasil edit (field yang tidak disinggung tetap sama).
   total, items, tax, discount TIDAK BERUBAH kecuali user eksplisit menyebut total/harga/item/pajak baru.
-  Contoh: draft total 180000 bertiga, "Taufan cuma bayar 40rb, sisanya gua sama Raras" → total tetap 180000, fixed_amounts {"Taufan":40000}.`;
+  Contoh: draft total 180000 bertiga, "Adi cuma bayar 40rb, sisanya gua sama Budi" → total tetap 180000, fixed_amounts {"Adi":40000}.`;
 
 // Words that signal the user is changing the bill itself (not just who pays what).
 const BILL_CHANGE = /total|harga|pajak|tax|service|diskon|discount|promo|ongkir|struk|tagihan|HASIL SCAN/i;

@@ -338,7 +338,7 @@ export function MiraChat() {
                       <Ban size={13} /> Batal
                     </button>
                   </div>
-                  <span className="mirac-hint">atau ketik aja, misal "Raras ga ikut minum"</span>
+                  <span className="mirac-hint">atau ketik aja, misal "Budi ga ikut minum"</span>
                 </>
               )}
             </div>

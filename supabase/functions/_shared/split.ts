@@ -91,7 +91,7 @@ export function formatSplitSummary(d: SplitDraft): string {
   const lines = [`🍕 Split Bill — ${d.merchant || 'Tanpa nama'}`, `💸 Total: ${fmt(totalOf(d))}`, ''];
   for (const p of d.participants) lines.push(`${p.is_me ? '👤 Kamu' : '• ' + p.name}: ${fmt(p.amount)}`);
   if (d.participants.filter((p) => !p.is_me).length === 0) {
-    lines.push('', 'Belum ada teman yang ikut — sebutin namanya (misal: "sama Raras dan Taufan").');
+    lines.push('', 'Belum ada teman yang ikut — sebutin namanya (misal: "sama Budi dan Adi").');
   }
   return lines.join('\n');
 }

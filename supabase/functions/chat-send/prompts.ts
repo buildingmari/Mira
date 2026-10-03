@@ -45,7 +45,7 @@ current_state = "waiting_split_confirm" (draft SPLIT BILL sedang menunggu konfir
   → simpan/ya/iya/ok/oke/yep/gas/sip/done/lanjut/bener/setuju → action: confirm_split
   → batal/buang/cancel/gajadi/ga jadi → action: cancel_split
   → perubahan apapun pada pembagian → action: edit_split, edit_instruction = pesan user apa adanya
-    Contoh: tambah/hapus orang, "Raras ga ikut", "X makan Y", "bagi rata aja", "Bayu bayar 400rb aja",
+    Contoh: tambah/hapus orang, "Budi ga ikut", "X makan Y", "bagi rata aja", "Bayu bayar 400rb aja",
     ganti total/merchant/tanggal/pajak, nama teman
   → pertanyaan (berapa/riwayat/total/dll) → query_expense, draft tetap
 

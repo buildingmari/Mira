@@ -220,17 +220,6 @@ const CSS = `
   .sb-empty { padding:22px 18px; text-align:center; color:#9CA3AF; font-size:13px; }
   .sb-spin { animation: sb-spin .8s linear infinite; }
   @keyframes sb-spin { to { transform: rotate(360deg); } }
-  .dark .sb-wrap { color:#F1F5F9; }
-  .dark .sb-card { background:#1E293B; border-color:rgba(255,255,255,0.08); }
-  .dark .sb-card-hd { border-bottom-color:rgba(255,255,255,0.06); }
-  .dark .sb-input, .dark .sb-select, .dark .sb-textarea, .dark .sb-money { background:#0F172A; border-color:rgba(255,255,255,0.12); color:#F1F5F9; }
-  .dark .sb-money input { color:#F1F5F9; }
-  .dark .sb-tab { background:#0F172A; border-color:rgba(255,255,255,0.1); color:#CBD5E1; }
-  .dark .sb-tab.on { background:rgba(37,99,235,0.18); color:#93C5FD; border-color:#2563EB; }
-  .dark .sb-item { background:#0F172A; border-color:rgba(255,255,255,0.08); }
-  .dark .sb-seg { background:#0F172A; }
-  .dark .sb-seg button.on { background:#1E293B; color:#F1F5F9; }
-  .dark .sb-sum.total { color:#F1F5F9; }
   @media (max-width: 900px) {
     .sb-wrap { padding: 16px 16px 40px; }
     .sb-grid3 { grid-template-columns: 1fr 1fr; }
@@ -529,7 +518,7 @@ export function DashboardSplitBill() {
                   )}
                   <label className="sb-label" style={{ marginTop: 12 }}>Siapa aja yang ikut? (opsional)</label>
                   <textarea className="sb-textarea" rows={2} value={note} onChange={(e) => setNote(e.target.value)}
-                    placeholder='Misal: "sama Raras & Taufan. Gua nasi goreng, Raras mie ayam, es teh buat semua"' />
+                    placeholder='Misal: "sama Budi & Adi. Gua nasi goreng, Budi mie ayam, es teh buat semua"' />
                   {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
                     disabled={!photo || busy === 'parse' || voice.recording || voice.preparing}
@@ -542,7 +531,7 @@ export function DashboardSplitBill() {
               {tab === 'ai' && (
                 <>
                   <textarea className="sb-textarea" rows={4} value={story} onChange={(e) => setStory(e.target.value)}
-                    placeholder='Contoh: "Makan di Solaria 156rb bertiga sama Raras & Taufan. Gua nasi goreng 35rb, Raras mie ayam 30rb, Taufan ayam bakar 45rb, es teh 3 buat semua. Taufan bayar 50rb aja."' />
+                    placeholder='Contoh: "Makan di Solaria 156rb bertiga sama Budi & Adi. Gua nasi goreng 35rb, Budi mie ayam 30rb, Adi ayam bakar 45rb, es teh 3 buat semua. Adi bayar 50rb aja."' />
                   {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
                     disabled={(!story.trim() && !voiceNote) || busy === 'parse' || voice.recording || voice.preparing}
@@ -723,7 +712,7 @@ export function DashboardSplitBill() {
             </div>
             {draft.mode !== 'manual' && (
               <p style={{ fontSize: 11.5, color: '#9CA3AF', margin: '6px 0 0' }}>
-                Tap ✏️ buat kunci nominal seseorang (misal "Taufan cuma 50rb") — sisanya otomatis dibagi ke yang lain.
+                Tap ✏️ buat kunci nominal seseorang (misal "Adi cuma 50rb") — sisanya otomatis dibagi ke yang lain.
               </p>
             )}
             {draft.mode === 'manual' && total > 0 && (
@@ -733,7 +722,7 @@ export function DashboardSplitBill() {
             {/* AI tweak */}
             <div className="sb-ai">
               <input className="sb-input" value={aiEdit} onChange={(e) => setAiEdit(e.target.value)}
-                placeholder='✨ Minta MIRA ubah, misal "Raras ga ikut minum"'
+                placeholder='✨ Minta MIRA ubah, misal "Budi ga ikut minum"'
                 onKeyDown={(e) => { if (e.key === 'Enter') tweakWithAI(); }} />
               <button className="sb-btn light" style={{ height: 42, padding: '0 14px' }} onClick={tweakWithAI} disabled={!aiEdit.trim() || busy === 'tweak'}>
                 {busy === 'tweak' ? <Loader2 size={16} className="sb-spin" /> : <Send size={16} />}

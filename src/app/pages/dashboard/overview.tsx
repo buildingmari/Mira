@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
+import { normalizeCategory } from '../../lib/category';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from 'recharts';
@@ -39,31 +40,20 @@ const fmtK = (n: number) => {
 const CAT_COLOR: Record<string,string> = {
   Makanan:'#2563EB', Transport:'#10B981', Belanja:'#8B5CF6',
   Tagihan:'#F59E0B', Kesehatan:'#EF4444', Hiburan:'#EC4899',
-  Pemasukan:'#16A34A', Others:'#6B7280',
+  Pemasukan:'#16A34A', Investasi:'#0891B2', Others:'#6B7280',
 };
 const CAT_BG: Record<string,string> = {
   Makanan:'#FEE2E2', Transport:'#EDE9FE', Belanja:'#FEF3C7',
   Tagihan:'#FEF9C3', Kesehatan:'#D1FAE5', Hiburan:'#FCE7F3',
-  Pemasukan:'#D1FAE5', Others:'#F1F4F8',
+  Pemasukan:'#D1FAE5', Investasi:'#ECFEFF', Others:'#F1F4F8',
 };
 const CAT_EMOJI: Record<string,string> = {
   Makanan:'🍜', Transport:'🚗', Belanja:'🛒',
   Tagihan:'💡', Kesehatan:'❤️', Hiburan:'🎮',
-  Pemasukan:'💰', Others:'✨',
+  Pemasukan:'💰', Investasi:'📈', Others:'✨',
 };
 
-function mapCat(c: string) {
-  const m: Record<string,string> = {
-    food:'Makanan',Food:'Makanan',makanan:'Makanan',Makanan:'Makanan',
-    transport:'Transport',Transport:'Transport',
-    shopping:'Belanja',Shopping:'Belanja',Belanja:'Belanja',
-    bills:'Tagihan',Bills:'Tagihan',Tagihan:'Tagihan',utilities:'Tagihan',
-    health:'Kesehatan',Health:'Kesehatan',Kesehatan:'Kesehatan',
-    entertainment:'Hiburan',Entertainment:'Hiburan',Hiburan:'Hiburan',
-    income:'Pemasukan',Income:'Pemasukan',Pemasukan:'Pemasukan',salary:'Pemasukan',
-  };
-  return m[c] || 'Makanan';
-}
+const mapCat = (c: string) => normalizeCategory(c, 'Others');
 
 function greet() {
   const h = new Date().getHours();
