@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban, SlidersHorizontal } from 'lucide-react';
+import { compressImage } from '../lib/image';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -73,8 +75,13 @@ interface ChatMsg {
   attachment?: Attachment;
   pending?: boolean;
   error?: boolean;
-  awaiting?: 'confirm' | null;
+  awaiting?: 'confirm' | 'confirm_split' | null;
+  /** The split draft behind an awaiting:'confirm_split' bubble (for "Atur di Split Bill"). */
+  draft?: unknown;
 }
+
+/** sessionStorage key the Split Bill page reads a chat draft from. */
+export const SPLIT_PREFILL_KEY = 'mira_split_prefill';
 
 function injectCssOnce() {
   if (!document.getElementById('mirac-css')) {
@@ -85,6 +92,7 @@ function injectCssOnce() {
 }
 
 export function MiraChat() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [text, setText] = useState('');
@@ -119,21 +127,29 @@ export function MiraChat() {
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const [msgsRes, stateRes] = await Promise.all([
           fetch(`${SUPA_URL}/rest/v1/chat_messages?phone_number=eq.${phone}&created_at=gte.${since}&order=created_at.asc&limit=200`, { headers: H }),
-          fetch(`${SUPA_URL}/rest/v1/user_states?phone_number=eq.${phone}&select=state`, { headers: H }),
+          fetch(`${SUPA_URL}/rest/v1/user_states?phone_number=eq.${phone}&select=state,draft_data`, { headers: H }),
         ]);
         const rows = msgsRes.ok ? await msgsRes.json() : [];
         const stateRows = stateRes.ok ? await stateRes.json() : [];
-        const isAwaitingConfirm = Array.isArray(stateRows) && stateRows[0]?.state === 'waiting_confirmation';
+        const st = Array.isArray(stateRows) ? stateRows[0] : null;
+        const awaiting: ChatMsg['awaiting'] =
+          st?.state === 'waiting_confirmation' ? 'confirm'
+          : st?.state === 'waiting_split_confirm' && st?.draft_data ? 'confirm_split'
+          : null;
 
         const loaded: ChatMsg[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
           id: r.id,
           from: r.direction,
-          text: r.content || undefined,
+          text: r.content || (r.message_type === 'image' ? '📷 Foto' : r.message_type === 'audio' ? '🎤 Voice note' : undefined),
         }));
 
-        if (isAwaitingConfirm) {
+        if (awaiting) {
           for (let i = loaded.length - 1; i >= 0; i--) {
-            if (loaded[i].from === 'mira') { loaded[i].awaiting = 'confirm'; break; }
+            if (loaded[i].from === 'mira') {
+              loaded[i].awaiting = awaiting;
+              if (awaiting === 'confirm_split') loaded[i].draft = st.draft_data;
+              break;
+            }
           }
         }
         setMessages(loaded);
@@ -149,13 +165,15 @@ export function MiraChat() {
     logEndRef.current?.scrollIntoView({ block: 'end' });
   }, [messages.length, loadingHistory]);
 
-  const handlePickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPendingAttachment({ kind: 'image', dataUrl: reader.result as string });
-    reader.readAsDataURL(file);
+    try {
+      setPendingAttachment({ kind: 'image', dataUrl: await compressImage(file) });
+    } catch {
+      setMessages((m) => [...m, { id: crypto.randomUUID(), from: 'mira', error: true, text: 'Fotonya gagal dibuka, coba pilih ulang ya.' }]);
+    }
   };
 
   const startRecording = async () => {
@@ -232,7 +250,8 @@ export function MiraChat() {
 
       const data = await res.json();
       setMessages((m) => m.map((msg) => msg.id === placeholderId ? {
-        ...msg, pending: false, text: data.reply || '(tidak ada balasan)', awaiting: data.awaiting || undefined,
+        ...msg, pending: false, text: data.reply || '(tidak ada balasan)',
+        awaiting: data.awaiting || undefined, draft: data.draft || undefined,
       } : msg));
 
       if (data.saved) window.dispatchEvent(new CustomEvent('mira:tx-added'));
@@ -263,6 +282,14 @@ export function MiraChat() {
   const handleConfirm = () => send({ action: 'confirm_expense' }, { id: crypto.randomUUID(), from: 'user', text: '✅ Simpan' });
   const handleCancelDraft = () => send({ action: 'cancel_expense' }, { id: crypto.randomUUID(), from: 'user', text: '❌ Batal' });
   const handleEditTap = () => { clearAwaiting(); textareaRef.current?.focus(); };
+  const handleConfirmSplit = () => send({ action: 'confirm_split' }, { id: crypto.randomUUID(), from: 'user', text: '✅ Simpan' });
+  const handleCancelSplit = () => send({ action: 'cancel_split' }, { id: crypto.randomUUID(), from: 'user', text: '❌ Batal' });
+  /** Opens the draft in the full Split Bill editor (items, per-person tweaks). */
+  const handleOpenSplitEditor = (draft: unknown) => {
+    try { sessionStorage.setItem(SPLIT_PREFILL_KEY, JSON.stringify(draft)); } catch {}
+    window.dispatchEvent(new CustomEvent('mira:chat-close'));
+    navigate('/dashboard/split-bill');
+  };
 
   const handleClearHistory = async () => {
     const phone = localStorage.getItem('mira_phone') || '';
@@ -297,7 +324,7 @@ export function MiraChat() {
             <div style={{ fontSize: 36, marginBottom: 10 }}>💬</div>
             <p style={{ fontSize: 13.5, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Chat sama MIRA</p>
             <p style={{ fontSize: 12.5, margin: 0, maxWidth: 280 }}>
-              Catat pengeluaran, kirim foto struk, atau rekam voice note — sama seperti di WhatsApp.
+              Catat pengeluaran, kirim foto struk, rekam voice note, atau split bill bareng teman — tinggal ketik aja.
             </p>
           </div>
         )}
@@ -327,6 +354,24 @@ export function MiraChat() {
                     </button>
                   </div>
                   <span className="mirac-hint">atau ketik langsung kalau ada yang mau diubah</span>
+                </>
+              )}
+              {msg.awaiting === 'confirm_split' && (
+                <>
+                  <div className="mirac-actions" style={{ flexWrap: 'wrap' }}>
+                    <button className="mirac-act-btn primary" onClick={handleConfirmSplit} disabled={sending}>
+                      <Check size={13} /> Simpan
+                    </button>
+                    {!!msg.draft && (
+                      <button className="mirac-act-btn" onClick={() => handleOpenSplitEditor(msg.draft)} disabled={sending}>
+                        <SlidersHorizontal size={13} /> Atur detail
+                      </button>
+                    )}
+                    <button className="mirac-act-btn danger" onClick={handleCancelSplit} disabled={sending}>
+                      <Ban size={13} /> Batal
+                    </button>
+                  </div>
+                  <span className="mirac-hint">atau ketik aja, misal "Raras ga ikut minum"</span>
                 </>
               )}
             </div>

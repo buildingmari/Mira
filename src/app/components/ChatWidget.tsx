@@ -52,6 +52,14 @@ export function ChatWidget() {
     }
   }, []);
 
+  // MiraChat asks to close when it hands off to a full page (e.g. "Atur
+  // detail" opening the Split Bill editor), so the panel doesn't cover it.
+  useEffect(() => {
+    const close = () => setOpen(false);
+    window.addEventListener('mira:chat-close', close);
+    return () => window.removeEventListener('mira:chat-close', close);
+  }, []);
+
   // The full chat page (/dashboard/chat) already IS this experience,
   // full-screen — no redundant floating duplicate on top of it.
   if (location.pathname === '/dashboard/chat') return null;

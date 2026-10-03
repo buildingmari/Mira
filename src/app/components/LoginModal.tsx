@@ -4,6 +4,8 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { GoogleButton, useGoogleEnabled } from './GoogleButton';
+import { startGoogleAuth } from '../lib/google-auth';
 import './LoginModal.css';
 
 interface Props { isOpen: boolean; onClose: () => void; }
@@ -23,6 +25,7 @@ export function LoginModal({ isOpen, onClose }: Props) {
   const [otp, setOtp]         = useState(['', '', '', '']);
   const [loadTxt, setLoadTxt] = useState('Mengirim OTP...');
   const [err, setErr]         = useState('');
+  const googleEnabled         = useGoogleEnabled();
   const refs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -198,6 +201,18 @@ export function LoginModal({ isOpen, onClose }: Props) {
 
           {/* ── STEP: PHONE ── */}
           {step === 'phone' && <>
+            {/* Google sign-in — only once the provider is switched on in Supabase */}
+            {googleEnabled && <>
+              <div style={{ marginTop: 6 }}>
+                <GoogleButton label="Masuk dengan Google" onClick={() => startGoogleAuth('login')} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 4px' }}>
+                <span style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+                <span style={{ fontSize: '.76rem', color: '#94A3B8', whiteSpace: 'nowrap' }}>atau pakai nomor WhatsApp</span>
+                <span style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+              </div>
+            </>}
+
             <p style={{ fontSize: '.86rem', color: '#64748B', marginBottom: 22, marginTop: 6 }}>
               Masukkan nomor WhatsApp yang terdaftar di MIRA.
             </p>

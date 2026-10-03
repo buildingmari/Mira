@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
 import { ValueProps } from '../components/ValueProps';
@@ -18,6 +19,25 @@ import '../../styles/mira-landing.css';
 export function LandingWrapper() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep links: /?signup=1 opens the signup (assessment) flow — used by
+  // /auth/callback after a Google sign-in — and /?login=1 opens the login
+  // modal. The param is stripped right away (replace) so a refresh or the
+  // back button doesn't reopen the modal.
+  useEffect(() => {
+    const wantsSignup = searchParams.get('signup') === '1';
+    const wantsLogin  = searchParams.get('login') === '1';
+    if (!wantsSignup && !wantsLogin) return;
+
+    if (wantsSignup) setModalOpen(true);
+    else setLoginOpen(true);
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('signup');
+    next.delete('login');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   return (
     <>

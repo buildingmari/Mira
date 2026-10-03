@@ -2,7 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import {
   LayoutDashboard, Receipt, TrendingUp, Target,
   Download, Settings, LogOut, Moon, Sun, Menu, Plus, X,
-  Gift, Briefcase, MessageCircle,
+  Gift, Briefcase, MessageCircle, Users,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../components/theme-provider';
@@ -97,6 +97,7 @@ const NAV_SECTIONS = [
     { path: '/dashboard',              label: 'Dashboard',  Icon: LayoutDashboard },
     { path: '/dashboard/chat',         label: 'Chat MIRA',  Icon: MessageCircle },
     { path: '/dashboard/transactions', label: 'Transaksi',  Icon: Receipt },
+    { path: '/dashboard/split-bill',   label: 'Split Bill', Icon: Users },
   ]},
   { label: 'Analitik', items: [
     { path: '/dashboard/insights', label: 'Insight',        Icon: TrendingUp },
@@ -121,6 +122,7 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/dashboard':              { title: 'Dashboard',        sub: '' },
   '/dashboard/chat':         { title: 'Chat MIRA',        sub: 'Catat pengeluaran lewat chat' },
   '/dashboard/transactions': { title: 'Transaksi',        sub: 'Riwayat pengeluaran' },
+  '/dashboard/split-bill':   { title: 'Split Bill',       sub: 'Bagi tagihan & catat piutang teman' },
   '/dashboard/insights':     { title: 'Insight',          sub: 'Analisis keuangan' },
   '/dashboard/goals':        { title: 'Target',           sub: 'Progress goal kamu' },
   '/dashboard/export':       { title: 'Export Data',      sub: 'Unduh data transaksi' },

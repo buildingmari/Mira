@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react';
 import { plans } from './pricingData';
 import { buildPayload } from './buildPayload';
+import { GoogleIcon } from '../GoogleButton';
+import { authGoogle, clearGooglePending, getFreshGoogleToken, getGooglePending } from '../../lib/google-auth';
+import type { GooglePending } from '../../lib/google-auth';
 import './WAPanel.css';
 
 const REGISTER_URL             = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira';
@@ -82,6 +85,18 @@ export function WAPanel({
   // Holds the WA tab opened synchronously (inside the click gesture) so we
   // can point it at the wa.me link once the phone number is confirmed valid.
   const waWindowRef = useRef<Window | null>(null);
+
+  // Signed in with Google but not linked yet (set by /auth/callback). While
+  // set, the OTP is verified through auth-google `link` so the Google
+  // account gets attached to this number once the account is created.
+  const [googleInfo, setGoogleInfo] = useState<GooglePending | null>(() => getGooglePending());
+
+  // Escape hatch: continue the signup with plain WhatsApp only.
+  const skipGoogle = () => {
+    clearGooglePending();
+    setGoogleInfo(null);
+    if (errorMsg) setErrorMsg('');
+  };
 
   const handleNumberChange = (index: number, value: string) => {
     const cleaned    = value.replace(/[^0-9]/g, '');
@@ -203,21 +218,61 @@ export function WAPanel({
     // STRICT: only data.status === 'success' counts as verified. n8n
     // always answers HTTP 200 for both success and failure here, so
     // response.ok on its own is meaningless.
-    let verifyData: any = {};
-    try {
-      const res = await fetch(VERIFY_OTP_URL, {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify({ phone_number: savedPayload.primary_phone, otp: code }),
-      });
-      const raw = await res.text();
-      try { verifyData = raw ? JSON.parse(raw) : {}; } catch { verifyData = {}; }
-    } catch {
-      setErrorMsg('Verifikasi gagal. Coba lagi.');
-      setOtp(['', '', '', '']);
-      setStep('awaiting_otp');
-      otpRefs[0].current?.focus();
-      return;
+    let verifyData: any = null;
+    let linkedGoogle = false;
+
+    // Signed in with Google → verify through auth-google `link` INSTEAD of
+    // verify-otp: it checks this same OTP itself (calling verify-otp as
+    // well would spend the code twice) and parks the Google link until the
+    // account is created. Any Google-side problem (no/expired token, server
+    // or network error) silently falls back to the plain verify-otp path
+    // below — a signup must never be blocked because of Google.
+    if (googleInfo) {
+      const token = await getFreshGoogleToken();
+      if (token) {
+        const r = await authGoogle({
+          op          : 'link',
+          access_token: token,
+          phone_number: savedPayload.primary_phone,
+          otp         : code,
+        });
+        if (r.status === 409) {
+          // Conflict is checked before the OTP is spent, so keep the digits —
+          // the user can retry with "Lewati" (continue without Google).
+          setErrorMsg(r.data?.message || 'Akun Google ini nggak bisa dihubungkan ke nomor ini.');
+          setStep('awaiting_otp');
+          return;
+        }
+        if (r.status === 200 && r.data?.otp_ok === true) {
+          verifyData   = { status: 'success' };
+          linkedGoogle = true;
+        } else if (r.status === 200 && r.data?.otp_ok === false) {
+          verifyData = { status: 'failed', message: r.data?.message };
+        }
+      }
+      if (!verifyData) {
+        clearGooglePending();
+        setGoogleInfo(null);
+      }
+    }
+
+    if (!verifyData) {
+      verifyData = {};
+      try {
+        const res = await fetch(VERIFY_OTP_URL, {
+          method : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body   : JSON.stringify({ phone_number: savedPayload.primary_phone, otp: code }),
+        });
+        const raw = await res.text();
+        try { verifyData = raw ? JSON.parse(raw) : {}; } catch { verifyData = {}; }
+      } catch {
+        setErrorMsg('Verifikasi gagal. Coba lagi.');
+        setOtp(['', '', '', '']);
+        setStep('awaiting_otp');
+        otpRefs[0].current?.focus();
+        return;
+      }
     }
 
     if (verifyData?.status !== 'success') {
@@ -258,6 +313,10 @@ export function WAPanel({
     }
 
     setStep('verified');
+    // The Google link now lives server-side (pending_google_links) and is
+    // applied automatically when the account is activated — the browser
+    // doesn't need the Google tokens anymore. The badge stays as info.
+    if (linkedGoogle) clearGooglePending();
   };
 
   const handleOtpChange = (i: number, value: string) => {
@@ -431,6 +490,36 @@ export function WAPanel({
             : getSubLabel()}
         </p>
       </div>
+
+      {/* Google account that gets linked to this number (shared across both panels) */}
+      {googleInfo && (
+        <div style={{
+          background  : '#F0FDF4',
+          border      : '1px solid #BBF7D0',
+          borderRadius: '10px',
+          padding     : '9px 12px',
+          fontSize    : '0.8rem',
+          color       : '#15803D',
+          marginBottom: '14px',
+          display     : 'flex',
+          gap         : '8px',
+          alignItems  : 'center',
+        }}>
+          <GoogleIcon size={16} />
+          <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+            Akun Google {googleInfo.email ? <strong>{googleInfo.email}</strong> : 'kamu'} akan otomatis terhubung
+          </span>
+          {!isVerified && !isBusy && step !== 'verifying' && (
+            <button
+              type="button"
+              onClick={skipGoogle}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.75rem', color: '#64748B', textDecoration: 'underline', flexShrink: 0 }}
+            >
+              Lewati
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Error message — shared across both panels */}
       {errorMsg && (

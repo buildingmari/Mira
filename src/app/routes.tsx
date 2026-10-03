@@ -7,6 +7,7 @@ import { PaymentFailedPage }  from './pages/payment-failed';
 import { PrivacyPolicy }      from './pages/PrivacyPolicy';
 import { TermsOfService }     from './pages/TermsOfService';
 import { RefundPolicy }       from './pages/RefundPolicy';
+import { AuthCallback }       from './pages/AuthCallback';
 
 // Dashboard layout + sub-pages
 import { DashboardLayout }       from './pages/dashboard/layout';
@@ -19,6 +20,7 @@ import { DashboardExport }       from './pages/dashboard/export';
 import { DashboardAffiliate }    from './pages/dashboard/affiliate';
 import { DashboardAssets }       from './pages/dashboard/assets';
 import { DashboardChat }         from './pages/dashboard/chat';
+import { DashboardSplitBill }    from './pages/dashboard/split-bill';
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +37,7 @@ export const router = createBrowserRouter([
           { index: true,                Component: DashboardOverview },
           { path: 'chat',                Component: DashboardChat },
           { path: 'transactions',       Component: DashboardTransactions },
+          { path: 'split-bill',         Component: DashboardSplitBill },
           { path: 'goals',              Component: DashboardGoals },
           { path: 'insights',           Component: DashboardInsights },
           { path: 'settings',           Component: DashboardSettings },
@@ -44,6 +47,7 @@ export const router = createBrowserRouter([
         ],
       },
 
+      { path: 'auth/callback',    Component: AuthCallback },
       { path: 'payment-success',  Component: PaymentSuccessPage },
       { path: 'payment-pending',  Component: PaymentPendingPage },
       { path: 'payment-failed',   Component: PaymentFailedPage },

@@ -9,15 +9,18 @@
  * driven insights and vice versa, but runs its own copy of the decision
  * logic so WhatsApp/n8n stays untouched.
  *
- * SCOPE (v1): store/confirm/cancel/edit expense, query_expense, chat_response.
- * NOT yet ported: split_bill, log_investment, set_reminder, export_request,
+ * SCOPE: store/confirm/cancel/edit expense, query_expense, chat_response,
+ * split bill (split_bill / edit_split / confirm_split / cancel_split — the
+ * math + persistence live in ../_shared/split*.ts, shared with mira-tools).
+ * NOT yet ported: log_investment, set_reminder, export_request,
  * insight_request — the system prompt tells the model to decline those
  * gracefully via chat_response rather than let the model hallucinate an
  * unhandled action.
  *
  * Request body:
- *   { phone_number, text? | image_base64? | audio_base64? }  — normal message
- *   { phone_number, action: 'confirm_expense' | 'cancel_expense' }
+ *   { phone_number, text? , image_base64? | audio_base64? }  — normal message
+ *     (text alongside an image is its caption and is kept, like WhatsApp)
+ *   { phone_number, action: 'confirm_expense' | 'cancel_expense' | 'confirm_split' | 'cancel_split' }
  *     — deterministic fast path for the UI's action buttons: skips OCR/
  *       transcription and the MIRA AI Brain call entirely (no LLM round
  *       trip needed to know what a button tap means), acting directly on
@@ -25,8 +28,12 @@
  *       ambiguity compared to routing "simpan"/"batal" back through the
  *       brain — which still also works for anyone who types it instead.
  *
- * Response: { reply, saved, awaiting } — awaiting is 'confirm' when the
- * reply is a draft the UI should render Simpan/Batal buttons under.
+ * Response: { reply, saved, awaiting, draft? } — awaiting is 'confirm' when
+ * the reply is an expense draft (Simpan/Batal buttons), 'confirm_split' when
+ * it's a split bill draft (draft = the SplitDraft, for "Atur di Split Bill").
+ *
+ * user_states.state 'waiting_split_confirm' holds a SplitDraft object in
+ * draft_data. It's web-only; WhatsApp's own split flow uses its own state.
  *
  * Required secrets (`supabase secrets set`):
  *   OPENROUTER_API_KEY  – https://openrouter.ai/keys
@@ -41,12 +48,14 @@ import {
   buildBrainUserPrompt, buildQueryReplyUserPrompt,
 } from './prompts.ts';
 import { computeFinancialScores } from './scoring.ts';
+import { formatSplitSummary, saveSplit, totalOf, type SplitDraft } from '../_shared/split.ts';
+import { parseSplitWithAI } from '../_shared/split_ai.ts';
+import { analyzeMedia, callGemini, callOpenRouter, stripCodeFence } from '../_shared/ai.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY') ?? '';
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? '';
-const BRAIN_MODEL = 'openai/gpt-4o-mini';
 
 const sb = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
@@ -85,68 +94,32 @@ interface BrainResult {
   delete_search?: string;
 }
 
-// ─── Gemini (image / audio analysis) ───────────────────────────────────────
+// ─── MIRA AI Brain (OpenRouter; Gemini/OpenRouter plumbing in ../_shared/ai.ts) ─
 
-function splitDataUrl(dataUrl: string): { mimeType: string; data: string } {
-  const m = dataUrl.match(/^data:([^;]+);base64,(.*)$/s);
-  if (!m) return { mimeType: 'application/octet-stream', data: dataUrl };
-  return { mimeType: m[1], data: m[2] };
-}
-
-async function analyzeMedia(dataUrl: string, prompt: string): Promise<string> {
-  const { mimeType, data } = splitDataUrl(dataUrl);
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data } }] }],
-      }),
-    },
-  );
-  if (!res.ok) throw new Error(`gemini_failed:${res.status}:${await res.text().catch(() => '')}`);
-  const data2 = await res.json();
-  return data2?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-// ─── OpenRouter (MIRA AI Brain / query reply) ──────────────────────────────
-
-async function callOpenRouter(system: string, user: string): Promise<string> {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: BRAIN_MODEL,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-    }),
-  });
-  if (!res.ok) throw new Error(`openrouter_failed:${res.status}:${await res.text().catch(() => '')}`);
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || '';
+/** OpenRouter (same model as n8n) with Gemini as a fallback, so the chat
+ *  keeps working through an OpenRouter outage or an empty credit balance. */
+async function llm(system: string, user: string, json = false): Promise<string> {
+  try {
+    return await callOpenRouter(system, user);
+  } catch (e) {
+    console.warn('openrouter failed, falling back to gemini', String(e).slice(0, 200));
+    return await callGemini(system, user, { json });
+  }
 }
 
 async function callMiraBrain(userPrompt: string): Promise<BrainResult> {
-  const raw = await callOpenRouter(MIRA_BRAIN_SYSTEM, userPrompt);
+  const raw = await llm(MIRA_BRAIN_SYSTEM, userPrompt, true);
   try {
     return JSON.parse(stripCodeFence(raw));
   } catch {
     // One retry asking the model to fix its own output into valid JSON.
-    const fixed = await callOpenRouter(
+    const fixed = await llm(
       'Kamu memperbaiki output JSON yang tidak valid. Balas HANYA dengan JSON yang valid, tanpa teks lain.',
       `Perbaiki ini jadi JSON valid:\n${raw}`,
+      true,
     );
     return JSON.parse(stripCodeFence(fixed));
   }
-}
-
-function stripCodeFence(s: string): string {
-  const t = s.trim();
-  const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
-  return m ? m[1] : t;
 }
 
 // ─── Expense queries ────────────────────────────────────────────────────────
@@ -178,7 +151,7 @@ async function runQuery(phone_number: string, query: BrainResult['query']) {
 
 // ─── Draft / state helpers ──────────────────────────────────────────────────
 
-async function upsertState(phone_number: string, state: string, draft_data: DraftExpense[] | null) {
+async function upsertState(phone_number: string, state: string, draft_data: DraftExpense[] | SplitDraft | null) {
   await sb.from('user_states').upsert(
     { phone_number, state, draft_data, updated_at: new Date().toISOString() },
     { onConflict: 'phone_number' },
@@ -209,13 +182,26 @@ async function applyEditViaLLM(draft: DraftExpense[], instruction: string): Prom
   const system = `Kamu mengedit draft transaksi keuangan berdasarkan instruksi user. Balas HANYA dengan JSON array yang sama strukturnya dengan draft asli, dengan field yang diminta user diubah dan field lain TIDAK diubah. Jangan tambah atau hapus item kecuali diminta eksplisit.`;
   const user = `Draft saat ini:\n${JSON.stringify(draft)}\n\nInstruksi edit dari user: "${instruction}"\n\nBalas HANYA JSON array hasil edit.`;
   try {
-    const raw = await callOpenRouter(system, user);
+    const raw = await llm(system, user, true);
     const parsed = JSON.parse(stripCodeFence(raw));
-    return Array.isArray(parsed) ? parsed : draft;
+    if (!Array.isArray(parsed)) return draft;
+    if (parsed.length !== draft.length) return parsed;
+    // The model sometimes "tidies up" fields nobody asked about (e.g. a price
+    // fix silently resetting GoPay -> Cash). Keep those unless mentioned.
+    const mentionsWallet = WALLET_WORDS.test(instruction);
+    const mentionsDate = DATE_WORDS.test(instruction);
+    return parsed.map((e: DraftExpense, i: number) => ({
+      ...e,
+      wallet: mentionsWallet ? e.wallet : draft[i].wallet,
+      date: mentionsDate ? e.date : draft[i].date,
+    }));
   } catch {
     return draft; // edit failed — keep the draft unchanged rather than corrupt it
   }
 }
+
+const WALLET_WORDS = /wallet|dompet|pake|pakai|via|lewat|bca|bri|bni|mandiri|cimb|jenius|jago|seabank|gopay|ovo|dana|shopee|linkaja|cash|tunai|kartu|kredit|debit|qris|paylater/i;
+const DATE_WORDS = /tanggal|tgl|kemarin|hari ini|tadi|lusa|minggu|bulan|senin|selasa|rabu|kamis|jumat|sabtu|\d{1,2}\s*[/-]\s*\d{1,2}/i;
 
 async function doConfirm(phone_number: string, user: any, currentState: string, draftData: DraftExpense[] | null) {
   if (currentState !== 'waiting_confirmation' || !draftData?.length) {
@@ -246,6 +232,34 @@ async function doCancel(phone_number: string) {
   return { text: 'Oke, dibatalin ya 👍', saved: false };
 }
 
+// ─── Split bill ───────────────────────────────────────────────────────────
+
+const SPLIT_STATE = 'waiting_split_confirm';
+
+function splitDraftOf(stateRow: { state?: string; draft_data?: unknown } | null): SplitDraft | null {
+  if (stateRow?.state !== SPLIT_STATE || !stateRow.draft_data) return null;
+  const d = Array.isArray(stateRow.draft_data) ? stateRow.draft_data[0] : stateRow.draft_data;
+  return d && typeof d === 'object' && Array.isArray((d as SplitDraft).participants) ? (d as SplitDraft) : null;
+}
+
+function splitPrompt(d: SplitDraft, edited = false): string {
+  const lines: string[] = [];
+  if (edited) lines.push('✏️ Split bill diperbarui', '');
+  lines.push(formatSplitSummary(d));
+  if (d.participants.some((p) => !p.is_me)) {
+    lines.push('', 'Udah pas? Tinggal Simpan — atau bilang aja kalau mau diubah (misal "Raras ga ikut minum" atau "bagi rata aja").');
+  }
+  return lines.join('\n');
+}
+
+async function doConfirmSplit(phone_number: string, draft: SplitDraft | null) {
+  if (!draft) return { text: 'Gak ada split bill yang perlu disimpan nih 🤔', saved: false };
+  if (totalOf(draft) <= 0) return { text: 'Totalnya belum ada nih — kirim foto struknya atau sebutin nominalnya dulu ya 🧾', saved: false };
+  const result = await saveSplit(sb, phone_number, draft, 'chat');
+  await clearState(phone_number);
+  return { text: result.message, saved: true };
+}
+
 // ─── Main handler ───────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -266,23 +280,25 @@ Deno.serve(async (req: Request) => {
   const audioB64 = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
 
   if (!phone_number) return json({ error: 'phone_number_required' }, 400);
-  const isFastAction = action === 'confirm_expense' || action === 'cancel_expense';
+  const FAST_ACTIONS = ['confirm_expense', 'cancel_expense', 'confirm_split', 'cancel_split'];
+  const isFastAction = FAST_ACTIONS.includes(action);
   if (!isFastAction && !textIn && !imageB64 && !audioB64) return json({ error: 'empty_message' }, 400);
   if (!isFastAction && !OPENROUTER_API_KEY) return json({ error: 'backend_not_configured', detail: 'OPENROUTER_API_KEY missing' }, 503);
 
   const messageType: 'text' | 'image' | 'audio' = imageB64 ? 'image' : audioB64 ? 'audio' : 'text';
   const userLogContent = isFastAction
-    ? (action === 'confirm_expense' ? '✅ Simpan' : '❌ Batal')
-    : (messageType === 'text' ? textIn : null);
+    ? (action.startsWith('confirm') ? '✅ Simpan' : '❌ Batal')
+    : (textIn || null); // for photos this is the caption, if any
 
   await sb.from('chat_messages').insert({
     phone_number, direction: 'user', message_type: messageType,
     content: userLogContent,
   });
 
-  const reply = async (text: string, extra: Partial<{ saved: boolean; awaiting: 'confirm' | null }> = {}) => {
+  type Awaiting = 'confirm' | 'confirm_split' | null;
+  const reply = async (text: string, extra: Partial<{ saved: boolean; awaiting: Awaiting; draft: SplitDraft }> = {}) => {
     await sb.from('chat_messages').insert({ phone_number, direction: 'mira', message_type: 'text', content: text });
-    return json({ reply: text, saved: !!extra.saved, awaiting: extra.awaiting ?? null });
+    return json({ reply: text, saved: !!extra.saved, awaiting: extra.awaiting ?? null, draft: extra.draft ?? null });
   };
 
   try {
@@ -303,12 +319,18 @@ Deno.serve(async (req: Request) => {
     if (isFastAction) {
       const { data: stateRow } = await sb.from('user_states').select('*').eq('phone_number', phone_number).maybeSingle();
       const currentState: string = stateRow?.state || 'idle';
-      const draftData: DraftExpense[] | null = stateRow?.draft_data
+      if (action === 'confirm_split') {
+        const result = await doConfirmSplit(phone_number, splitDraftOf(stateRow));
+        return await reply(result.text, { saved: result.saved });
+      }
+      if (action === 'cancel_split' || action === 'cancel_expense') {
+        const result = await doCancel(phone_number);
+        return await reply(result.text, { saved: result.saved });
+      }
+      const draftData: DraftExpense[] | null = stateRow?.draft_data && currentState !== SPLIT_STATE
         ? (Array.isArray(stateRow.draft_data) ? stateRow.draft_data : [stateRow.draft_data])
         : null;
-      const result = action === 'confirm_expense'
-        ? await doConfirm(phone_number, user, currentState, draftData)
-        : await doCancel(phone_number);
+      const result = await doConfirm(phone_number, user, currentState, draftData);
       return await reply(result.text, { saved: result.saved });
     }
 
@@ -316,8 +338,10 @@ Deno.serve(async (req: Request) => {
     let normalizedText = textIn;
     if (messageType === 'image') {
       if (!GEMINI_API_KEY) return await reply('Fitur foto struk belum aktif sepenuhnya, coba lagi nanti ya 🙏');
-      normalizedText = (await analyzeMedia(imageB64, IMAGE_OCR_PROMPT)).trim();
-      if (!normalizedText) return await reply('Fotonya kurang jelas nih 😅 Bisa kasih tau nominalnya berapa?');
+      const ocr = (await analyzeMedia(imageB64, IMAGE_OCR_PROMPT)).trim();
+      if (!ocr && !textIn) return await reply('Fotonya kurang jelas nih 😅 Bisa kasih tau nominalnya berapa?');
+      // Keep the caption (e.g. "split sama Raras") — same as n8n's WhatsApp flow.
+      normalizedText = textIn ? `${textIn}\n${ocr}` : ocr;
     } else if (messageType === 'audio') {
       if (!GEMINI_API_KEY) return await reply('Fitur voice note belum aktif sepenuhnya, coba lagi nanti ya 🙏');
       normalizedText = (await analyzeMedia(audioB64, AUDIO_TRANSCRIBE_PROMPT)).trim();
@@ -327,9 +351,19 @@ Deno.serve(async (req: Request) => {
     // 3. conversation state
     const { data: stateRow } = await sb.from('user_states').select('*').eq('phone_number', phone_number).maybeSingle();
     let currentState: string = stateRow?.state || 'idle';
-    let draftData: DraftExpense[] | null = stateRow?.draft_data
+    const splitDraft = splitDraftOf(stateRow);
+    let draftData: DraftExpense[] | null = stateRow?.draft_data && currentState !== SPLIT_STATE
       ? (Array.isArray(stateRow.draft_data) ? stateRow.draft_data : [stateRow.draft_data])
       : null;
+    if (currentState === SPLIT_STATE && !splitDraft) currentState = 'idle';
+
+    // A receipt photo / voice note while a split is being set up fills in
+    // that split (e.g. "split sama Raras & Taufan" first, then the struk).
+    if (splitDraft && messageType !== 'text') {
+      const edited = await parseSplitWithAI(normalizedText, { current: splitDraft });
+      await upsertState(phone_number, SPLIT_STATE, edited);
+      return await reply(splitPrompt(edited, true), { awaiting: 'confirm_split', draft: edited });
+    }
 
     // State-clearing heuristic (ported from n8n's Build Context) — a photo/voice
     // note, or a fresh-looking expense message, breaks out of a stale
@@ -355,7 +389,9 @@ Deno.serve(async (req: Request) => {
       payment_method_ranking: user.payment_method_ranking || '',
       all_wallets: [user.primary_wallet].filter(Boolean),
       current_state: currentState,
-      draft_data: draftData,
+      draft_data: splitDraft
+        ? { split_bill: splitDraft.merchant, total: totalOf(splitDraft), participants: splitDraft.participants.map((p) => `${p.name}: ${p.amount}`) }
+        : draftData,
       reminder_style: (user.reminder_style || 'santai').toLowerCase(),
       income_range: user.income_range || '',
       income_type: user.income_type || '',
@@ -374,8 +410,52 @@ Deno.serve(async (req: Request) => {
 
     const brain = await callMiraBrain(brainUserPrompt);
 
+    // The model occasionally answers a split draft with the expense-flavoured
+    // action names — map them onto the split equivalents.
+    // And the reverse: split-flavoured actions with no split in progress.
+    const alias: Record<string, string> = splitDraft
+      ? { confirm_expense: 'confirm_split', cancel_expense: 'cancel_split', edit_expense: 'edit_split' }
+      : { edit_split: 'split_bill', ...(draftData?.length ? { confirm_split: 'confirm_expense', cancel_split: 'cancel_expense' } : {}) };
+    if (alias[brain.action]) brain.action = alias[brain.action];
+
     // 5. branch on action
     switch (brain.action) {
+      case 'split_bill': {
+        // Splitting an expense draft that's still waiting for confirmation:
+        // carry its numbers over so the user doesn't have to repeat them.
+        const base = draftData?.length
+          ? draftData.map((e) => `Tagihan: ${e.item || e.merchant || 'Transaksi'}${e.merchant ? ` di ${e.merchant}` : ''}, total ${Number(e.amount || 0)}, tanggal ${e.date || todayWIB()}${e.wallet ? `, dibayar pakai ${e.wallet}` : ''}.`).join('\n') + '\n'
+          : '';
+        const draft = await parseSplitWithAI(base + normalizedText, { wallet: user.primary_wallet || 'Cash' });
+        await upsertState(phone_number, SPLIT_STATE, draft);
+        if (totalOf(draft) <= 0) {
+          return await reply('Siap, kita split! 🍕 Totalnya berapa? Kirim foto struknya atau sebutin nominalnya ya 🧾', { awaiting: null });
+        }
+        return await reply(splitPrompt(draft), { awaiting: 'confirm_split', draft });
+      }
+
+      case 'edit_split': {
+        if (!splitDraft) return await reply('Gak ada split bill yang lagi dibuat nih 🤔 Mau split apa? Ceritain aja, misal "makan 300rb bertiga sama Raras & Taufan".');
+        // The user's own words, not the brain's paraphrase of them — the
+        // paraphrase tends to drop names ("Dimas ikut" -> "tambah 1 orang").
+        const edited = await parseSplitWithAI(normalizedText, { current: splitDraft });
+        await upsertState(phone_number, SPLIT_STATE, edited);
+        if (totalOf(edited) <= 0) {
+          return await reply('Totalnya masih belum ada nih — kirim foto struknya atau sebutin nominalnya ya 🧾');
+        }
+        return await reply(splitPrompt(edited, true), { awaiting: 'confirm_split', draft: edited });
+      }
+
+      case 'confirm_split': {
+        const result = await doConfirmSplit(phone_number, splitDraft);
+        return await reply(result.text, { saved: result.saved });
+      }
+
+      case 'cancel_split': {
+        const result = await doCancel(phone_number);
+        return await reply(result.text, { saved: result.saved });
+      }
+
       case 'store_expense': {
         const expenses = (brain.expenses || []).map((e) => ({ ...e, date: e.date || todayWIB() }));
         if (!expenses.length) return await reply('Berapa yang dikeluarin? 🍽️');
@@ -415,7 +495,7 @@ Deno.serve(async (req: Request) => {
           count: txns.length,
           transactions: txns,
         });
-        const answer = await callOpenRouter(QUERY_REPLY_SYSTEM, queryUserPrompt);
+        const answer = await llm(QUERY_REPLY_SYSTEM, queryUserPrompt);
         return await reply(answer.trim() || 'Belum ada data untuk pertanyaan ini.');
       }
 
@@ -428,7 +508,7 @@ Deno.serve(async (req: Request) => {
       }
 
       default: {
-        return await reply('Fitur ini belum tersedia di chat web — split bill, investasi, reminder, export, dan insight masih dalam pengembangan di sini. Sementara pakai WhatsApp MIRA dulu ya 🙏');
+        return await reply('Fitur ini belum tersedia di chat web — investasi, reminder, export, dan insight masih dalam pengembangan di sini. Sementara pakai WhatsApp MIRA dulu ya 🙏');
       }
     }
   } catch (err) {

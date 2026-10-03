@@ -5,6 +5,8 @@ import { CheckboxQuestion } from './questions/CheckboxQuestion';
 import { RatioSlider } from './questions/RatioSlider';
 import { CheckboxGrouped } from './questions/CheckboxGrouped';
 import { RankingQuestion } from './questions/RankingQuestion';
+import { GoogleButton, useGoogleEnabled } from '../GoogleButton';
+import { getGooglePending, startGoogleAuth } from '../../lib/google-auth';
 import './AssessmentPanel.css';
 
 interface AssessmentPanelProps {
@@ -14,8 +16,12 @@ interface AssessmentPanelProps {
 }
 
 export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentPanelProps) {
+  // Signed in with Google but not linked yet (set by /auth/callback) →
+  // prefill the name and show a "connected" badge on the name step.
+  const [googlePending] = useState(() => getGooglePending());
+  const googleEnabled   = useGoogleEnabled();
   const [nameStep, setNameStep]   = useState(true);
-  const [nameInput, setNameInput] = useState('');
+  const [nameInput, setNameInput] = useState(() => (googlePending?.name || '').trim());
   const [nameError, setNameError] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [shake, setShake] = useState(false);
@@ -189,6 +195,20 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
           </p>
         )}
 
+        {googlePending && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            marginTop: '10px', padding: '5px 12px', borderRadius: '100px',
+            background: '#F0FDF4', border: '1px solid #BBF7D0',
+            color: '#15803D', fontSize: '0.78rem', fontWeight: 600,
+            maxWidth: '100%', boxSizing: 'border-box',
+          }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              ✓ Terhubung dengan Google{googlePending.email ? ` · ${googlePending.email}` : ''}
+            </span>
+          </div>
+        )}
+
         <button
           className="btn btn-full"
           style={{ marginTop: '16px', fontSize: '1rem' }}
@@ -196,6 +216,17 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
         >
           Mulai →
         </button>
+
+        {!googlePending && googleEnabled && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '18px 0 14px' }}>
+              <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
+              <span style={{ fontSize: '0.76rem', color: '#94A3B8' }}>atau</span>
+              <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
+            </div>
+            <GoogleButton label="Daftar cepat dengan Google" onClick={() => startGoogleAuth('signup')} />
+          </>
+        )}
       </div>
     );
   }
