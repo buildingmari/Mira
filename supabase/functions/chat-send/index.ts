@@ -1,18 +1,32 @@
 /**
  * chat-send
  * ─────────────────────────────────────────────────────────────────────────
- * Backend for the dashboard's web chat (src/app/pages/dashboard/chat.tsx).
- * Deliberately independent of the n8n/WhatsApp workflow — reuses the same
- * prompts (see prompts.ts, extracted from the n8n nodes) and the same
- * Supabase tables (users, user_states, expenses) so an expense logged here
- * shows up identically in WhatsApp-driven insights and vice versa, but runs
- * its own copy of the decision logic so WhatsApp/n8n stays untouched.
+ * Backend for the dashboard's web chat (MiraChat.tsx, used by both the full
+ * chat page and the floating widget). Deliberately independent of the n8n/
+ * WhatsApp workflow — reuses the same prompts (see prompts.ts, extracted
+ * from the n8n nodes) and the same Supabase tables (users, user_states,
+ * expenses) so an expense logged here shows up identically in WhatsApp-
+ * driven insights and vice versa, but runs its own copy of the decision
+ * logic so WhatsApp/n8n stays untouched.
  *
  * SCOPE (v1): store/confirm/cancel/edit expense, query_expense, chat_response.
  * NOT yet ported: split_bill, log_investment, set_reminder, export_request,
  * insight_request — the system prompt tells the model to decline those
  * gracefully via chat_response rather than let the model hallucinate an
  * unhandled action.
+ *
+ * Request body:
+ *   { phone_number, text? | image_base64? | audio_base64? }  — normal message
+ *   { phone_number, action: 'confirm_expense' | 'cancel_expense' }
+ *     — deterministic fast path for the UI's action buttons: skips OCR/
+ *       transcription and the MIRA AI Brain call entirely (no LLM round
+ *       trip needed to know what a button tap means), acting directly on
+ *       the current draft in user_states. Faster and immune to NLU
+ *       ambiguity compared to routing "simpan"/"batal" back through the
+ *       brain — which still also works for anyone who types it instead.
+ *
+ * Response: { reply, saved, awaiting } — awaiting is 'confirm' when the
+ * reply is a draft the UI should render Simpan/Batal buttons under.
  *
  * Required secrets (`supabase secrets set`):
  *   OPENROUTER_API_KEY  – https://openrouter.ai/keys
@@ -55,12 +69,6 @@ const fmtRp = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.
 function todayWIB(): string {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
 }
-
-const EXPENSE_CATEGORIES = [
-  'Makanan & Minuman', 'Transport', 'Belanja Online', 'Tagihan & Utilitas', 'Kesehatan',
-  'Hiburan & Lifestyle', 'Pendidikan', 'Kebutuhan Rumah', 'Keluarga & Sosial',
-  'Fashion & Kecantikan', 'Savings & Investment', 'Lainnya',
-];
 
 interface DraftExpense {
   item?: string; merchant?: string; amount?: number; currency?: string; quantity?: number;
@@ -194,7 +202,7 @@ function formatDraftSummary(expenses: DraftExpense[], edited = false): string {
     ].join('\n');
   }).join('\n\n');
   const header = edited ? '✏️ Draft Diperbarui\n\n' : '';
-  return `${header}${lines}\n\nGimana, udah pas belum? 👀\n• Ketik SIMPAN kalau oke\n• Kasih tau kalau ada yang mau diubah\n• Ketik BATAL kalau mau dibatalin`;
+  return `${header}${lines}\n\nGimana, udah pas belum? 👀`;
 }
 
 async function applyEditViaLLM(draft: DraftExpense[], instruction: string): Promise<DraftExpense[]> {
@@ -207,6 +215,35 @@ async function applyEditViaLLM(draft: DraftExpense[], instruction: string): Prom
   } catch {
     return draft; // edit failed — keep the draft unchanged rather than corrupt it
   }
+}
+
+async function doConfirm(phone_number: string, user: any, currentState: string, draftData: DraftExpense[] | null) {
+  if (currentState !== 'waiting_confirmation' || !draftData?.length) {
+    return { text: 'Gak ada draft yang perlu disimpan nih 🤔', saved: false };
+  }
+  for (const e of draftData) {
+    await sb.from('expenses').insert({
+      phone_number,
+      amount: Number(e.amount || 0),
+      category: e.category || 'Lainnya',
+      merchant: e.merchant || e.item || null,
+      item: e.item || e.merchant || null,
+      wallet: e.wallet || user.primary_wallet || 'Cash',
+      date: e.date || todayWIB(),
+      currency: e.currency || 'IDR',
+      quantity: e.quantity ?? null,
+      transaction_type: e.transaction_type || 'expense',
+      items_detail: e.items_detail ? JSON.stringify(e.items_detail) : null,
+    });
+  }
+  await clearState(phone_number);
+  const total = await sumToday(phone_number);
+  return { text: `✅ Tersimpan!\n📊 Total pengeluaran hari ini: ${fmtRp(total)}`, saved: true };
+}
+
+async function doCancel(phone_number: string) {
+  await clearState(phone_number);
+  return { text: 'Oke, dibatalin ya 👍', saved: false };
 }
 
 // ─── Main handler ───────────────────────────────────────────────────────────
@@ -223,28 +260,33 @@ Deno.serve(async (req: Request) => {
   }
 
   const phone_number = String(body.phone_number || '').trim();
+  const action = typeof body.action === 'string' ? body.action : '';
   const textIn = typeof body.text === 'string' ? body.text.trim() : '';
   const imageB64 = typeof body.image_base64 === 'string' ? body.image_base64 : '';
   const audioB64 = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
 
   if (!phone_number) return json({ error: 'phone_number_required' }, 400);
-  if (!textIn && !imageB64 && !audioB64) return json({ error: 'empty_message' }, 400);
-  if (!OPENROUTER_API_KEY) return json({ error: 'backend_not_configured', detail: 'OPENROUTER_API_KEY missing' }, 503);
+  const isFastAction = action === 'confirm_expense' || action === 'cancel_expense';
+  if (!isFastAction && !textIn && !imageB64 && !audioB64) return json({ error: 'empty_message' }, 400);
+  if (!isFastAction && !OPENROUTER_API_KEY) return json({ error: 'backend_not_configured', detail: 'OPENROUTER_API_KEY missing' }, 503);
 
   const messageType: 'text' | 'image' | 'audio' = imageB64 ? 'image' : audioB64 ? 'audio' : 'text';
+  const userLogContent = isFastAction
+    ? (action === 'confirm_expense' ? '✅ Simpan' : '❌ Batal')
+    : (messageType === 'text' ? textIn : null);
 
   await sb.from('chat_messages').insert({
     phone_number, direction: 'user', message_type: messageType,
-    content: messageType === 'text' ? textIn : null,
+    content: userLogContent,
   });
 
-  const reply = async (text: string, extra: Partial<{ saved: boolean }> = {}) => {
+  const reply = async (text: string, extra: Partial<{ saved: boolean; awaiting: 'confirm' | null }> = {}) => {
     await sb.from('chat_messages').insert({ phone_number, direction: 'mira', message_type: 'text', content: text });
-    return json({ reply: text, saved: !!extra.saved });
+    return json({ reply: text, saved: !!extra.saved, awaiting: extra.awaiting ?? null });
   };
 
   try {
-    // 1. user + membership
+    // 1. user + membership (shared by both the fast path and the full brain path)
     const { data: user } = await sb.from('users').select('*').eq('primary_phone', phone_number).maybeSingle();
     if (!user) return await reply('Nomor ini belum terdaftar di MIRA. Daftar dulu yuk di halo-mira.com 🙏');
 
@@ -255,6 +297,19 @@ Deno.serve(async (req: Request) => {
     const accStatus = (user.account_status || '').toLowerCase();
     if (accStatus !== 'pro' && accStatus !== 'paid') {
       return await reply('Akun kamu belum aktif sebagai member MIRA. Selesaikan pembayaran dulu ya di halo-mira.com 🙏');
+    }
+
+    // 1b. Fast path for the UI's action buttons — no LLM round trip at all.
+    if (isFastAction) {
+      const { data: stateRow } = await sb.from('user_states').select('*').eq('phone_number', phone_number).maybeSingle();
+      const currentState: string = stateRow?.state || 'idle';
+      const draftData: DraftExpense[] | null = stateRow?.draft_data
+        ? (Array.isArray(stateRow.draft_data) ? stateRow.draft_data : [stateRow.draft_data])
+        : null;
+      const result = action === 'confirm_expense'
+        ? await doConfirm(phone_number, user, currentState, draftData)
+        : await doCancel(phone_number);
+      return await reply(result.text, { saved: result.saved });
     }
 
     // 2. normalize input
@@ -325,43 +380,24 @@ Deno.serve(async (req: Request) => {
         const expenses = (brain.expenses || []).map((e) => ({ ...e, date: e.date || todayWIB() }));
         if (!expenses.length) return await reply('Berapa yang dikeluarin? 🍽️');
         await upsertState(phone_number, 'waiting_confirmation', expenses);
-        return await reply(formatDraftSummary(expenses));
+        return await reply(formatDraftSummary(expenses), { awaiting: 'confirm' });
       }
 
       case 'confirm_expense': {
-        if (currentState !== 'waiting_confirmation' || !draftData?.length) {
-          return await reply('Gak ada draft yang perlu disimpan nih 🤔');
-        }
-        for (const e of draftData) {
-          await sb.from('expenses').insert({
-            phone_number,
-            amount: Number(e.amount || 0),
-            category: e.category || 'Lainnya',
-            merchant: e.merchant || e.item || null,
-            item: e.item || e.merchant || null,
-            wallet: e.wallet || user.primary_wallet || 'Cash',
-            date: e.date || todayWIB(),
-            currency: e.currency || 'IDR',
-            quantity: e.quantity ?? null,
-            transaction_type: e.transaction_type || 'expense',
-            items_detail: e.items_detail ? JSON.stringify(e.items_detail) : null,
-          });
-        }
-        await clearState(phone_number);
-        const total = await sumToday(phone_number);
-        return await reply(`✅ Tersimpan!\n📊 Total pengeluaran hari ini: ${fmtRp(total)}`, { saved: true });
+        const result = await doConfirm(phone_number, user, currentState, draftData);
+        return await reply(result.text, { saved: result.saved });
       }
 
       case 'cancel_expense': {
-        await clearState(phone_number);
-        return await reply('Oke, dibatalin ya 👍');
+        const result = await doCancel(phone_number);
+        return await reply(result.text, { saved: result.saved });
       }
 
       case 'edit_expense': {
         if (!draftData?.length) return await reply('Gak ada draft yang bisa diedit nih 🤔');
         const edited = await applyEditViaLLM(draftData, brain.edit_instruction || normalizedText);
         await upsertState(phone_number, 'waiting_confirmation', edited);
-        return await reply(formatDraftSummary(edited, true));
+        return await reply(formatDraftSummary(edited, true), { awaiting: 'confirm' });
       }
 
       case 'query_expense': {
