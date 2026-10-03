@@ -4,10 +4,12 @@ import { Send, Paperclip, Mic, Square, X, Loader2 } from 'lucide-react';
 // NOTE: not yet linked from the sidebar/routes — see the comment block at the
 // bottom of this file for why, and what has to land before it's wired in.
 
-const SUPA_URL = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
-// Edge Function this page calls once it exists. Until then, sendToMira()
-// catches the 404 and shows a clear "not live yet" bubble instead of hanging
-// or crashing — see sendToMira() below.
+const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
+// The chat-send Edge Function requires a valid Supabase JWT (verify_jwt:
+// true) — the anon key satisfies that gate the same way every other
+// Supabase call in this app already sends it, without granting any extra
+// access (it's the same public key embedded everywhere else in the bundle).
 const CHAT_FN_URL = `${SUPA_URL}/functions/v1/chat-send`;
 
 const CHAT_CSS = `
@@ -156,7 +158,11 @@ export function DashboardChat() {
 
       const res = await fetch(CHAT_FN_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${SUPA_ANON}`,
+          apikey: SUPA_ANON,
+        },
         body: JSON.stringify(body),
       });
 
@@ -165,6 +171,14 @@ export function DashboardChat() {
         setMessages((m) => m.map((msg) => msg.id === placeholderId ? {
           ...msg, pending: false, error: true,
           text: 'Chat AI di web app belum aktif — masih dalam pengembangan. Sementara pakai WhatsApp MIRA ya 🙏',
+        } : msg));
+        return;
+      }
+      if (res.status === 503) {
+        // Backend deployed but its API keys aren't configured yet.
+        setMessages((m) => m.map((msg) => msg.id === placeholderId ? {
+          ...msg, pending: false, error: true,
+          text: 'Chat AI lagi disiapkan di sisi server, bentar lagi aktif. Sementara pakai WhatsApp MIRA ya 🙏',
         } : msg));
         return;
       }
@@ -298,16 +312,17 @@ export function DashboardChat() {
 }
 
 /**
- * STATUS: UI complete, not yet linked into the sidebar/mobile nav or
- * routes.tsx on purpose — sendToMira() posts to a Supabase Edge Function
- * (chat-send) that doesn't exist yet, so shipping a nav link today would
- * point real users at a dead endpoint. It degrades gracefully (catches the
- * 404 and shows an explanatory bubble) rather than hanging, but it's still
- * not a finished feature.
+ * STATUS: UI complete, chat-send Edge Function deployed (supabase/functions/
+ * chat-send) and reachable — but deliberately NOT yet linked into the
+ * sidebar/mobile nav or routes.tsx, because the function still needs its
+ * OPENROUTER_API_KEY and GEMINI_API_KEY secrets set before it can actually
+ * call the AI. Until then it responds with a clear 503, which this page
+ * already handles gracefully (see the res.status === 503 branch above)
+ * rather than hanging or crashing.
  *
- * To go live: build + deploy the chat-send Edge Function (reusing the MIRA
- * AI Brain / Analyze image / Analyze audio prompts pulled from n8n), add a
- * route for this page in routes.tsx, and add a nav entry in
- * dashboard/layout.tsx's NAV_SECTIONS — then test end-to-end against real
- * data before anyone sees the link.
+ * To go live: `supabase secrets set OPENROUTER_API_KEY=... GEMINI_API_KEY=...`
+ * on project vhwissutkmxyzlyzkhyt, test end-to-end against a real account
+ * (text, photo, voice, confirm/edit/cancel, query), THEN add a route for
+ * this page in routes.tsx and a nav entry in dashboard/layout.tsx's
+ * NAV_SECTIONS.
  */
