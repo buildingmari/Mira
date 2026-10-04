@@ -1,9 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import {
-  LayoutDashboard, Receipt, TrendingUp, Target,
-  Download, Settings, LogOut, Moon, Sun, Menu, Plus, X,
-  Gift, Briefcase, MessageCircle, Users,
-} from 'lucide-react';
+import { LogOut, Moon, Sun, Menu, Plus, X } from 'lucide-react';
+import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../../components/theme-provider';
 import { PendingAssessmentGate } from '../../components/PendingAssessmentGate';
@@ -74,7 +71,7 @@ const LAYOUT_CSS = `
   }
   .mira-nav-btn {
     width: 100%; display: flex; align-items: center; gap: 10px;
-    padding: 9px 10px; border-radius: 8px; border: none; cursor: pointer;
+    padding: 5px 8px; border-radius: 10px; border: none; cursor: pointer;
     font-size: 14px; font-family: 'DM Sans', sans-serif;
     background: transparent; color: #6B7280;
     transition: background .15s, color .15s; text-align: left;
@@ -88,6 +85,8 @@ const LAYOUT_CSS = `
     color: #9CA3AF; user-select: none; transition: color .15s;
   }
   .mira-mob-btn.active { color: #2563EB; font-weight: 600; }
+  .mira-mob-btn svg { transition: filter .15s, opacity .15s; }
+  .mira-mob-btn:not(.active) svg { filter: grayscale(1); opacity: .55; }
   .sb-x-btn { display: none !important; }
   @media (max-width: 900px) {
     #mira-sidebar { transform: translateX(-220px); }
@@ -99,30 +98,30 @@ const LAYOUT_CSS = `
   }
 `;
 
-const NAV_SECTIONS = [
+const NAV_SECTIONS: { label: string; items: { path: string; label: string; icon: IconName }[] }[] = [
   { label: 'Overview', items: [
-    { path: '/dashboard',              label: 'Dashboard',  Icon: LayoutDashboard },
-    { path: '/dashboard/chat',         label: 'Chat MIRA',  Icon: MessageCircle },
-    { path: '/dashboard/transactions', label: 'Transaksi',  Icon: Receipt },
-    { path: '/dashboard/split-bill',   label: 'Split Bill', Icon: Users },
+    { path: '/dashboard',              label: 'Dashboard',  icon: 'dashboard' },
+    { path: '/dashboard/chat',         label: 'Chat MIRA',  icon: 'chat' },
+    { path: '/dashboard/transactions', label: 'Transaksi',  icon: 'receipt' },
+    { path: '/dashboard/split-bill',   label: 'Split Bill', icon: 'duo' },
   ]},
   { label: 'Analitik', items: [
-    { path: '/dashboard/insights', label: 'Insight',        Icon: TrendingUp },
-    { path: '/dashboard/goals',    label: 'Target',         Icon: Target },
-    { path: '/dashboard/assets',   label: 'Aset & Net Worth', Icon: Briefcase },
+    { path: '/dashboard/insights', label: 'Insight',          icon: 'growth' },
+    { path: '/dashboard/goals',    label: 'Target',           icon: 'target' },
+    { path: '/dashboard/assets',   label: 'Aset & Net Worth', icon: 'gem' },
   ]},
   { label: 'Akun', items: [
-    { path: '/dashboard/affiliate', label: 'Affiliate',   Icon: Gift },
-    { path: '/dashboard/export',    label: 'Export Data', Icon: Download },
-    { path: '/dashboard/settings',  label: 'Pengaturan',  Icon: Settings },
+    { path: '/dashboard/affiliate', label: 'Affiliate',   icon: 'gift' },
+    { path: '/dashboard/export',    label: 'Export Data', icon: 'report' },
+    { path: '/dashboard/settings',  label: 'Pengaturan',  icon: 'gear' },
   ]},
 ];
 
-const MOB_NAV = [
-  { path: '/dashboard',              label: 'Home',      Icon: LayoutDashboard },
-  { path: '/dashboard/transactions', label: 'Transaksi', Icon: Receipt },
-  { path: '/dashboard/goals',        label: 'Target',    Icon: Target },
-  { path: '/dashboard/insights',     label: 'Insight',   Icon: TrendingUp },
+const MOB_NAV: { path: string; label: string; icon: IconName }[] = [
+  { path: '/dashboard',              label: 'Home',      icon: 'dashboard' },
+  { path: '/dashboard/transactions', label: 'Transaksi', icon: 'receipt' },
+  { path: '/dashboard/goals',        label: 'Target',    icon: 'target' },
+  { path: '/dashboard/insights',     label: 'Insight',   icon: 'growth' },
 ];
 
 const PAGE_META: Record<string, { title: string; sub: string }> = {
@@ -264,10 +263,10 @@ export function DashboardLayout() {
               <div style={{ fontSize: 10, fontWeight: 500, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#9CA3AF', padding: '0 8px', marginBottom: 4 }}>
                 {sec.label}
               </div>
-              {sec.items.map(({ path, label, Icon }) => (
+              {sec.items.map(({ path, label, icon }) => (
                 <button key={path} className={`mira-nav-btn${on(path) ? ' active' : ''}`}
                   onClick={() => { navigate(path); setSbOpen(false); }}>
-                  <Icon style={{ width: 17, height: 17, flexShrink: 0 }} strokeWidth={on(path) ? 2.2 : 1.8} />
+                  <MiraIcon name={icon} size={28} />
                   {label}
                 </button>
               ))}
@@ -278,9 +277,11 @@ export function DashboardLayout() {
         <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
           <div style={{ padding: '10px 12px' }}>
             <button className="mira-nav-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark'
-                ? <Sun  style={{ width: 17, height: 17, flexShrink: 0 }} strokeWidth={1.8} />
-                : <Moon style={{ width: 17, height: 17, flexShrink: 0 }} strokeWidth={1.8} />}
+              <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {theme === 'dark'
+                  ? <Sun  style={{ width: 17, height: 17 }} strokeWidth={1.8} />
+                  : <Moon style={{ width: 17, height: 17 }} strokeWidth={1.8} />}
+              </span>
               {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
             </button>
           </div>
@@ -346,9 +347,9 @@ export function DashboardLayout() {
 
       <div id="mira-mobile-nav">
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {MOB_NAV.slice(0, 2).map(({ path, label, Icon }) => (
+          {MOB_NAV.slice(0, 2).map(({ path, label, icon }) => (
             <button key={path} className={`mira-mob-btn${on(path) ? ' active' : ''}`} onClick={() => navigate(path)}>
-              <Icon style={{ width: 22, height: 22, stroke: on(path) ? '#2563EB' : '#9CA3AF' }} strokeWidth={on(path) ? 2.2 : 1.7} />
+              <MiraIcon name={icon} size={28} />
               {label}
             </button>
           ))}
@@ -362,9 +363,9 @@ export function DashboardLayout() {
               <Plus style={{ width: 22, height: 22, stroke: '#fff' }} strokeWidth={2.5} />
             </button>
           </div>
-          {MOB_NAV.slice(2).map(({ path, label, Icon }) => (
+          {MOB_NAV.slice(2).map(({ path, label, icon }) => (
             <button key={path} className={`mira-mob-btn${on(path) ? ' active' : ''}`} onClick={() => navigate(path)}>
-              <Icon style={{ width: 22, height: 22, stroke: on(path) ? '#2563EB' : '#9CA3AF' }} strokeWidth={on(path) ? 2.2 : 1.7} />
+              <MiraIcon name={icon} size={28} />
               {label}
             </button>
           ))}

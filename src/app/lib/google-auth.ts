@@ -1,11 +1,18 @@
 /**
  * google-auth — "Masuk / Daftar dengan Google" helpers
  * ─────────────────────────────────────────────────────────────────────
- * Supabase Auth's Google provider in the implicit flow (plain redirect, no
- * supabase-js). /auth/callback stores the returned tokens as the login
- * session (lib/auth.ts) and asks the `auth-account` Edge Function which
- * MIRA account they belong to; the app session is still `mira_phone` /
- * `mira_user` in localStorage.
+ * Primary: Google Identity Services (the official "Sign in with Google"
+ * button) running on our own origin, so Google's account chooser says
+ * "to continue to halo-mira.com" instead of the Supabase project URL. The
+ * Google ID token is exchanged for a Supabase session (lib/auth.ts
+ * googleIdTokenSignIn). Requires the site origins in the OAuth client's
+ * "Authorized JavaScript origins" (Google Cloud Console).
+ *
+ * Fallback (GIS script blocked / fails to load): Supabase Auth's Google
+ * provider in the implicit flow (plain redirect). /auth/callback stores the
+ * returned tokens as the login session and asks the `auth-account` Edge
+ * Function which MIRA account they belong to; the app session is still
+ * `mira_phone` / `mira_user` in localStorage.
  *
  * Every Google entry point must be hidden unless isGoogleEnabled()
  * resolves true (Supabase → Auth → Providers → Google switched on).
@@ -15,7 +22,41 @@
 export const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 export const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
 
+/** Same OAuth client as Supabase's Google provider (public value). */
+export const GOOGLE_CLIENT_ID = '262029266718-ilql82ck7h4d0re4h734jfahpnk13tri.apps.googleusercontent.com';
+
 export type GoogleIntent = 'login' | 'signup';
+
+/* ── Google Identity Services ────────────────────────────────────── */
+
+let gisPromise: Promise<any> | null = null;
+
+/** Loads https://accounts.google.com/gsi/client once; rejects after 8s. */
+export function loadGis(): Promise<any> {
+  const w = window as any;
+  if (w.google?.accounts?.id) return Promise.resolve(w.google);
+  if (!gisPromise) {
+    gisPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      const timer = setTimeout(() => reject(new Error('gis_timeout')), 8000);
+      s.onload = () => { clearTimeout(timer); w.google?.accounts?.id ? resolve(w.google) : reject(new Error('gis_missing')); };
+      s.onerror = () => { clearTimeout(timer); reject(new Error('gis_load_failed')); };
+      document.head.appendChild(s);
+    }).catch((e) => { gisPromise = null; throw e; });
+  }
+  return gisPromise;
+}
+
+/** Raw nonce for Supabase + its SHA-256 (hex) for Google. */
+export async function createNonce(): Promise<{ raw: string; hashed: string }> {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const raw = btoa(String.fromCharCode(...bytes)).replace(/[^a-zA-Z0-9]/g, '');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  const hashed = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return { raw, hashed };
+}
 
 const INTENT_KEY  = 'mira_google_intent';
 const ENABLED_KEY = 'mira_google_enabled';

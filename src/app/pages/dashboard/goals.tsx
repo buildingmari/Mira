@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Target, Calendar, TrendingUp, X, Check, RotateCcw } from 'lucide-react';
+import { Plus, Calendar, TrendingUp, X, Check, RotateCcw } from 'lucide-react';
+import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -225,12 +226,12 @@ export function DashboardGoals() {
       {/* Stats */}
       <div className="gl-stats">
         {[
-          { label: 'Total Goals',     val: String(goals.length), icon: '🎯', sub: 'active goals' },
-          { label: 'Total Target',    val: fmt(totalTarget),     icon: '📈', sub: 'target amount' },
-          { label: 'Total Terkumpul', val: fmt(totalCurrent),    icon: '💰', sub: 'current savings' },
+          { label: 'Total Goals',     val: String(goals.length), icon: 'target' as IconName,  sub: 'active goals' },
+          { label: 'Total Target',    val: fmt(totalTarget),     icon: 'growth' as IconName,  sub: 'target amount' },
+          { label: 'Total Terkumpul', val: fmt(totalCurrent),    icon: 'piggy' as IconName,   sub: 'current savings' },
         ].map(({ label, val, icon }) => (
           <div key={label} style={{ ...CARD, padding: '18px 20px' }}>
-            <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name={icon} size={40} /></div>
             <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</div>
             <div style={{ fontSize: 12, color: '#6B7280' }}>{label}</div>
           </div>
@@ -242,7 +243,7 @@ export function DashboardGoals() {
         <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingTop: 40 }}>Memuat goals...</p>
       ) : goals.length === 0 ? (
         <div style={{ textAlign: 'center', paddingTop: 60, color: '#6B7280' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🎯</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="target" size={72} /></div>
           <p style={{ fontSize: 14, marginBottom: 20 }}>Belum ada goal. Mulai dengan menambahkan target pertama kamu!</p>
           <button onClick={() => setShowModal(true)}
             style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
@@ -315,8 +316,9 @@ export function DashboardGoals() {
 
                   {/* Status */}
                   <div style={{ background: done ? '#F0FDF4' : mn > 5000000 ? '#FFF1F2' : '#EFF6FF', borderRadius: 10, padding: '10px 12px' }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: done ? '#065F46' : mn > 5000000 ? '#DC2626' : '#1D4ED8' }}>
-                      {done ? '🎉 Goal tercapai! Selamat!' : mn > 5000000 ? '⚠️ Target bulanan tinggi — pertimbangkan adjust deadline' : '✨ On track! Keep going!'}
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: done ? '#065F46' : mn > 5000000 ? '#DC2626' : '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <MiraIcon name={done ? 'trophy' : mn > 5000000 ? 'warn' : 'sparkle'} size={24} tile={false} />
+                      {done ? 'Goal tercapai! Selamat!' : mn > 5000000 ? 'Target bulanan tinggi — pertimbangkan adjust deadline' : 'On track! Keep going!'}
                     </p>
                   </div>
 
@@ -373,7 +375,7 @@ export function DashboardGoals() {
       {/* Tips */}
       <div style={{ ...CARD, padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <Target style={{ width: 16, height: 16, color: '#2563EB' }} />
+          <MiraIcon name="bulb" size={30} />
           <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827' }}>Tips Mencapai Goal</span>
         </div>
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>

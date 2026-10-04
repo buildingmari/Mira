@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban, SlidersHorizontal } from 'lucide-react';
 import { compressImage } from '../lib/image';
 import { useVoiceRecorder, fmtSeconds } from '../lib/voice';
+import { MiraIcon } from './icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -131,7 +132,7 @@ export function MiraChat() {
         const loaded: ChatMsg[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
           id: r.id,
           from: r.direction,
-          text: r.content || (r.message_type === 'image' ? '📷 Foto' : r.message_type === 'audio' ? '🎤 Voice note' : undefined),
+          text: r.content || (r.message_type === 'image' ? 'Foto' : r.message_type === 'audio' ? 'Voice note' : undefined),
         }));
 
         if (awaiting) {
@@ -202,14 +203,14 @@ export function MiraChat() {
       if (res.status === 404) {
         setMessages((m) => m.map((msg) => msg.id === placeholderId ? {
           ...msg, pending: false, error: true,
-          text: 'Chat AI di web app belum aktif — masih dalam pengembangan. Sementara pakai WhatsApp MIRA ya 🙏',
+          text: 'Chat MIRA lagi nggak bisa dihubungi. Coba lagi beberapa saat ya.',
         } : msg));
         return;
       }
       if (res.status === 503) {
         setMessages((m) => m.map((msg) => msg.id === placeholderId ? {
           ...msg, pending: false, error: true,
-          text: 'Chat AI lagi disiapkan di sisi server, bentar lagi aktif. Sementara pakai WhatsApp MIRA ya 🙏',
+          text: 'Chat MIRA lagi disiapkan di server. Coba lagi beberapa saat ya.',
         } : msg));
         return;
       }
@@ -288,7 +289,7 @@ export function MiraChat() {
       <div className="mirac-log">
         {!loadingHistory && messages.length === 0 && (
           <div className="mirac-empty">
-            <div style={{ fontSize: 36, marginBottom: 10 }}>💬</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}><MiraIcon name="buddy-happy" size={64} /></div>
             <p style={{ fontSize: 13.5, fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>Chat sama MIRA</p>
             <p style={{ fontSize: 12.5, margin: 0, maxWidth: 280 }}>
               Catat pengeluaran, kirim foto struk, rekam voice note, atau split bill bareng teman — tinggal ketik aja.

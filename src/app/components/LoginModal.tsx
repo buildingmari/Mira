@@ -15,6 +15,7 @@ import {
   WHATSAPP_AUTH_ENABLED, authAccount, clearAuthSession, emailSignIn, requestPasswordReset,
   resendConfirmation, saveMiraSession, setAuthSession,
 } from '../lib/auth';
+import type { AuthSession } from '../lib/auth';
 import './LoginModal.css';
 
 interface Props { isOpen: boolean; onClose: () => void; onSignup?: () => void; }
@@ -80,9 +81,15 @@ export function LoginModal({ isOpen, onClose, onSignup }: Props) {
       setCanResend('unconfirmed' in r && !!r.unconfirmed);
       return;
     }
-    setAuthSession(r.session);
-    setLoadTxt('Membuka akun MIRA...');
-    const a = await authAccount({ op: 'resolve', access_token: r.session.access_token });
+    await finishLogin(r.session);
+  };
+
+  /** Login proven (email or Google) → open the MIRA account it owns. */
+  const finishLogin = async (session: AuthSession) => {
+    setAuthSession(session);
+    if (session.email) setEmail(session.email);
+    setStep('loading'); setLoadTxt('Membuka akun MIRA...');
+    const a = await authAccount({ op: 'resolve', access_token: session.access_token });
     if (a.data?.status === 'linked' && a.data.phone) {
       saveMiraSession(String(a.data.phone), a.data.user);
       close();
@@ -286,7 +293,14 @@ export function LoginModal({ isOpen, onClose, onSignup }: Props) {
           {step === 'email' && <>
             {googleEnabled && <>
               <div style={{ marginTop: 6 }}>
-                <GoogleButton label="Masuk dengan Google" onClick={() => startGoogleAuth('login')} />
+                {isOpen && (
+                  <GoogleButton
+                    label="Masuk dengan Google"
+                    onClick={() => startGoogleAuth('login')}
+                    onSession={finishLogin}
+                    onError={(m) => setErr(m)}
+                  />
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 14px' }}>
                 <span style={{ flex: 1, height: 1, background: '#E2E8F0' }} />

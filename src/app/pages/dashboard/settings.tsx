@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { User, Wallet, Bell, Shield, Save, AlertTriangle, Check, PiggyBank, CreditCard } from 'lucide-react';
+import { Save, AlertTriangle, Check } from 'lucide-react';
 import { clearAuthSession } from '../../lib/auth';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -256,7 +257,7 @@ export function DashboardSettings() {
       {/* Profile */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <User style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="user" size={30} />
           <h3>Informasi Profil</h3>
         </div>
         <div className="set-card-body">
@@ -280,7 +281,7 @@ export function DashboardSettings() {
       {/* Ratio Tabungan — SLIDER */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <PiggyBank style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="scale" size={30} />
           <h3>Ratio Tabungan vs Pengeluaran</h3>
         </div>
         <div className="set-card-body">
@@ -306,8 +307,8 @@ export function DashboardSettings() {
 
             {/* Dual label */}
             <div className="savings-ratio-labels">
-              <span style={{ color: '#2563EB', fontWeight: 600 }}>💰 Tabungan {savingsRatio}%</span>
-              <span style={{ color: '#6B7280' }}>💸 Pengeluaran {spendRatio}%</span>
+              <span style={{ color: '#2563EB', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}><MiraIcon name="piggy" size={22} tile={false} />Tabungan {savingsRatio}%</span>
+              <span style={{ color: '#6B7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}><MiraIcon name="cart" size={22} tile={false} />Pengeluaran {spendRatio}%</span>
             </div>
 
             {/* Visual split bar */}
@@ -359,7 +360,7 @@ export function DashboardSettings() {
       {/* Bank Aktif */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="bank" size={30} />
           <h3>Bank Aktif</h3>
         </div>
         <div className="set-card-body">
@@ -379,7 +380,7 @@ export function DashboardSettings() {
       {/* E-Wallet */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <Wallet style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="phone-wallet" size={30} />
           <h3>E-Wallet Aktif</h3>
         </div>
         <div className="set-card-body">
@@ -399,7 +400,7 @@ export function DashboardSettings() {
       {/* Paylater / Kartu Kredit */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <CreditCard style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="card" size={30} />
           <h3>Paylater & Kartu Kredit</h3>
         </div>
         <div className="set-card-body">
@@ -419,7 +420,7 @@ export function DashboardSettings() {
       {/* Notifikasi */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <Bell style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="bell" size={30} />
           <h3>Notifikasi</h3>
         </div>
         <div className="set-card-body">
@@ -442,7 +443,7 @@ export function DashboardSettings() {
       {/* Privasi */}
       <div className="set-card">
         <div className="set-card-hdr">
-          <Shield style={{ width: 15, height: 15, color: '#6B7280', flexShrink: 0 }} />
+          <MiraIcon name="shield" size={30} />
           <h3>Keamanan & Privasi</h3>
         </div>
         <div className="set-card-body">
@@ -472,7 +473,7 @@ export function DashboardSettings() {
 
       <div className="set-card" style={{ border: '1px solid rgba(239,68,68,0.3)' }}>
         <div className="set-card-hdr">
-          <AlertTriangle style={{ width: 15, height: 15, color: '#EF4444', flexShrink: 0 }} />
+          <MiraIcon name="alert" size={30} />
           <h3 style={{ color: '#EF4444' }}>Danger Zone</h3>
         </div>
         <div className="set-card-body">

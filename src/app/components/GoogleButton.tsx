@@ -1,15 +1,23 @@
 /**
- * GoogleButton — white pill "Masuk / Daftar dengan Google" button
- * Only render it when useGoogleEnabled() is true (provider switched on).
+ * GoogleButton — "Masuk / Daftar dengan Google"
+ *
+ * With `onSession`, renders Google's own Sign in with Google button (Google
+ * Identity Services) on our origin — the account chooser then says "to
+ * continue to halo-mira.com" — and hands back a Supabase session. If the GIS
+ * script can't load, it falls back to our pill button calling `onClick`
+ * (the Supabase redirect flow). Only render it when useGoogleEnabled() is true.
  */
-import { useEffect, useState } from 'react';
-import { isGoogleEnabled, peekGoogleEnabled } from '../lib/google-auth';
+import { useEffect, useRef, useState } from 'react';
+import { GOOGLE_CLIENT_ID, createNonce, isGoogleEnabled, loadGis, peekGoogleEnabled } from '../lib/google-auth';
+import { googleIdTokenSignIn } from '../lib/auth';
+import type { AuthSession } from '../lib/auth';
 
 const GBTN_CSS = `
   .mira-gbtn { transition: background .2s, border-color .2s, box-shadow .2s, transform .1s; }
   .mira-gbtn:not(:disabled):hover { background: #F8FAFC !important; border-color: #CBD5E1 !important; box-shadow: 0 2px 10px rgba(15,23,42,.06); }
   .mira-gbtn:not(:disabled):active { transform: scale(.98); }
   .mira-gbtn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(45,75,255,.18); }
+  .mira-gis { display: flex; justify-content: center; min-height: 44px; }
 `;
 
 export function GoogleIcon({ size = 18 }: { size?: number }) {
@@ -25,11 +33,84 @@ export function GoogleIcon({ size = 18 }: { size?: number }) {
 
 interface GoogleButtonProps {
   label: string;
+  /** Redirect fallback (also used when `onSession` isn't given). */
   onClick: () => void;
+  /** GIS mode: called with the Supabase session after Google sign-in. */
+  onSession?: (session: AuthSession) => void;
+  onError?: (message: string) => void;
+  mode?: 'signin' | 'signup';
   disabled?: boolean;
 }
 
-export function GoogleButton({ label, onClick, disabled = false }: GoogleButtonProps) {
+export function GoogleButton({ label, onClick, onSession, onError, mode = 'signin', disabled = false }: GoogleButtonProps) {
+  const slot = useRef<HTMLDivElement>(null);
+  const [gis, setGis] = useState<'loading' | 'ready' | 'failed'>(onSession ? 'loading' : 'failed');
+  const [busy, setBusy] = useState(false);
+  // Latest callbacks without re-rendering Google's button on every render.
+  const cb = useRef({ onSession, onError });
+  cb.current = { onSession, onError };
+
+  useEffect(() => {
+    if (!onSession) return;
+    let alive = true;
+    (async () => {
+      try {
+        const google = await loadGis();
+        const nonce = await createNonce();
+        if (!alive || !slot.current) return;
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          nonce: nonce.hashed,
+          ux_mode: 'popup',
+          context: mode === 'signup' ? 'signup' : 'signin',
+          itp_support: true,
+          callback: async (resp: { credential?: string }) => {
+            if (!resp?.credential) return;
+            setBusy(true);
+            const r = await googleIdTokenSignIn(resp.credential, nonce.raw);
+            setBusy(false);
+            if (r.session) cb.current.onSession?.(r.session);
+            else cb.current.onError?.(r.error || 'Gagal masuk dengan Google. Coba lagi ya.');
+          },
+        });
+        const width = Math.max(220, Math.min(400, Math.round(slot.current.getBoundingClientRect().width || 320)));
+        slot.current.innerHTML = '';
+        google.accounts.id.renderButton(slot.current, {
+          type: 'standard', theme: 'outline', size: 'large', shape: 'pill',
+          text: mode === 'signup' ? 'signup_with' : 'signin_with',
+          logo_alignment: 'center', width, locale: 'id',
+        });
+        setGis('ready');
+        // Google's iframe only becomes visible when this origin is allowed for
+        // the client ID (Authorized JavaScript origins). Otherwise a dead
+        // placeholder stays — fall back to the redirect flow instead.
+        for (let i = 0; i < 40 && alive; i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          const frame = slot.current?.querySelector('iframe');
+          if (frame && frame.getBoundingClientRect().height > 0) return;
+        }
+        if (alive) setGis('failed');
+      } catch {
+        if (alive) setGis('failed');
+      }
+    })();
+    return () => { alive = false; };
+  }, [mode, !!onSession]);
+
+  if (gis !== 'failed') {
+    return (
+      <>
+        <style>{GBTN_CSS}</style>
+        <div style={{ position: 'relative', opacity: busy || disabled ? 0.6 : 1, pointerEvents: busy || disabled ? 'none' : undefined }}>
+          <div ref={slot} className="mira-gis" />
+          {gis === 'loading' && (
+            <div style={{ position: 'absolute', inset: 0, borderRadius: 100, border: '1.5px solid #E2E8F0', background: '#fff' }} />
+          )}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <style>{GBTN_CSS}</style>

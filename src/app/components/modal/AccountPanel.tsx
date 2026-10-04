@@ -68,6 +68,8 @@ interface AccountPanelProps {
   affiliateReferrerPhone: string;
   answers: Record<string, any>;
   onBack: () => void;
+  /** Modal is open — Google's button is only rendered while visible. */
+  active?: boolean;
 }
 
 type Mode = 'signup' | 'login';
@@ -82,7 +84,7 @@ const Spinner = () => (
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function AccountPanel(props: AccountPanelProps) {
-  const { selectedPlan, selectedDuration, voucherDiscount, activeVoucher, affiliateReferrerPhone, answers, onBack } = props;
+  const { selectedPlan, selectedDuration, voucherDiscount, activeVoucher, affiliateReferrerPhone, answers, onBack, active = true } = props;
   const navigate = useNavigate();
   const googleEnabled = useGoogleEnabled();
 
@@ -383,9 +385,15 @@ export function AccountPanel(props: AccountPanelProps) {
       ) : (
         /* ── Not signed in: Google or email + password ── */
         <>
-          {googleEnabled && (
+          {googleEnabled && active && (
             <>
-              <GoogleButton label={mode === 'signup' ? 'Daftar dengan Google' : 'Masuk dengan Google'} onClick={handleGoogle} />
+              <GoogleButton
+                label={mode === 'signup' ? 'Daftar dengan Google' : 'Masuk dengan Google'}
+                mode={mode === 'signup' ? 'signup' : 'signin'}
+                onClick={handleGoogle}
+                onSession={signedIn}
+                onError={setErrorMsg}
+              />
               <div className="acp-or">atau pakai email</div>
             </>
           )}

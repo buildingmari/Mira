@@ -13,7 +13,7 @@ export function Footer() {
           <div className="footer-logo">MIRA</div>
           <div className="footer-tagline">#SemuaMudah</div>
           <p className="footer-desc">
-            Asisten keuangan pribadi berbasis WhatsApp. Catat, analisis, dan kelola keuangan harianmu — tanpa download aplikasi baru.
+            Asisten keuangan pribadi berbasis AI. Catat, analisis, dan kelola keuangan harianmu langsung dari browser — tanpa download aplikasi baru.
           </p>
           <div className="footer-social">
             <a href="https://instagram.com/getmira.id" target="_blank" rel="noopener noreferrer" className="footer-social-btn" aria-label="Instagram">

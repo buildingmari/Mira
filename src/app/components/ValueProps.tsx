@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import './ValueProps.css';
+import { MiraIcon } from './icons/MiraIcon';
 
 export function ValueProps() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -32,14 +33,14 @@ export function ValueProps() {
         <div className="kenapa-intro vp-reveal">
           <h2 className="kenapa-intro-hl">
             <strong>Solusi simpel untuk pembukuan harian.</strong>{' '}
-            Kelola pengeluaran, pantau tren, dan ekspor laporan — semua dari WhatsApp yang sudah ada di HP kamu.
+            Catat pengeluaran, pantau tren, dan ekspor laporan — semua dari browser di HP atau laptop kamu, tanpa install aplikasi.
           </h2>
         </div>
 
         {/* ── Row 1: Large card (chat demo) + Dashboard card ── */}
         <div className="kenapa-grid-top vp-reveal">
 
-          {/* Card 1 — Catat via WA (large) */}
+          {/* Card 1 — Catat via Chat MIRA (large) */}
           <div className="kcard">
             <div className="kcard-top kcard-top-chat">
               {/* gradient wash */}
@@ -48,13 +49,15 @@ export function ValueProps() {
               }} />
               <div className="kcard-top-content">
                 <div className="kcard-chat-demo">
-                  <div className="kcd-bubble kcd-user">Makan siang 45rb gopay 🍜</div>
-                  <div className="kcd-bubble kcd-bot">
-                    ✅ <strong>Makan Siang</strong> · Rp45.000 · GoPay
+                  <div className="kcd-bubble kcd-user">Makan siang 45rb gopay</div>
+                  <div className="kcd-bubble kcd-bot" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MiraIcon name="check-badge" size={20} tile={false} />
+                    <span><strong>Makan Siang</strong> · Rp45.000 · GoPay</span>
                   </div>
-                  <div className="kcd-bubble kcd-user">Foto struk alfamart 📷</div>
-                  <div className="kcd-bubble kcd-bot">
-                    ✅ <strong>Belanja</strong> · Rp127.500 · Tunai
+                  <div className="kcd-bubble kcd-user">(kirim foto struk Alfamart)</div>
+                  <div className="kcd-bubble kcd-bot" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MiraIcon name="check-badge" size={20} tile={false} />
+                    <span><strong>Belanja</strong> · Rp127.500 · Tunai</span>
                   </div>
                 </div>
               </div>
@@ -62,7 +65,7 @@ export function ValueProps() {
             <div className="kcard-body">
               <span className="kcard-tag">Catat</span>
               <div className="kcard-title">Catat transaksi via chat, foto, atau suara</div>
-              <div className="kcard-desc">Tinggal kirim pesan ke MIRA. Tidak perlu buka aplikasi lain atau isi form apapun.</div>
+              <div className="kcard-desc">Tinggal ketik ke Chat MIRA, foto struk, atau rekam voice note. Tanpa isi form panjang.</div>
             </div>
           </div>
 
@@ -118,12 +121,12 @@ export function ValueProps() {
                 opacity: 0.08
               }} />
               <div className="kchips-wrap">
-                <span className="kchip kchip-green">🍜 Makan</span>
-                <span className="kchip kchip-blue">🚗 Transport</span>
-                <span className="kchip kchip-orange">🛍️ Belanja</span>
-                <span className="kchip kchip-red">💡 Tagihan</span>
-                <span className="kchip kchip-blue">💊 Kesehatan</span>
-                <span className="kchip kchip-blue">✈️ Liburan</span>
+                {([['noodles', 'Makan', 'kchip-green'], ['scooter', 'Transport', 'kchip-blue'], ['shopping-bag', 'Belanja', 'kchip-orange'],
+                   ['bulb', 'Tagihan', 'kchip-red'], ['health', 'Kesehatan', 'kchip-blue'], ['plane', 'Liburan', 'kchip-blue']] as const).map(([icon, label, cls]) => (
+                  <span key={label} className={`kchip ${cls}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <MiraIcon name={icon} size={20} tile={false} />{label}
+                  </span>
+                ))}
               </div>
             </div>
             <div className="kcard-body">

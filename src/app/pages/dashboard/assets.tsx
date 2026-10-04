@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Briefcase, Plus, X, Banknote, TrendingUp, Car, Home, Receipt } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -23,7 +24,7 @@ export const ASSET_GROUPS = [
   {
     key: 'cash',
     label: 'Uang & Setara Uang',
-    icon: Banknote,
+    icon: 'cash',
     color: '#2563EB',
     bg: '#EFF6FF',
     subtypes: ['Tabungan', 'Deposito', 'Kas', 'Cash'],
@@ -32,7 +33,7 @@ export const ASSET_GROUPS = [
   {
     key: 'piutang',
     label: 'Piutang',
-    icon: Receipt,
+    icon: 'duo',
     color: '#D97706',
     bg: '#FFFBEB',
     subtypes: ['Piutang'],
@@ -41,7 +42,7 @@ export const ASSET_GROUPS = [
   {
     key: 'investasi',
     label: 'Surat Berharga / Investasi',
-    icon: TrendingUp,
+    icon: 'candles',
     color: '#059669',
     bg: '#ECFDF5',
     subtypes: ['Saham', 'Reksa Dana', 'Obligasi', 'Kripto', 'Emas', 'Reksadana', 'ETF', 'SBN'],
@@ -50,7 +51,7 @@ export const ASSET_GROUPS = [
   {
     key: 'aset_bergerak',
     label: 'Aset Bergerak',
-    icon: Car,
+    icon: 'car',
     color: '#7C3AED',
     bg: '#F5F3FF',
     subtypes: ['Kendaraan', 'Mobil', 'Motor', 'Kendaraan Bermotor'],
@@ -59,7 +60,7 @@ export const ASSET_GROUPS = [
   {
     key: 'aset_tidak_bergerak',
     label: 'Aset Tidak Bergerak',
-    icon: Home,
+    icon: 'house',
     color: '#DB2777',
     bg: '#FDF2F8',
     subtypes: ['Properti', 'Rumah', 'Tanah', 'Apartemen', 'Ruko'],
@@ -68,7 +69,7 @@ export const ASSET_GROUPS = [
   {
     key: 'lainnya',
     label: 'Lainnya',
-    icon: Briefcase,
+    icon: 'briefcase',
     color: '#6B7280',
     bg: '#F1F4F8',
     subtypes: ['Lainnya', 'Others'],
@@ -251,7 +252,7 @@ export function DashboardAssets() {
         <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingTop: 40 }}>Memuat aset...</p>
       ) : assets.length === 0 ? (
         <div style={{ textAlign: 'center', paddingTop: 60, color: '#6B7280' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>💼</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="gem" size={72} /></div>
           <p style={{ fontSize: 14, marginBottom: 20 }}>Belum ada aset. Mulai catat aset pertama kamu!</p>
           <button onClick={() => setShowModal(true)}
             style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
@@ -261,7 +262,6 @@ export function DashboardAssets() {
       ) : (
         <div>
           {grouped.map(group => {
-            const Icon = group.icon;
             const isOpen = !collapsed[group.key];
             const pct = totalAssets > 0 ? (group.subtotal / totalAssets) * 100 : 0;
             return (
@@ -269,9 +269,7 @@ export function DashboardAssets() {
                 {/* Group header */}
                 <div className="ast-group-hdr" onClick={() => toggleGroup(group.key)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 9, background: group.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon style={{ width: 17, height: 17, color: group.color }} />
-                    </div>
+                    <MiraIcon name={group.icon} size={38} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', fontFamily: "'Sora',sans-serif" }}>{group.label}</div>
                       <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{group.items.length} aset · {pct.toFixed(1)}% dari total</div>

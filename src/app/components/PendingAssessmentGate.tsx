@@ -9,6 +9,7 @@ import { AssessmentPanel } from './modal/AssessmentPanel';
 import { OutcomesPanel } from './modal/OutcomesPanel';
 import { calcScore, getIncomeMonthly } from './modal/scoring';
 import logo from 'figma:asset/8799174486cc1173a37d30ea2d006df3d31bf14e.png';
+import { MiraIcon } from './icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -383,7 +384,7 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
                 margin: '0 auto 28px',
                 boxShadow: '0 12px 40px rgba(45,75,255,0.28)',
               }}>
-                <span style={{ fontSize: 36 }}>🎉</span>
+                <MiraIcon name="sparkle" size={56} tile={false} />
               </div>
 
               {/* Judul */}
@@ -417,7 +418,7 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
                     fontFamily: "'Sora', sans-serif", fontSize: '1.05rem',
                     fontWeight: 800, color: '#1E40AF',
                   }}>
-                    ⭐ {user.plan_name}
+                    {user.plan_name}
                   </div>
                   {user.expiry && (
                     <div style={{ fontSize: '.8rem', color: '#64748B' }}>
@@ -497,10 +498,10 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
   // ── Outcomes / Skor Screen ────────────────────────────────────────────────────
   if (screen === 'outcomes') {
     const ctaLabel = submitState === 'pending'
-      ? '⏳ Menyimpan data…'
+      ? 'Menyimpan data…'
       : submitState === 'error'
-      ? '⚠️ Gagal simpan — Coba lagi & Masuk Dashboard'
-      : '🚀 Masuk ke Dashboard →';
+      ? 'Gagal simpan — Coba lagi & Masuk Dashboard'
+      : 'Masuk ke Dashboard →';
 
     return (
       <>
@@ -517,21 +518,21 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
               fontFamily: "'Sora', sans-serif", fontWeight: 700,
               fontSize: '.9rem', color: '#0F172A', flex: 1,
             }}>
-              📊 Hasil Kesehatan Finansialmu
+              Hasil Kesehatan Finansialmu
             </span>
             {submitState === 'pending' && (
               <span style={{ fontSize: '.75rem', color: '#64748B', background: '#F1F5F9', borderRadius: 99, padding: '3px 10px' }}>
-                ⏳ Menyimpan…
+                Menyimpan…
               </span>
             )}
             {submitState === 'done' && (
               <span style={{ fontSize: '.75rem', color: '#16A34A', background: '#F0FDF4', borderRadius: 99, padding: '3px 10px' }}>
-                ✅ Tersimpan
+                Tersimpan
               </span>
             )}
             {submitState === 'error' && (
               <span style={{ fontSize: '.75rem', color: '#DC2626', background: '#FEF2F2', borderRadius: 99, padding: '3px 10px' }}>
-                ❌ Gagal simpan
+                Gagal simpan
               </span>
             )}
           </div>
@@ -568,13 +569,13 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
               margin: '0 auto 20px',
               boxShadow: '0 12px 36px rgba(45,75,255,0.3)',
             }}>
-              <span style={{ fontSize: 36 }}>✅</span>
+              <MiraIcon name="check-badge" size={56} tile={false} />
             </div>
             <h2 style={{
               fontFamily: "'Sora', sans-serif", fontWeight: 800,
               fontSize: '1.4rem', color: '#0F172A', margin: '0 0 10px',
             }}>
-              Yeay, selesai! 🎉
+              Yeay, selesai!
             </h2>
             <p style={{ fontSize: '.9rem', color: '#64748B', margin: '0 0 6px' }}>
               Membuka dashboard…
@@ -591,7 +592,7 @@ export function PendingAssessmentGate({ phone, user, onComplete }: Props) {
       <style>{GATE_CSS}</style>
       <div style={{ ...wrapStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', padding: 32, maxWidth: 360 }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>⚠️</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="warn" size={72} /></div>
           <h2 style={{
             fontFamily: "'Sora', sans-serif", fontWeight: 700,
             fontSize: '1.15rem', color: '#0F172A', margin: '0 0 10px',

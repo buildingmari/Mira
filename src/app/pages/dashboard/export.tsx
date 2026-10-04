@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { Download, FileText, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
+import { Download, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -414,9 +415,7 @@ export function DashboardExport() {
       <div className="exp-grid3">
         {/* Excel — All data */}
         <div className="exp-qcard">
-          <div className="exp-icon-box" style={{ background: '#F0FDF4' }}>
-            <FileSpreadsheet style={{ width: 22, height: 22, color: '#16A34A' }} />
-          </div>
+          <div style={{ marginBottom: 12 }}><MiraIcon name="report" size={44} /></div>
           <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#111827' }}>Excel (.xlsx)</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>Semua transaksi — format Excel dengan 4 sheet</div>
           <button
@@ -432,9 +431,7 @@ export function DashboardExport() {
 
         {/* CSV — All data */}
         <div className="exp-qcard">
-          <div className="exp-icon-box">
-            <FileText style={{ width: 22, height: 22, color: '#2563EB' }} />
-          </div>
+          <div style={{ marginBottom: 12 }}><MiraIcon name="receipt" size={44} /></div>
           <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#111827' }}>CSV</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>Semua transaksi — .csv format</div>
           <button
@@ -449,9 +446,7 @@ export function DashboardExport() {
 
         {/* 90 days */}
         <div className="exp-qcard">
-          <div className="exp-icon-box" style={{ background: '#FDF4FF' }}>
-            <Filter style={{ width: 22, height: 22, color: '#9333EA' }} />
-          </div>
+          <div style={{ marginBottom: 12 }}><MiraIcon name="calendar-check" size={44} /></div>
           <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, marginBottom: 4, color: '#111827' }}>3 Bulan Terakhir</div>
           <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>90 hari terakhir — Excel</div>
           <button

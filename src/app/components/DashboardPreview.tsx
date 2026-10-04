@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import './DashboardPreview.css';
+import { MiraIcon } from './icons/MiraIcon';
 
 interface DashboardPreviewProps {
   onCTAClick: () => void;
@@ -64,21 +65,23 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
         {/* ── CTA strip ── */}
         <div className="dbprev-cta-strip">
           <div className="dbprev-cta-info">
-            <div className="dbprev-cta-badge">🚀 Mulai Hari Ini</div>
+            <div className="dbprev-cta-badge">Mulai Hari Ini</div>
             <h3>Chat biasa →<br />laporan langsung jadi</h3>
             <p>
               Kirim "makan siang 45rb gopay" ke MIRA —<br />
               langsung tercatat, terkategorisasi, dan masuk laporan.
             </p>
             <ul className="dbprev-cta-list">
-              <li>✅ Tanpa input manual yang ribet</li>
-              <li>✅ Bisa kirim foto struk &amp; voice note</li>
-              <li>✅ Laporan Excel otomatis setiap bulan</li>
+              {['Tanpa input manual yang ribet', 'Bisa kirim foto struk & voice note', 'Laporan Excel otomatis setiap bulan'].map((t) => (
+                <li key={t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <MiraIcon name="check-badge" size={22} tile={false} />{t}
+                </li>
+              ))}
             </ul>
             <button className="btn btn-lg" onClick={onCTAClick}>
               Coba Gratis Sekarang →
             </button>
-            <p className="dbprev-cta-note">Tanpa download aplikasi · Langsung aktif</p>
+            <p className="dbprev-cta-note">Tanpa download aplikasi · Langsung aktif setelah daftar</p>
           </div>
         </div>
 

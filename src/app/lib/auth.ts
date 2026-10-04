@@ -161,6 +161,13 @@ export async function emailSignIn(email: string, password: string): Promise<Emai
   return { ok: false, error, unconfirmed: /belum dikonfirmasi/.test(error) };
 }
 
+/** Google ID token (from the GIS button) → Supabase session. */
+export async function googleIdTokenSignIn(idToken: string, nonce: string): Promise<{ session: AuthSession | null; error?: string }> {
+  const r = await gotrue('/token?grant_type=id_token', { provider: 'google', id_token: idToken, nonce });
+  const session = r.ok ? sessionFrom(r.data, 'google') : null;
+  return session ? { session } : { session: null, error: authError(r.data, r.status) };
+}
+
 export async function resendConfirmation(email: string): Promise<string | null> {
   const r = await gotrue(`/resend?redirect_to=${encodeURIComponent(callbackUrl())}`, { type: 'signup', email });
   return r.ok ? null : authError(r.data, r.status);

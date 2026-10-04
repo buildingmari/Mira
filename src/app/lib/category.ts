@@ -1,3 +1,5 @@
+import type { IconName } from '../components/icons/MiraIcon';
+
 /**
  * Map a raw `expenses.category` to one of the dashboard's display buckets.
  *
@@ -29,3 +31,10 @@ export function normalizeCategory<F extends string>(raw: string | null | undefin
   for (const [re, bucket] of RULES) if (re.test(c)) return bucket;
   return fallback;
 }
+
+/** MIRA icon per display bucket (Overview / Transaksi / Insight). */
+export const CATEGORY_ICON: Record<string, IconName> = {
+  Makanan: 'noodles', Transport: 'scooter', Belanja: 'shopping-bag', Tagihan: 'bulb',
+  Kesehatan: 'health', Hiburan: 'ticket', Pemasukan: 'cash', Investasi: 'growth',
+  Others: 'sparkle', Lainnya: 'sparkle',
+};

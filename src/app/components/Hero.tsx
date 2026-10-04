@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import './Hero.css';
 import { HeroGradient } from './HeroGradient';
+import { MiraIcon } from './icons/MiraIcon';
 
 interface HeroProps {
   onCTAClick: () => void;
@@ -92,13 +93,13 @@ function IPhoneMockup() {
 
             <div className="mc-row mira">
               <div className="mc-bubble mira">
-                🎧 Gajian Rp7.500.000 masuk ke BCA — udah aku catat ✅
+                Gajian Rp7.500.000 masuk ke BCA — udah aku catat.
                 <div className="mc-total">Pemasukan bulan ini: <strong>Rp7.500.000</strong></div>
               </div>
             </div>
 
             <div className="mc-row user">
-              <div className="mc-bubble user">makan siang 45rb pake gopay, parkir 5rb 🍜</div>
+              <div className="mc-bubble user">makan siang 45rb pake gopay, parkir 5rb</div>
             </div>
 
             <div className="mc-row mira">
@@ -106,12 +107,12 @@ function IPhoneMockup() {
                 Siap, ada 2 pengeluaran nih:
                 <div className="mc-draft">
                   <div className="mc-draft-item">
-                    <span className="mc-draft-ic">🍜</span>
+                    <MiraIcon name="noodles" size={22} />
                     <span className="mc-draft-name">Makan siang<span className="mc-draft-meta">Makanan · GoPay</span></span>
                     <span className="mc-draft-amt">-Rp45.000</span>
                   </div>
                   <div className="mc-draft-item">
-                    <span className="mc-draft-ic">🅿️</span>
+                    <MiraIcon name="scooter" size={22} />
                     <span className="mc-draft-name">Parkir<span className="mc-draft-meta">Transport · GoPay</span></span>
                     <span className="mc-draft-amt">-Rp5.000</span>
                   </div>
@@ -180,7 +181,7 @@ export function Hero({ onCTAClick }: HeroProps) {
         <div className="hero-left">
           <div className="hero-supertitle">
             <span className="supertitle-dot" />
-            Asisten Keuangan AI · Web & WhatsApp
+            Asisten Keuangan AI · Web App
           </div>
 
           <h1>
@@ -207,7 +208,7 @@ export function Hero({ onCTAClick }: HeroProps) {
           </div>
 
           <p className="hero-trust">
-            Tanpa download aplikasi · Bisa lewat web app & WhatsApp
+            Tanpa download aplikasi · Buka dari HP atau laptop
           </p>
         </div>
 

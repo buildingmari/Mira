@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { normalizeCategory } from '../../lib/category';
+import { CATEGORY_ICON, normalizeCategory } from '../../lib/category';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from 'recharts';
@@ -46,11 +47,6 @@ const CAT_BG: Record<string,string> = {
   Makanan:'#FEE2E2', Transport:'#EDE9FE', Belanja:'#FEF3C7',
   Tagihan:'#FEF9C3', Kesehatan:'#D1FAE5', Hiburan:'#FCE7F3',
   Pemasukan:'#D1FAE5', Investasi:'#ECFEFF', Others:'#F1F4F8',
-};
-const CAT_EMOJI: Record<string,string> = {
-  Makanan:'🍜', Transport:'🚗', Belanja:'🛒',
-  Tagihan:'💡', Kesehatan:'❤️', Hiburan:'🎮',
-  Pemasukan:'💰', Investasi:'📈', Others:'✨',
 };
 
 const mapCat = (c: string) => normalizeCategory(c, 'Others');
@@ -159,16 +155,16 @@ export function DashboardOverview() {
 
   if (loading) return (
     <div className="ov-wrap">
-      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} 👋</h1>
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting}</h1>
       <p style={{color:'#6B7280',fontSize:13,marginTop:4}}>Memuat data keuangan...</p>
     </div>
   );
 
   if (txns.length===0) return (
     <div className="ov-wrap">
-      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} 👋</h1>
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting}</h1>
       <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
-        <div style={{fontSize:48,marginBottom:16}}>💰</div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><MiraIcon name="money-bag" size={72} /></div>
         <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat lewat Chat MIRA atau tombol Catat.</p>
       </div>
     </div>
@@ -180,7 +176,7 @@ export function DashboardOverview() {
       {/* greeting */}
       <div style={{marginBottom:20}}>
         <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,letterSpacing:-0.5,color:'#111827'}}>
-          {greeting} 👋
+          {greeting}
         </h1>
         <p style={{color:'#6B7280',fontSize:13,marginTop:3,marginBottom:0}}>
           {new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
@@ -220,7 +216,7 @@ export function DashboardOverview() {
       <div className="ov-three-col">
         <div style={{...CARD,padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'#EFF6FF',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>📈</div>
+            <MiraIcon name="cart" size={40} />
             <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:s.onTrack?'#D1FAE5':'#FEE2E2',color:s.onTrack?'#065F46':'#991B1B'}}>
               {s.onTrack ? '▼' : '▲'} {s.pct.toFixed(0)}%
             </span>
@@ -230,16 +226,14 @@ export function DashboardOverview() {
         </div>
         <div style={{...CARD,padding:'18px 20px'}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}}>
-            <div style={{width:36,height:36,borderRadius:8,background:'#D1FAE5',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>⭐</div>
+            <MiraIcon name="piggy" size={40} />
             <span style={{fontSize:12,padding:'3px 8px',borderRadius:20,fontWeight:500,background:'#D1FAE5',color:'#065F46'}}>▲ {s.goalPct.toFixed(0)}%</span>
           </div>
           <div className="ov-stat-val">{fmt(s.saved)}</div>
           <div style={{fontSize:12,color:'#6B7280'}}>Tabungan est.</div>
         </div>
         <div style={{...CARD,padding:'18px 20px',border:`1px solid ${s.onTrack?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`}}>
-          <div style={{width:36,height:36,borderRadius:8,background:s.onTrack?'#D1FAE5':'#FEE2E2',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,fontSize:18}}>
-            {s.onTrack ? '✅' : '⚠️'}
-          </div>
+          <div style={{marginBottom:12}}><MiraIcon name={s.onTrack ? 'check-badge' : 'warn'} size={40} /></div>
           <div style={{fontFamily:"'Sora',sans-serif",fontSize:16,fontWeight:700,color:s.onTrack?'#065F46':'#991B1B',marginBottom:2}}>{s.onTrack?'On Track':'Over Budget'}</div>
           <div style={{fontSize:12,color:'#6B7280'}}>{s.onTrack?'Sesuai budget':'Melebihi budget'}</div>
         </div>
@@ -308,7 +302,7 @@ export function DashboardOverview() {
               const cat=mapCat(t.category||'');
               const bg=CAT_BG[cat]||'#F1F4F8';
               const clr=CAT_COLOR[cat]||'#6B7280';
-              const emoji=CAT_EMOJI[cat]||'✨';
+              const icon=CATEGORY_ICON[cat]||'sparkle';
               const ds=new Date(t.date).toLocaleDateString('id-ID',{day:'numeric',month:'short'});
               const isIn=t.transaction_type?.toLowerCase()==='income'||cat==='Pemasukan';
               return (
@@ -317,9 +311,7 @@ export function DashboardOverview() {
                   cursor:'pointer',transition:'background .1s'}}
                   onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.background='#F8F9FB';}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.background='';}}>
-                  <div style={{width:40,height:40,borderRadius:8,background:bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>
-                    {emoji}
-                  </div>
+                  <MiraIcon name={icon} size={40} />
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',color:'#111827'}}>
                       {t.merchant||t.item||cat}
@@ -361,7 +353,7 @@ export function DashboardOverview() {
 
       {s.topCat && (
         <div style={{...CARD,padding:'16px 20px',display:'flex',alignItems:'flex-start',gap:12}}>
-          <div style={{width:36,height:36,borderRadius:8,background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>💡</div>
+          <MiraIcon name="bulb" size={40} />
           <div>
             <p style={{fontSize:13,fontWeight:600,marginBottom:4,marginTop:0,color:'#111827'}}>Tips hemat minggu ini</p>
             <p style={{fontSize:13,color:'#6B7280',margin:0,lineHeight:1.5}}>

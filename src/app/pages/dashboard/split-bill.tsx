@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Users, Receipt, Share2, Lock, Send, Trash2, Mic, Square,
+  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Share2, Lock, Send, Trash2, Mic, Square,
 } from 'lucide-react';
 import { compressImage } from '../../lib/image';
 import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../../lib/voice';
 import { SPLIT_PREFILL_KEY } from '../../components/MiraChat';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -335,7 +336,7 @@ export function DashboardSplitBill() {
       <span style={{ fontSize: 12, color: '#6B7280', flex: 1 }}>
         {voice.recording ? 'Ceritain siapa aja & siapa makan apa…'
           : voice.preparing ? 'Nyiapin voice note…'
-          : voiceNote ? `🎤 Voice note ${fmtSeconds(voiceNote.seconds)} siap` : 'atau ceritain pakai suara'}
+          : voiceNote ? `Voice note ${fmtSeconds(voiceNote.seconds)} siap` : 'atau ceritain pakai suara'}
       </span>
       {voiceNote && !voice.recording && (
         <button className="sb-icon" onClick={() => setVoiceNote(null)} title="Hapus voice note"><X size={15} /></button>
@@ -487,7 +488,7 @@ export function DashboardSplitBill() {
       {/* ── Start: scan / story / manual ── */}
       {!draft && (
         <div className="sb-card">
-          <div className="sb-card-hd"><h3><Users size={16} color="#2563EB" /> Split bill baru</h3></div>
+          <div className="sb-card-hd"><h3><MiraIcon name="duo" size={28} /> Split bill baru</h3></div>
           <div className="sb-card-bd">
             <div className="sb-tabs">
               <button className={`sb-tab${tab === 'scan' ? ' on' : ''}`} onClick={() => setTab('scan')}>
@@ -507,7 +508,7 @@ export function DashboardSplitBill() {
                   {photo ? (
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
                       <img src={photo} alt="Struk" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 10, border: '1px solid rgba(0,0,0,0.08)' }} />
-                      <div style={{ flex: 1, fontSize: 13, color: '#6B7280' }}>Struk siap dibaca MIRA ✨</div>
+                      <div style={{ flex: 1, fontSize: 13, color: '#6B7280' }}>Struk siap dibaca MIRA</div>
                       <button className="sb-icon" onClick={() => setPhoto(null)} title="Hapus foto"><X size={16} /></button>
                     </div>
                   ) : (
@@ -559,7 +560,7 @@ export function DashboardSplitBill() {
       {draft && (
         <div className="sb-card" ref={editorRef}>
           <div className="sb-card-hd">
-            <h3><Receipt size={16} color="#2563EB" /> {fromChat ? 'Draft dari chat MIRA' : 'Atur pembagian'}</h3>
+            <h3><MiraIcon name={fromChat ? 'chat' : 'scale'} size={28} /> {fromChat ? 'Draft dari chat MIRA' : 'Atur pembagian'}</h3>
             <button className="sb-icon" title="Buang draft" onClick={() => { setDraft(null); setErr(null); setFromChat(false); }}><Trash2 size={15} /></button>
           </div>
           <div className="sb-card-bd">
@@ -712,7 +713,7 @@ export function DashboardSplitBill() {
             </div>
             {draft.mode !== 'manual' && (
               <p style={{ fontSize: 11.5, color: '#9CA3AF', margin: '6px 0 0' }}>
-                Tap ✏️ buat kunci nominal seseorang (misal "Adi cuma 50rb") — sisanya otomatis dibagi ke yang lain.
+                Tap ikon pensil buat kunci nominal seseorang (misal "Adi cuma 50rb") — sisanya otomatis dibagi ke yang lain.
               </p>
             )}
             {draft.mode === 'manual' && total > 0 && (
@@ -722,7 +723,7 @@ export function DashboardSplitBill() {
             {/* AI tweak */}
             <div className="sb-ai">
               <input className="sb-input" value={aiEdit} onChange={(e) => setAiEdit(e.target.value)}
-                placeholder='✨ Minta MIRA ubah, misal "Budi ga ikut minum"'
+                placeholder='Minta MIRA ubah, misal "Budi ga ikut minum"'
                 onKeyDown={(e) => { if (e.key === 'Enter') tweakWithAI(); }} />
               <button className="sb-btn light" style={{ height: 42, padding: '0 14px' }} onClick={tweakWithAI} disabled={!aiEdit.trim() || busy === 'tweak'}>
                 {busy === 'tweak' ? <Loader2 size={16} className="sb-spin" /> : <Send size={16} />}
@@ -743,11 +744,11 @@ export function DashboardSplitBill() {
       {/* ── Active piutang ── */}
       <div className="sb-card">
         <div className="sb-card-hd">
-          <h3>💰 Piutang aktif</h3>
+          <h3><MiraIcon name="money-bag" size={28} /> Piutang aktif</h3>
           {piutang.length > 0 && <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: '#D97706' }}>{fmt(piutangTotal)}</span>}
         </div>
         {piutang.length === 0 ? (
-          <div className="sb-empty">Belum ada yang ngutang. Aman! 🎉</div>
+          <div className="sb-empty">Belum ada yang ngutang. Aman!</div>
         ) : piutang.map((row) => {
           const m = /^Piutang (.+) \((.+)\)$/.exec(row.name || '');
           return (
@@ -769,7 +770,7 @@ export function DashboardSplitBill() {
 
       {/* ── History ── */}
       <div className="sb-card">
-        <div className="sb-card-hd"><h3>🧾 Riwayat split</h3></div>
+        <div className="sb-card-hd"><h3><MiraIcon name="receipt" size={28} /> Riwayat split</h3></div>
         {history.length === 0 ? (
           <div className="sb-empty">Belum ada split bill. Coba scan struk pertama kamu!</div>
         ) : history.map((h) => {

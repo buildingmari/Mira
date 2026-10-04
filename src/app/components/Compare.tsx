@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import './Compare.css';
+import { MiraIcon } from './icons/MiraIcon';
 
 export function Compare() {
   const revealRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -41,38 +42,38 @@ export function Compare() {
         </div>
         <div className="compare-row">
           <span className="feature">Tanpa install aplikasi</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
-          <span className="feature">Lewat WhatsApp</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="feature">Langsung jalan di browser HP &amp; laptop</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
           <span className="feature">Optimal untuk Rupiah (IDR)</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
           <span className="feature">Input bebas: chat, foto, voice note</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
           <span className="feature">Harga jauh lebih terjangkau</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
           <span className="feature">Transaksi tak terbatas</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
         <div className="compare-row">
           <span className="feature">Laporan Excel otomatis</span>
-          <span className="check">✅</span>
-          <span className="cross">❌</span>
+          <span className="check"><MiraIcon name="check-badge" size={28} tile={false} /></span>
+          <span className="cross"><MiraIcon name="nope" size={28} tile={false} /></span>
         </div>
       </div>
     </section>

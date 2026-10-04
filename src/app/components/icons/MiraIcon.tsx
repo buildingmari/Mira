@@ -573,6 +573,65 @@ const ICONS = {
     <path d="M34 14.5c3-4 6.5-5 8-3.5" strokeWidth={1.8} />
   </> },
 
+  /* dashboard */
+  receipt: { tone: 'blue', draw: () => <>
+    <path d="M13 7h22v31l-3.7-2.6-3.6 2.6-3.7-2.6-3.6 2.6-3.7-2.6L13 38Z" fill={C.white} />
+    <path d="M18 13.5h12M18 19h12M18 24.5h7" strokeWidth={1.8} />
+    <rect x={18} y={29} width={12} height={3.6} rx={1.6} fill={C.coral} {...NO} />
+  </> },
+  wallet: { tone: 'blue', draw: () => <>
+    <Coin x={30} y={12.5} r={4.4} />
+    <rect x={8} y={14} width={30} height={22} rx={4.5} fill={C.blue} />
+    <path d="M29 20h11v10H29a5 5 0 0 1 0-10Z" fill={C.blueLt} />
+    <Dot x={30.5} y={25} r={1.6} />
+    <Shine d="M12 18.5h6" />
+  </> },
+  gift: { tone: 'pink', draw: () => <>
+    <path d="M24 16c-2-5.2-9.4-6.2-9.4-1.6 0 2.2 3.2 2.8 9.4 1.6ZM24 16c2-5.2 9.4-6.2 9.4-1.6 0 2.2-3.2 2.8-9.4 1.6Z" fill={C.yellow} />
+    <rect x={10} y={22.5} width={28} height={15.5} rx={2.2} fill={C.coral} />
+    <rect x={8} y={16} width={32} height={7} rx={2.2} fill={C.pink} />
+    <path d="M24 16v22" stroke={C.yellow} strokeWidth={5} />
+    <path d="M21.5 16v22M26.5 16v22" strokeWidth={1.4} />
+  </> },
+  gear: { tone: 'blue', draw: () => {
+    let d = '';
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI / 4) * i;
+      const p = (r: number, da: number) => `${(24 + r * Math.cos(a + da)).toFixed(2)} ${(24 + r * Math.sin(a + da)).toFixed(2)}`;
+      d += `${i ? 'L' : 'M'}${p(11.5, -0.36)}L${p(15, -0.2)}L${p(15, 0.2)}L${p(11.5, 0.36)}`;
+    }
+    return <>
+      <path d={d + 'Z'} fill={C.blueLt} />
+      <circle cx={24} cy={24} r={4.6} fill={C.white} />
+      <Shine d="M16.4 19.6a8.6 8.6 0 0 1 3.6-3.6" />
+    </>;
+  } },
+  user: { tone: 'blue', draw: () => <>
+    <path d="M11.5 38.5c0-7.4 5.6-11.5 12.5-11.5s12.5 4.1 12.5 11.5Z" fill={C.blue} />
+    <circle cx={24} cy={17} r={7} fill={C.blueLt} />
+    <Dot x={21.6} y={17} r={1.2} /><Dot x={26.4} y={17} r={1.2} />
+    <path d="M22 20.2q2 1.6 4 0" strokeWidth={1.6} />
+  </> },
+  health: { tone: 'green', draw: () => <>
+    <path d="M24 38c-9.5-6.4-13.5-11.4-13.5-16.6 0-4.6 3.4-7.9 7.4-7.9 2.6 0 4.6 1.2 6.1 3.4 1.5-2.2 3.5-3.4 6.1-3.4 4 0 7.4 3.3 7.4 7.9C37.5 26.6 33.5 31.6 24 38Z" fill={C.coral} />
+    <path d="M13 24h5.5l2.5-4.5 3.5 8.5 2.5-4h8" stroke={C.white} strokeWidth={2.2} />
+    <Spark x={39} y={10} s={3} c={C.green} />
+  </> },
+  ticket: { tone: 'coral', draw: () => <>
+    <g transform="rotate(-12 24 24)">
+      <path d="M8 15h32v6a3 3 0 0 0 0 6v6H8v-6a3 3 0 0 0 0-6Z" fill={C.yellow} />
+      <path d="M30.5 16.5v15" strokeDasharray="2 2.6" strokeWidth={1.8} />
+      <path d={starPath(19, 24, 4.8, 2.2)} fill={C.white} strokeWidth={1.6} />
+    </g>
+  </> },
+  'chart-down': { tone: 'coral', draw: () => <>
+    <rect x={9} y={18} width={7} height={20} rx={1.6} fill={C.blueLt} />
+    <rect x={19} y={24} width={7} height={14} rx={1.6} fill={C.blue} />
+    <rect x={29} y={30} width={7} height={8} rx={1.6} fill={C.coral} />
+    <path d="M8 9l9 7 6-3.5 13 9" strokeWidth={2.4} />
+    <path d="M30.5 22.5H36V17" strokeWidth={2.4} />
+  </> },
+
   /* status & results */
   'check-badge': { tone: 'green', draw: () => <>
     <circle cx={24} cy={24} r={13.5} fill={C.green} />
@@ -583,6 +642,10 @@ const ICONS = {
     <path d="M24 8.5l16 28.5H8Z" fill={C.yellow} strokeWidth={2.4} />
     <path d="M24 19v8" strokeWidth={2.8} />
     <Dot x={24} y={31.6} r={1.8} />
+  </> },
+  nope: { tone: 'coral', draw: () => <>
+    <circle cx={24} cy={24} r={13.5} fill={C.coralSoft} />
+    <path d="M19 19l10 10M29 19L19 29" stroke={C.coral} strokeWidth={3.2} />
   </> },
   alert: { tone: 'coral', draw: () => <>
     <circle cx={24} cy={24} r={13.5} fill={C.coral} />

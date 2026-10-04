@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { normalizeCategory } from '../../lib/category';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   ResponsiveContainer, XAxis, YAxis, Tooltip,
@@ -169,8 +170,8 @@ export function DashboardInsights() {
 
   if (txns.length === 0) return (
     <div className="ins-wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
-      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada data. Mulai catat transaksi via WhatsApp atau tombol Catat.</p>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="report" size={72} /></div>
+      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada data. Mulai catat transaksi lewat Chat MIRA atau tombol Catat.</p>
     </div>
   );
 
@@ -190,7 +191,7 @@ export function DashboardInsights() {
       <div className="ins-insight-grid">
         {s.topCatName && (
           <div style={{ ...CARD, padding: '16px 18px', background: '#EFF6FF', border: '1px solid rgba(37,99,235,0.15)' }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>💡</div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name="pie" size={40} /></div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Kategori Terbesar</p>
             <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
               Bulan ini <strong>{s.topCatName}</strong> menghabiskan <strong>{fmt(s.topCatAmt)}</strong> — {s.total > 0 ? Math.round((s.topCatAmt / s.total) * 100) : 0}% dari total pengeluaran.
@@ -199,7 +200,7 @@ export function DashboardInsights() {
         )}
         {s.lastMonthTotal > 0 && (
           <div style={{ ...CARD, padding: '16px 18px', background: s.changePct >= 0 ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${s.changePct >= 0 ? 'rgba(239,68,68,0.15)' : 'rgba(22,163,74,0.15)'}` }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>{s.changePct >= 0 ? '📈' : '📉'}</div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name={s.changePct >= 0 ? 'growth' : 'chart-down'} size={40} /></div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Vs Bulan Lalu</p>
             <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
               Pengeluaran <span style={{ color: upDownColor, fontWeight: 600 }}>{upDown} {Math.abs(s.changePct).toFixed(0)}%</span> dibanding bulan lalu ({fmt(s.lastMonthTotal)}).
@@ -208,7 +209,7 @@ export function DashboardInsights() {
         )}
         {s.peakDay && (
           <div style={{ ...CARD, padding: '16px 18px', background: '#FFFBEB', border: '1px solid rgba(245,158,11,0.15)' }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>📅</div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name="calendar-star" size={40} /></div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Hari Tertinggi</p>
             <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
               Rata-rata pengeluaran tertinggi di hari <strong>{s.peakDay}</strong>. Coba lebih bijak di hari tersebut.
@@ -217,7 +218,7 @@ export function DashboardInsights() {
         )}
         {s.topCatName && (
           <div style={{ ...CARD, padding: '16px 18px', background: '#F0FDF4', border: '1px solid rgba(22,163,74,0.15)' }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>✨</div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name="piggy" size={40} /></div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Saving Opportunity</p>
             <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
               Hemat <strong>{fmt(Math.round(s.topCatAmt * 0.15))}</strong> dengan mengurangi 15% dari {s.topCatName}.

@@ -31,13 +31,13 @@ export function Upsell({ onCTAClick }: UpsellProps) {
         <span className="section-label">Mulai Sekarang</span>
         <h2 className="section-title">Pembukuan tanpa effort.</h2>
         <p className="section-desc">
-          Ngobrol aja dengan MIRA lewat chat, foto, atau suara. Semudah chatting di WhatsApp.
+          Ngobrol aja dengan MIRA lewat chat, foto, atau suara. Semudah chatting sama teman.
         </p>
         <button className="btn btn-lg" onClick={onCTAClick}>
           Gabung Sekarang →
         </button>
         <p style={{ marginTop: '12px', fontSize: '0.8rem', color: '#94A3B8' }}>
-          Tanpa download aplikasi baru. Langsung aktif di WhatsApp.
+          Tanpa download aplikasi baru. Langsung aktif setelah daftar.
         </p>
       </div>
     </section>

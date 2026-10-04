@@ -279,7 +279,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data?.message || 'MIRA lagi gangguan, coba lagi ya.');
       const list: AiTx[] = Array.isArray(data.expenses) ? data.expenses : [];
-      if (!list.length) { setAiNote(data.note || 'MIRA belum nemu nominalnya. Coba tulis lebih jelas ya 🙂'); return; }
+      if (!list.length) { setAiNote(data.note || 'MIRA belum nemu nominalnya. Coba tulis lebih jelas ya.'); return; }
       setAiTxs(list.map((t) => ({ ...t, wallet: WALLETS.includes(t.wallet) ? t.wallet : wallet })));
     } catch (e: any) {
       setErr(e.message || 'Gagal terhubung ke MIRA.');
@@ -376,7 +376,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                 {aiPhoto && (
                   <div className="atm-row" style={{ background: '#F8F9FB', borderRadius: 12, padding: 8 }}>
                     <img src={aiPhoto} alt="Struk" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }} />
-                    <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>Struk siap dibaca MIRA ✨</span>
+                    <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>Struk siap dibaca MIRA</span>
                     <button className="atm-close" onClick={() => setAiPhoto(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
                   </div>
                 )}
@@ -386,7 +386,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                     <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>
                       {voice.recording ? `Merekam… ${fmtSeconds(voice.seconds)} — tap ■ kalau udah`
                         : voice.preparing ? 'Nyiapin voice note…'
-                        : `Voice note ${fmtSeconds(aiVoice!.seconds)} siap ✨`}
+                        : `Voice note ${fmtSeconds(aiVoice!.seconds)} siap`}
                     </span>
                     {aiVoice && !voice.recording && (
                       <button className="atm-close" onClick={() => setAiVoice(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>

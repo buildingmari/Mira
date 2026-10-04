@@ -135,6 +135,7 @@ export function Modal({ isOpen, onClose, resume = false }: ModalProps) {
               affiliateReferrerPhone={affiliateReferrerPhone}
               answers={answers}
               onBack={() => setCurrentPanel('pricing')}
+              active={isOpen}
             />
           )}
           {currentPanel === 'wa' && (

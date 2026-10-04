@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Gift, Copy, Users, TrendingUp, Check, User } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
+import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -200,14 +201,12 @@ export function DashboardAffiliate() {
       {/* Stats — real counts from DB */}
       <div className="aff-stat">
         {[
-          { label: 'Total Referral', val: loading ? '—' : String(refCount),           icon: <Users style={{ width: 18, height: 18 }} />, bg: '#EFF6FF', color: '#1D4ED8' },
-          { label: 'Terdaftar',      val: loading ? '—' : String(referredList.length), icon: <TrendingUp style={{ width: 18, height: 18 }} />, bg: '#F0FDF4', color: '#16A34A' },
-          { label: 'Reward',         val: 'Rp 0',                                      icon: <Gift style={{ width: 18, height: 18 }} />, bg: '#FFFBEB', color: '#D97706' },
-        ].map(({ label, val, icon, bg, color }) => (
+          { label: 'Total Referral', val: loading ? '—' : String(refCount),           icon: 'duo' as IconName, bg: '#EFF6FF', color: '#1D4ED8' },
+          { label: 'Terdaftar',      val: loading ? '—' : String(referredList.length), icon: 'growth' as IconName, bg: '#F0FDF4', color: '#16A34A' },
+          { label: 'Reward',         val: 'Rp 0',                                      icon: 'gift' as IconName, bg: '#FFFBEB', color: '#D97706' },
+        ].map(({ label, val, icon }) => (
           <div key={label} className="aff-stat-item">
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color, marginBottom: 10 }}>
-              {icon}
-            </div>
+            <div style={{ marginBottom: 10 }}><MiraIcon name={icon} size={40} /></div>
             <div className="aff-stat-val">{val}</div>
             <div className="aff-stat-lbl">{label}</div>
           </div>
@@ -217,7 +216,7 @@ export function DashboardAffiliate() {
       {/* Referral list — real data from DB, masked */}
       <div className="aff-card">
         <div className="aff-card-hdr">
-          <Users style={{ width: 15, height: 15, color: '#6B7280' }} />
+          <MiraIcon name="duo" size={30} />
           <h3>Daftar Referral</h3>
         </div>
         <div className="aff-card-body" style={{ padding: referredList.length === 0 ? '20px' : '8px 20px' }}>
@@ -228,9 +227,7 @@ export function DashboardAffiliate() {
           ) : (
             referredList.map((r, i) => (
               <div key={i} className="aff-ref-row">
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <User style={{ width: 16, height: 16, color: '#1D4ED8' }} />
-                </div>
+                <MiraIcon name="user" size={36} />
                 <div>
                   <div className="aff-ref-name">{maskName(r.name)}</div>
                   <div className="aff-ref-phone">{maskPhone(r.referee_phone)}</div>
@@ -244,7 +241,7 @@ export function DashboardAffiliate() {
       {/* How it works */}
       <div className="aff-card">
         <div className="aff-card-hdr">
-          <Gift style={{ width: 15, height: 15, color: '#6B7280' }} />
+          <MiraIcon name="gift" size={30} />
           <h3>Cara Kerja Program Affiliate</h3>
         </div>
         <div className="aff-card-body">
@@ -262,8 +259,9 @@ export function DashboardAffiliate() {
             </div>
           ))}
           <div style={{ background: '#F0FDF4', borderRadius: 10, padding: '12px 14px', marginTop: 4 }}>
-            <p style={{ margin: 0, fontSize: 13, color: '#15803D', fontWeight: 500 }}>
-              🎉 Program affiliate akan segera diluncurkan. Stay tuned!
+            <p style={{ margin: 0, fontSize: 13, color: '#15803D', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MiraIcon name="sparkle" size={24} tile={false} />
+              Program affiliate akan segera diluncurkan. Stay tuned!
             </p>
           </div>
         </div>

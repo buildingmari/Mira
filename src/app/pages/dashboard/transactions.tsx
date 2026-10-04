@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { normalizeCategory } from '../../lib/category';
+import { CATEGORY_ICON, normalizeCategory } from '../../lib/category';
+import { MiraIcon } from '../../components/icons/MiraIcon';
 import { X, SlidersHorizontal, ChevronDown, Pencil } from 'lucide-react';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -18,11 +19,6 @@ const CAT_BG: Record<string, string> = {
   Makanan: '#EFF6FF', Transport: '#ECFDF5', Belanja: '#F5F3FF',
   Tagihan: '#FFFBEB', Kesehatan: '#FFF1F2', Hiburan: '#FDF2F8',
   Pemasukan: '#F0FDF4', Investasi: '#ECFEFF', Others: '#F1F4F8',
-};
-const CAT_EMOJI: Record<string, string> = {
-  Makanan: '🍜', Transport: '🚗', Belanja: '🛒',
-  Tagihan: '💡', Kesehatan: '❤️', Hiburan: '🎮',
-  Pemasukan: '💰', Investasi: '📈', Others: '✨',
 };
 
 const mapCat = (c: string) => normalizeCategory(c, 'Others');
@@ -308,7 +304,7 @@ export function DashboardTransactions() {
         <div className="txn-modal-overlay" onClick={e => { if (e.target === e.currentTarget) closeEdit(); }}>
           <div className="txn-modal">
             <div className="txn-modal-title">
-              ✏️ Edit Transaksi
+              Edit Transaksi
               <button onClick={closeEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 4, display: 'flex' }}>
                 <X style={{ width: 18, height: 18 }} />
               </button>
@@ -399,7 +395,7 @@ export function DashboardTransactions() {
           <input
             className="txn-ctrl txn-search-input"
             style={{ width: '100%', boxSizing: 'border-box' }}
-            placeholder="🔍  Cari merchant, kategori..."
+            placeholder="Cari merchant, kategori..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -450,13 +446,14 @@ export function DashboardTransactions() {
               const active = catF.includes(c);
               return (
                 <button key={c} onClick={() => toggleCat(c)} style={{
-                  padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${active ? CAT_COLOR[c] || '#2563EB' : 'rgba(0,0,0,0.10)'}`,
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 12px 4px 5px', borderRadius: 20, border: `1.5px solid ${active ? CAT_COLOR[c] || '#2563EB' : 'rgba(0,0,0,0.10)'}`,
                   background: active ? (CAT_BG[c] || '#EFF6FF') : '#F8F9FB',
                   color: active ? (CAT_COLOR[c] || '#2563EB') : '#374151',
                   fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif",
                   transition: 'all .15s',
                 }}>
-                  {CAT_EMOJI[c] || '✨'} {c}
+                  <MiraIcon name={CATEGORY_ICON[c] || 'sparkle'} size={22} />{c}
                 </button>
               );
             })}
@@ -514,19 +511,14 @@ export function DashboardTransactions() {
             const cat   = mapCat(t.category || '');
             const bg    = CAT_BG[cat]    || '#F1F4F8';
             const clr   = CAT_COLOR[cat] || '#6B7280';
-            const emoji = CAT_EMOJI[cat] || '✨';
+            const icon  = CATEGORY_ICON[cat] || 'sparkle';
             const isIn  = t.transaction_type?.toLowerCase() === 'income' || cat === 'Pemasukan';
             const ds    = new Date(t.date).toLocaleDateString('id-ID', {
               day: 'numeric', month: 'short', year: 'numeric',
             });
             return (
               <div key={t.id || i} className="txn-row">
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, background: bg, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
-                }}>
-                  {emoji}
-                </div>
+                <MiraIcon name={icon} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontSize: 14, fontWeight: 500, color: '#111827',

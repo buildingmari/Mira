@@ -8,19 +8,19 @@ const faqs = [
   },
   {
     q: 'Bisa export data keuangan?',
-    a: 'Bisa banget! Setiap ada transaksi baru, MIRA membagikan link laporan terbaru dalam format <strong>Excel (XLS)</strong>.<br><br>Cocok untuk pembukuan, laporan bisnis, atau analisis lanjutan di tools favoritmu.'
+    a: 'Bisa banget! Download laporan <strong>Excel (.xlsx)</strong> atau CSV kapan saja dari menu <strong>Export Data</strong> di dashboard — lengkap dengan ringkasan bulanan.<br><br>Cocok untuk pembukuan, laporan bisnis, atau analisis lanjutan di tools favoritmu.'
   },
   {
     q: 'Berapa banyak transaksi per hari?',
     a: 'Tidak ada batasan transaksi untuk pengguna berlangganan. Catat sepuasnya, praktis dan hemat.'
   },
   {
-    q: 'Bagaimana cara kerja MIRA di WhatsApp?',
-    a: 'Setelah daftar & berlangganan, kamu akan menerima pesan selamat datang dari MIRA.<br><br>Selanjutnya, cukup:<ul><li>kirim chat transaksi</li><li>foto struk</li><li>atau voice note</li></ul><br>MIRA langsung mencatat dan merapikan keuanganmu.'
+    q: 'Bagaimana cara pakai MIRA?',
+    a: 'Daftar pakai Google atau email, lalu kamu langsung masuk ke dashboard MIRA — bisa dibuka dari browser HP maupun laptop, tanpa install aplikasi.<br><br>Selanjutnya, cukup buka <strong>Chat MIRA</strong> lalu:<ul><li>ketik transaksi seperti chat biasa</li><li>kirim foto struk</li><li>atau rekam voice note</li></ul><br>MIRA langsung mencatat, mengelompokkan, dan merapikan keuanganmu.'
   },
   {
     q: 'Apa bedanya MIRA dengan aplikasi money manager lain?',
-    a: '<strong>MIRA:</strong><ul><li>✅ Lewat WhatsApp — tanpa download aplikasi</li><li>✅ Dibuat untuk kebiasaan finansial orang Indonesia</li><li>✅ Input bebas: chat, foto, voice note</li><li>✅ Harga jauh lebih terjangkau</li></ul><br><strong>Aplikasi lain:</strong><ul><li>❌ Harus install & setup aplikasi</li><li>❌ Kurang optimal untuk rupiah</li><li>❌ Input transaksi kaku & ribet</li><li>❌ Biaya premium bisa Rp600rb–Rp1jt/tahun</li></ul>'
+    a: '<strong>MIRA:</strong><ul><li>Langsung dari browser — tanpa download aplikasi</li><li>Dibuat untuk kebiasaan finansial orang Indonesia</li><li>Input bebas: chat, foto, voice note</li><li>Harga jauh lebih terjangkau</li></ul><br><strong>Aplikasi lain:</strong><ul><li>Harus install & setup aplikasi</li><li>Kurang optimal untuk rupiah</li><li>Input transaksi kaku & ribet</li><li>Biaya premium bisa Rp600rb–Rp1jt/tahun</li></ul>'
   }
 ];
 
