@@ -9,6 +9,7 @@ import { useTheme } from '../../components/theme-provider';
 import { PendingAssessmentGate } from '../../components/PendingAssessmentGate';
 import { AddTransactionModal } from '../../components/AddTransactionModal';
 import { ChatWidget } from '../../components/ChatWidget';
+import { clearAuthSession } from '../../lib/auth';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -190,6 +191,7 @@ export function DashboardLayout() {
   const logout = () => {
     localStorage.removeItem('mira_phone');
     localStorage.removeItem('mira_user');
+    clearAuthSession();
     navigate('/');
   };
 

@@ -1,4 +1,5 @@
 import { Question } from '../assessmentData';
+import { MiraIcon } from '../../icons/MiraIcon';
 import './Questions.css';
 
 interface CheckboxGroupedProps {
@@ -20,7 +21,10 @@ export function CheckboxGrouped({ question, value, onChange }: CheckboxGroupedPr
     <div>
       {question.groups?.map((group, gi) => (
         <div key={gi} className="cbg-group">
-          <div className="cbg-group-label">{group.label}</div>
+          <div className="cbg-group-label">
+            {group.icon && <MiraIcon name={group.icon} size={24} />}
+            {group.label}
+          </div>
           <div className="cbg-opts">
             {group.opts.map((opt) => (
               <div

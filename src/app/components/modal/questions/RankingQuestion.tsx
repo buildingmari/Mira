@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
+import { MiraIcon, OptionIcon, type BrandKey, type IconName } from '../../icons/MiraIcon';
 import './Questions.css';
 
 interface RankItem {
   v: string;
   l: string;
+  icon?: IconName;
+  brand?: BrandKey;
 }
 
 interface RankingQuestionProps {
@@ -20,64 +23,50 @@ function buildRankItems(answers: Record<string, any>): RankItem[] {
 
   // ── Bank: semua bank individual (tidak digabung) ──────────────────
   const BANK_MAP: Record<string, string> = {
-    bri          : '💳 BRI',
-    mandiri      : '💳 Mandiri',
-    bni          : '💳 BNI',
-    btn          : '💳 BTN',
-    bca          : '💳 BCA',
-    cimb         : '🏦 CIMB Niaga',
-    danamon      : '🏦 Danamon',
-    permata      : '🏦 Permata Bank',
-    ocbc         : '🏦 OCBC NISP',
-    panin        : '🏦 Panin Bank',
-    maybank      : '🏦 Maybank',
-    mega         : '🏦 Mega Bank',
-    sinarmas     : '🏦 Sinarmas',
-    bsi          : '🕌 BSI',
-    'cimb-syariah': '🕌 CIMB Syariah',
-    jago         : '📱 Bank Jago',
-    jenius       : '📱 Jenius (BTPN)',
-    seabank      : '📱 SeaBank',
-    blu          : '📱 Blu by BCA',
-    neo          : '📱 Neo Bank',
+    bri: 'BRI', mandiri: 'Mandiri', bni: 'BNI', btn: 'BTN', bca: 'BCA',
+    cimb: 'CIMB Niaga', danamon: 'Danamon', permata: 'Permata Bank', ocbc: 'OCBC NISP',
+    panin: 'Panin Bank', maybank: 'Maybank', mega: 'Mega Bank', sinarmas: 'Sinarmas',
+    bsi: 'BSI', 'cimb-syariah': 'CIMB Syariah',
+    jago: 'Bank Jago', jenius: 'Jenius (BTPN)', seabank: 'SeaBank', blu: 'Blu by BCA', neo: 'Neo Bank',
   };
+  const SYARIAH = ['bsi', 'cimb-syariah'];
+  const DIGITAL = ['jago', 'jenius', 'seabank', 'blu', 'neo'];
   banks.forEach((b: string) => {
-    if (BANK_MAP[b]) items.push({ v: b, l: BANK_MAP[b] });
+    if (!BANK_MAP[b]) return;
+    const icon: IconName = SYARIAH.includes(b) ? 'bank-syariah' : DIGITAL.includes(b) ? 'bank-digital' : 'bank';
+    items.push({ v: b, l: BANK_MAP[b], icon });
   });
 
   // ── E-wallet ─────────────────────────────────────────────────────
   const EWALLET_MAP: Record<string, string> = {
-    gopay    : '🟢 GoPay',
-    ovo      : '🟣 OVO',
-    dana     : '🔵 DANA',
-    shopeepay: '🟠 ShopeePay',
-    linkaja  : '🔴 LinkAja',
-    astrapay : '🔷 AstraPay',
-    lainnya  : '➕ E-wallet lainnya',
+    gopay: 'GoPay', ovo: 'OVO', dana: 'DANA', shopeepay: 'ShopeePay',
+    linkaja: 'LinkAja', astrapay: 'AstraPay', lainnya: 'E-wallet lainnya',
   };
   ewallets.forEach((e: string) => {
-    if (EWALLET_MAP[e]) items.push({ v: e, l: EWALLET_MAP[e] });
+    if (!EWALLET_MAP[e]) return;
+    items.push(e === 'lainnya'
+      ? { v: e, l: EWALLET_MAP[e], icon: 'phone-wallet' }
+      : { v: e, l: EWALLET_MAP[e], brand: e as BrandKey });
   });
 
   // ── PayLater / Kartu Kredit ───────────────────────────────────────
   const PAYLATER_MAP: Record<string, string> = {
-    'cc-bank'  : '💳 Kartu Kredit',
-    kredivo    : '🔵 Kredivo',
-    akulaku    : '🟡 Akulaku',
-    spaylater  : '🟠 SPayLater',
-    gopaylater : '🟢 GoPayLater',
-    traveloka  : '🔷 Traveloka PayLater',
+    'cc-bank': 'Kartu Kredit', kredivo: 'Kredivo', akulaku: 'Akulaku',
+    spaylater: 'SPayLater', gopaylater: 'GoPayLater', traveloka: 'Traveloka PayLater',
   };
   paylater.forEach((p: string) => {
-    if (PAYLATER_MAP[p]) items.push({ v: p, l: PAYLATER_MAP[p] });
+    if (!PAYLATER_MAP[p]) return;
+    items.push(p === 'cc-bank'
+      ? { v: p, l: PAYLATER_MAP[p], icon: 'card' }
+      : { v: p, l: PAYLATER_MAP[p], brand: p as BrandKey });
   });
 
   // Fallback jika tidak ada yang dipilih sama sekali
   if (items.length === 0) {
     return [
-      { v: 'tunai',  l: '💵 Tunai' },
-      { v: 'debit',  l: '💳 Kartu Debit' },
-      { v: 'ewallet', l: '📱 E-wallet' },
+      { v: 'tunai',  l: 'Tunai', icon: 'cash' },
+      { v: 'debit',  l: 'Kartu Debit', icon: 'card' },
+      { v: 'ewallet', l: 'E-wallet', icon: 'phone-wallet' },
     ];
   }
 
@@ -120,6 +109,7 @@ export function RankingQuestion({ answers, value, onChange }: RankingQuestionPro
             className={`rank-item ${moved === item.v ? 'rank-moved' : ''}`}
           >
             <span className="rank-num">{i + 1}</span>
+            <OptionIcon icon={item.icon} brand={item.brand} size={32} />
             <span className="rank-text">{item.l}</span>
             <div className="rank-btns">
               <button
@@ -145,7 +135,8 @@ export function RankingQuestion({ answers, value, onChange }: RankingQuestionPro
         ))}
       </div>
       <div className="rank-hint">
-        💡 Ketuk ▲ ▼ untuk mengubah urutan dari yang paling sering dipakai
+        <MiraIcon name="bulb" size={22} />
+        <span>Ketuk ▲ ▼ untuk mengubah urutan dari yang paling sering dipakai</span>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { Question } from '../assessmentData';
+import { OptionIcon } from '../../icons/MiraIcon';
 import './Questions.css';
 
 interface RadioQuestionProps {
@@ -16,8 +17,9 @@ export function RadioQuestion({ question, value, onChange }: RadioQuestionProps)
           className={`opt ${value === opt.v ? 'selected' : ''}`}
           onClick={() => onChange(opt.v)}
         >
-          <span className="opt-check"></span>
+          <OptionIcon icon={opt.icon} brand={opt.brand} />
           <span className="opt-text">{opt.l}</span>
+          <span className="opt-check"></span>
         </div>
       ))}
     </div>

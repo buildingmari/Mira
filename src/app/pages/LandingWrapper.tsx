@@ -18,19 +18,21 @@ import '../../styles/mira-landing.css';
 
 export function LandingWrapper() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [resumeSignup, setResumeSignup] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Deep links: /?signup=1 opens the signup (assessment) flow — used by
-  // /auth/callback after a Google sign-in — and /?login=1 opens the login
-  // modal. The param is stripped right away (replace) so a refresh or the
-  // back button doesn't reopen the modal.
+  // Deep links (used by /auth/callback): /?signup=1 opens the signup
+  // (assessment) flow, /?signup=resume reopens it at the account step after
+  // a Google / email-confirmation redirect, /?login=1 opens the login modal.
+  // The param is stripped right away (replace) so a refresh or the back
+  // button doesn't reopen the modal.
   useEffect(() => {
-    const wantsSignup = searchParams.get('signup') === '1';
-    const wantsLogin  = searchParams.get('login') === '1';
-    if (!wantsSignup && !wantsLogin) return;
+    const signup = searchParams.get('signup');
+    const wantsLogin = searchParams.get('login') === '1';
+    if (!signup && !wantsLogin) return;
 
-    if (wantsSignup) setModalOpen(true);
+    if (signup) { setResumeSignup(signup === 'resume'); setModalOpen(true); }
     else setLoginOpen(true);
 
     const next = new URLSearchParams(searchParams);
@@ -39,27 +41,33 @@ export function LandingWrapper() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  const openSignup = () => { setResumeSignup(false); setModalOpen(true); };
+
   return (
     <>
       <div id="page" className="visible">
         <Navigation
-          onCTAClick={() => setModalOpen(true)}
+          onCTAClick={openSignup}
           onLoginClick={() => setLoginOpen(true)}
         />
-        <Hero onCTAClick={() => setModalOpen(true)} />
+        <Hero onCTAClick={openSignup} />
         <ValueProps />
         <Process />
-        <DashboardPreview onCTAClick={() => setModalOpen(true)} />
-        <Stats onCTAClick={() => setModalOpen(true)} />
+        <DashboardPreview onCTAClick={openSignup} />
+        <Stats onCTAClick={openSignup} />
         <Testimonials />
         <Compare />
         <FAQ />
-        <Upsell onCTAClick={() => setModalOpen(true)} />
+        <Upsell onCTAClick={openSignup} />
         <Footer />
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
-      <LoginModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} />
+      <Modal isOpen={modalOpen} resume={resumeSignup} onClose={() => setModalOpen(false)} />
+      <LoginModal
+        isOpen={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onSignup={() => { setLoginOpen(false); openSignup(); }}
+      />
     </>
   );
 }

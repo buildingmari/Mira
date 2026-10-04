@@ -1,13 +1,11 @@
 /**
  * google-auth — "Masuk / Daftar dengan Google" helpers
  * ─────────────────────────────────────────────────────────────────────
- * MIRA accounts stay keyed by WhatsApp number. Google is only an extra
- * way into the SAME account, so this deliberately does NOT use
- * supabase-js sessions: we run Supabase Auth's Google provider in the
- * implicit flow (plain redirect), keep the returned tokens in
- * sessionStorage just long enough to talk to the `auth-google` Edge
- * Function, and the real app session is still `mira_phone` / `mira_user`
- * in localStorage, exactly like the WhatsApp OTP login.
+ * Supabase Auth's Google provider in the implicit flow (plain redirect, no
+ * supabase-js). /auth/callback stores the returned tokens as the login
+ * session (lib/auth.ts) and asks the `auth-account` Edge Function which
+ * MIRA account they belong to; the app session is still `mira_phone` /
+ * `mira_user` in localStorage.
  *
  * Every Google entry point must be hidden unless isGoogleEnabled()
  * resolves true (Supabase → Auth → Providers → Google switched on).
@@ -20,7 +18,6 @@ export const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhY
 export type GoogleIntent = 'login' | 'signup';
 
 const INTENT_KEY  = 'mira_google_intent';
-const PENDING_KEY = 'mira_google_pending';
 const ENABLED_KEY = 'mira_google_enabled';
 const ENABLED_TTL_MS = 10 * 60 * 1000; // re-check the provider switch every 10 min
 
@@ -110,12 +107,12 @@ export function clearGoogleIntent(): void {
 /* ── Parse the /auth/callback URL ────────────────────────────────── */
 
 export type AuthHashResult =
-  | { ok: true; access_token: string; refresh_token: string; expires_at: number }
+  | { ok: true; access_token: string; refresh_token: string; expires_at: number; type: string }
   | { ok: false; error: string; error_description: string };
 
 /**
  * Reads Supabase's implicit-flow result from the URL hash
- * (#access_token=…&refresh_token=…&expires_at=…) or an error
+ * (#access_token=…&refresh_token=…&expires_at=…&type=…) or an error
  * (#error=…&error_description=…, sometimes sent as ?error=… instead).
  * Returns null when the URL carries neither.
  */
@@ -143,82 +140,8 @@ export function parseAuthHash(
     access_token,
     refresh_token: h.get('refresh_token') || '',
     expires_at: expiresAt > 0 ? expiresAt : nowSec + (expiresIn > 0 ? expiresIn : 3600),
+    type: h.get('type') || '',
   };
-}
-
-/* ── Pending Google identity (signed in with Google, not linked yet) ── */
-
-export interface GooglePending {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number; // epoch seconds
-  email: string | null;
-  name: string | null;
-  avatar_url: string | null;
-}
-
-export function getGooglePending(): GooglePending | null {
-  try {
-    const raw = sessionStorage.getItem(PENDING_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    if (!p || typeof p.access_token !== 'string' || !p.access_token) return null;
-    return {
-      access_token: p.access_token,
-      refresh_token: typeof p.refresh_token === 'string' ? p.refresh_token : '',
-      expires_at: Number(p.expires_at) || 0,
-      email: p.email ?? null,
-      name: p.name ?? null,
-      avatar_url: p.avatar_url ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function setGooglePending(p: GooglePending): void {
-  try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch {}
-}
-
-export function clearGooglePending(): void {
-  try { sessionStorage.removeItem(PENDING_KEY); } catch {}
-}
-
-/**
- * Access token for the pending Google identity, refreshed first when it
- * expires within 60s. Returns null if there is no pending identity or it
- * can't be refreshed (caller should then fall back / ask to sign in again).
- */
-export async function getFreshGoogleToken(): Promise<string | null> {
-  const p = getGooglePending();
-  if (!p) return null;
-
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (p.expires_at - nowSec > 60) return p.access_token;
-  if (!p.refresh_token) return null;
-
-  try {
-    const res = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
-      method: 'POST',
-      headers: { apikey: SUPA_ANON, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: p.refresh_token }),
-    });
-    if (!res.ok) return null;
-    const d = await res.json().catch(() => null);
-    if (!d || typeof d.access_token !== 'string' || !d.access_token) return null;
-
-    const expiresAt = Number(d.expires_at);
-    const expiresIn = Number(d.expires_in);
-    setGooglePending({
-      ...p,
-      access_token: d.access_token,
-      refresh_token: typeof d.refresh_token === 'string' && d.refresh_token ? d.refresh_token : p.refresh_token,
-      expires_at: expiresAt > 0 ? expiresAt : nowSec + (expiresIn > 0 ? expiresIn : 3600),
-    });
-    return d.access_token;
-  } catch {
-    return null;
-  }
 }
 
 /* ── auth-google Edge Function ───────────────────────────────────── */

@@ -3,16 +3,26 @@ import { AssessmentPanel } from './modal/AssessmentPanel';
 import { OutcomesPanel } from './modal/OutcomesPanel';
 import { PricingPanel } from './modal/PricingPanel';
 import { WAPanel } from './modal/WAPanel';
+import { AccountPanel } from './modal/AccountPanel';
+import { MiraIcon, type IconName } from './icons/MiraIcon';
+import { WHATSAPP_AUTH_ENABLED, getSignupDraft } from '../lib/auth';
 import './Modal.css';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Reopen at the account step with the signup saved before a Google /
+   *  email-confirmation redirect (see lib/auth.ts signup draft). */
+  resume?: boolean;
 }
 
-type PanelType = 'assessment' | 'outcomes' | 'pricing' | 'wa';
+type PanelType = 'assessment' | 'outcomes' | 'pricing' | 'account' | 'wa';
 
-export function Modal({ isOpen, onClose }: ModalProps) {
+// Last step: create the login (Google / email) — or, when re-enabled, the
+// old WhatsApp-number signup.
+const FINAL_PANEL: PanelType = WHATSAPP_AUTH_ENABLED ? 'wa' : 'account';
+
+export function Modal({ isOpen, onClose, resume = false }: ModalProps) {
   const [currentPanel, setCurrentPanel] = useState<PanelType>('assessment');
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [selectedPlan, setSelectedPlan] = useState('personal');
@@ -30,6 +40,17 @@ export function Modal({ isOpen, onClose }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      const saved = resume ? getSignupDraft() : null;
+      if (saved) {
+        setAnswers(saved.answers);
+        setSelectedPlan(saved.selectedPlan);
+        setSelectedDuration(saved.selectedDuration);
+        setVoucherDiscount(saved.voucherDiscount);
+        setActiveVoucher(saved.activeVoucher);
+        setAffiliateReferrerPhone(saved.affiliateReferrerPhone);
+        setCurrentPanel(FINAL_PANEL);
+        return;
+      }
       // Reset state when modal opens
       setCurrentPanel('assessment');
       setAnswers({});
@@ -39,7 +60,7 @@ export function Modal({ isOpen, onClose }: ModalProps) {
     } else {
       document.body.style.overflow = '';
     }
-  }, [isOpen]);
+  }, [isOpen, resume]);
 
   const handleBgClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -47,20 +68,14 @@ export function Modal({ isOpen, onClose }: ModalProps) {
     }
   };
 
-  const getModalTitle = () => {
-    switch (currentPanel) {
-      case 'assessment':
-        return 'Cek Kesehatan Finansialmu';
-      case 'outcomes':
-        return '📊 Hasil Kesehatan Finansialmu';
-      case 'pricing':
-        return '🔥 Pilih Paket MIRA';
-      case 'wa':
-        return '📱 Nomor WhatsApp';
-      default:
-        return 'MIRA';
-    }
+  const TITLES: Record<PanelType, [IconName | null, string]> = {
+    assessment: [null, 'Cek Kesehatan Finansialmu'],
+    outcomes: ['report', 'Hasil Kesehatan Finansialmu'],
+    pricing: ['gem', 'Pilih Paket MIRA'],
+    account: [null, 'Langkah Terakhir'],
+    wa: ['phone-wallet', 'Nomor WhatsApp'],
   };
+  const [titleIcon, titleText] = TITLES[currentPanel];
 
   return (
     <div
@@ -70,7 +85,10 @@ export function Modal({ isOpen, onClose }: ModalProps) {
       <div className="modal-box" id="modalBox">
         <div className="sheet-handle" aria-hidden="true" />
         <div className="modal-header">
-          <div className="modal-title">{getModalTitle()}</div>
+          <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {titleIcon && <MiraIcon name={titleIcon} size={28} />}
+            {titleText}
+          </div>
           <button className="modal-close" onClick={onClose}>
             ✕
           </button>
@@ -104,8 +122,19 @@ export function Modal({ isOpen, onClose }: ModalProps) {
               activeVoucher={activeVoucher}
               setActiveVoucher={setActiveVoucher}
               setAffiliateReferrerPhone={setAffiliateReferrerPhone}
-              onNext={() => setCurrentPanel('wa')}
+              onNext={() => setCurrentPanel(FINAL_PANEL)}
               onBack={() => setCurrentPanel('outcomes')}
+            />
+          )}
+          {currentPanel === 'account' && (
+            <AccountPanel
+              selectedPlan={selectedPlan}
+              selectedDuration={selectedDuration}
+              voucherDiscount={voucherDiscount}
+              activeVoucher={activeVoucher}
+              affiliateReferrerPhone={affiliateReferrerPhone}
+              answers={answers}
+              onBack={() => setCurrentPanel('pricing')}
             />
           )}
           {currentPanel === 'wa' && (

@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { calcScore, getIncomeMonthly, calcDailyLimit } from './scoring';
+import { MiraIcon, type IconName } from '../icons/MiraIcon';
+import { WHATSAPP_AUTH_ENABLED } from '../../lib/auth';
 import './OutcomesPanel.css';
 
 interface OutcomesPanelProps {
@@ -53,20 +55,21 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
   }, [total]);
 
   const getCategoryInfo = () => {
-    if (total <= 40) return { cat: '🔴 Rentan',          color: '#DC2626', sub: 'Kondisi keuangan perlu perhatian serius.' };
-    if (total <= 60) return { cat: '🟠 Perlu Perhatian', color: '#F59E0B', sub: 'Ada beberapa area yang bisa diperbaiki.' };
-    if (total <= 75) return { cat: '🟢 Cukup Sehat',     color: '#16A34A', sub: 'Keuanganmu cukup sehat, tetap pertahankan!' };
-    return                 { cat: '💎 Sangat Sehat',     color: '#2D4BFF', sub: 'Finansialmu sangat solid. Terus tingkatkan!' };
+    if (total <= 40) return { cat: 'Rentan',          catIcon: 'alert' as IconName,       color: '#DC2626', sub: 'Kondisi keuangan perlu perhatian serius.' };
+    if (total <= 60) return { cat: 'Perlu Perhatian', catIcon: 'warn' as IconName,        color: '#F59E0B', sub: 'Ada beberapa area yang bisa diperbaiki.' };
+    if (total <= 75) return { cat: 'Cukup Sehat',     catIcon: 'check-badge' as IconName, color: '#16A34A', sub: 'Keuanganmu cukup sehat, tetap pertahankan!' };
+    return                 { cat: 'Sangat Sehat',     catIcon: 'gem' as IconName,         color: '#2D4BFF', sub: 'Finansialmu sangat solid. Terus tingkatkan!' };
   };
 
-  const { cat, color, sub } = getCategoryInfo();
+  const { cat, catIcon, color, sub } = getCategoryInfo();
   const circumference = 364.4;
   const offset = circumference - (circumference * animatedScore / 100);
 
   // ── Headline berdasarkan score_total ─────────────────────────────────────
   const headline = total > 60
-    ? '✅ Kamu di jalur yang tepat! Pertahankan kebiasaan baik dan tingkatkan area yang masih kurang optimal.'
-    : '📊 Kondisi finansialmu masih bisa ditingkatkan. Beberapa kebiasaan pengeluaran bisa diperbaiki agar lebih stabil ke depannya.';
+    ? 'Kamu di jalur yang tepat! Pertahankan kebiasaan baik dan tingkatkan area yang masih kurang optimal.'
+    : 'Kondisi finansialmu masih bisa ditingkatkan. Beberapa kebiasaan pengeluaran bisa diperbaiki agar lebih stabil ke depannya.';
+  const headlineIcon: IconName = total > 60 ? 'check-badge' : 'report';
 
   const headlineBg    = total > 60 ? '#F0FDF4' : '#FFF7ED';
   const headlineBorder = total > 60 ? '#BBF7D0' : '#FED7AA';
@@ -74,75 +77,82 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
 
   // ── 6 OUTCOME CARDS ──────────────────────────────────────────────────────
 
-  const outcomeCards: { type: string; icon: string; title: string; body: string }[] = [];
+  const STATUS_ICON: Record<string, IconName> = { ok: 'check-badge', warn: 'warn', bad: 'alert' };
+  const outcomeCards: { type: string; title: string; body: string }[] = [];
 
   // Card 1 — Pemasukan (dari score_income)
   if (dims.income >= 12)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Pemasukan Stabil',             body: 'Arus kas cukup stabil dan konsisten.' });
+    outcomeCards.push({ type: 'ok', title: 'Pemasukan Stabil',             body: 'Arus kas cukup stabil dan konsisten.' });
   else if (dims.income >= 7)
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Pemasukan Perlu Diperhatikan', body: 'Ketidakstabilan penghasilan bisa mempersulit perencanaan keuangan.' });
+    outcomeCards.push({ type: 'warn', title: 'Pemasukan Perlu Diperhatikan', body: 'Ketidakstabilan penghasilan bisa mempersulit perencanaan keuangan.' });
   else
-    outcomeCards.push({ type: 'bad',  icon: '🔴', title: 'Pemasukan Tidak Menentu',      body: 'Penghasilan tidak tetap meningkatkan risiko cashflow. MIRA bisa bantu pantau.' });
+    outcomeCards.push({ type: 'bad', title: 'Pemasukan Tidak Menentu',      body: 'Penghasilan tidak tetap meningkatkan risiko cashflow. MIRA bisa bantu pantau.' });
 
   // Card 2 — Beban Wajib (dari COUNT ITEM Q4/q5, BUKAN score_expense) — Bug #1 fix
   const q4Count = Array.isArray(answers.q5) ? answers.q5.length : 0;
   if (q4Count <= 2)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Beban Pengeluaran Ringan', body: 'Pengeluaran wajibmu proporsional dengan penghasilan.' });
+    outcomeCards.push({ type: 'ok', title: 'Beban Pengeluaran Ringan', body: 'Pengeluaran wajibmu proporsional dengan penghasilan.' });
   else if (q4Count <= 4)
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Beban Moderat',            body: 'Cukup besar. Waspadai pengeluaran di luar pos wajib.' });
+    outcomeCards.push({ type: 'warn', title: 'Beban Moderat',            body: 'Cukup besar. Waspadai pengeluaran di luar pos wajib.' });
   else
-    outcomeCards.push({ type: 'bad',  icon: '🔴', title: 'Beban Tinggi',             body: 'Lebih dari separuh penghasilan habis untuk kewajiban. Risiko cashflow tinggi.' });
+    outcomeCards.push({ type: 'bad', title: 'Beban Tinggi',             body: 'Lebih dari separuh penghasilan habis untuk kewajiban. Risiko cashflow tinggi.' });
 
   // Card 3 — Kontrol Belanja — ADA FLAG OVERRIDE — Bug #2 fix
   const hasImpulseFlag = answers.q7 === 'sering' || answers.q7 === 'sangat-sering' || answers.q6 === 'ga-terasa';
   if (hasImpulseFlag)
-    outcomeCards.push({ type: 'bad',  icon: '⚠️', title: 'Risiko Impulsif Terdeteksi',  body: 'Pola belanja impulsif atau micro-spending tanpa sadar terdeteksi.' });
+    outcomeCards.push({ type: 'bad', title: 'Risiko Impulsif Terdeteksi',  body: 'Pola belanja impulsif atau micro-spending tanpa sadar terdeteksi.' });
   else if (dims.spending >= 12)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Pengeluaran Terkontrol',       body: 'Kamu relatif disiplin dalam berbelanja. Pertahankan!' });
+    outcomeCards.push({ type: 'ok', title: 'Pengeluaran Terkontrol',       body: 'Kamu relatif disiplin dalam berbelanja. Pertahankan!' });
   else
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Pengeluaran Perlu Dijaga',     body: 'Ada potensi kebocoran kecil yang perlu dipantau.' });
+    outcomeCards.push({ type: 'warn', title: 'Pengeluaran Perlu Dijaga',     body: 'Ada potensi kebocoran kecil yang perlu dipantau.' });
 
   // Card 4 — Disiplin Nabung (dari score_saving)
   if (dims.saving >= 12)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Disiplin Menabung',             body: 'Kamu punya kebiasaan menabung yang baik. Lanjutkan!' });
+    outcomeCards.push({ type: 'ok', title: 'Disiplin Menabung',             body: 'Kamu punya kebiasaan menabung yang baik. Lanjutkan!' });
   else if (dims.saving >= 6)
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Tabungan Perlu Ditingkatkan',   body: 'Menabung ada tapi kurang konsisten. MIRA bisa kirim pengingat nabung.' });
+    outcomeCards.push({ type: 'warn', title: 'Tabungan Perlu Ditingkatkan',   body: 'Menabung ada tapi kurang konsisten. MIRA bisa kirim pengingat nabung.' });
   else
-    outcomeCards.push({ type: 'bad',  icon: '🔴', title: 'Belum Rutin Menabung',          body: 'Tanpa tabungan rutin, sulit membangun keamanan finansial jangka panjang.' });
+    outcomeCards.push({ type: 'bad', title: 'Belum Rutin Menabung',          body: 'Tanpa tabungan rutin, sulit membangun keamanan finansial jangka panjang.' });
 
   // Card 5 — Dana Darurat (dari score_emergency)
   if (dims.emergency >= 7)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Dana Darurat Aman',         body: 'Dana darurat cukup menanggung risiko jangka pendek. (≥ 3 bulan)' });
+    outcomeCards.push({ type: 'ok', title: 'Dana Darurat Aman',         body: 'Dana darurat cukup menanggung risiko jangka pendek. (≥ 3 bulan)' });
   else if (dims.emergency >= 4)
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Dana Darurat Perlu Ditambah', body: '1–3 bulan masih kurang ideal. Target minimal 3–6 bulan pengeluaran.' });
+    outcomeCards.push({ type: 'warn', title: 'Dana Darurat Perlu Ditambah', body: '1–3 bulan masih kurang ideal. Target minimal 3–6 bulan pengeluaran.' });
   else
-    outcomeCards.push({ type: 'bad',  icon: '🔴', title: 'Tidak Ada Dana Darurat',    body: 'Risiko terbesar. Satu masalah bisa bikin kondisi finansial ambruk.' });
+    outcomeCards.push({ type: 'bad', title: 'Tidak Ada Dana Darurat',    body: 'Risiko terbesar. Satu masalah bisa bikin kondisi finansial ambruk.' });
 
   // Card 6 — Risiko Kredit (dari score_debt)
   if (dims.debt >= 8)
-    outcomeCards.push({ type: 'ok',   icon: '✅', title: 'Risiko Kredit Rendah',          body: 'Penggunaan kredit & PayLater kamu terkontrol.' });
+    outcomeCards.push({ type: 'ok', title: 'Risiko Kredit Rendah',          body: 'Penggunaan kredit & PayLater kamu terkontrol.' });
   else if (dims.debt >= 5)
-    outcomeCards.push({ type: 'warn', icon: '🟡', title: 'Perhatikan Penggunaan Kredit',  body: 'PayLater atau cicilan perlu dipantau agar tidak menumpuk.' });
+    outcomeCards.push({ type: 'warn', title: 'Perhatikan Penggunaan Kredit',  body: 'PayLater atau cicilan perlu dipantau agar tidak menumpuk.' });
   else
-    outcomeCards.push({ type: 'bad',  icon: '🔴', title: 'Risiko Kredit Tinggi',          body: 'Penggunaan PayLater/kredit berisiko menimbulkan stres finansial. MIRA bisa bantu monitor.' });
+    outcomeCards.push({ type: 'bad', title: 'Risiko Kredit Tinggi',          body: 'Penggunaan PayLater/kredit berisiko menimbulkan stres finansial. MIRA bisa bantu monitor.' });
 
   // ── REKOMENDASI PRIORITAS — STATIC ───────────────────────────────────────
-  const staticRecos: string[] = [
-    '💬 Catat pengeluaran, pemasukan, semua lewat WhatsApp.',
-    '📊 Laporan keuangan bulanan otomatis beserta grafik dalam Excel.',
-    '🛒 Spending Alert di MIRA — notifikasi tiap kali pengeluaran mendekati batas harian.',
-    '🏦 Dashboard lengkap untuk mengontrol aset, net worth, dan tren finansial.',
+  const staticRecos: { icon: IconName; text: string }[] = [
+    { icon: 'chat', text: WHATSAPP_AUTH_ENABLED
+      ? 'Catat pengeluaran, pemasukan, semua lewat WhatsApp.'
+      : 'Catat pengeluaran & pemasukan cukup lewat chat MIRA — ketik, foto struk, atau voice note.' },
+    { icon: 'report', text: 'Laporan keuangan bulanan otomatis beserta grafik dalam Excel.' },
+    { icon: 'bell', text: 'Spending Alert di MIRA — notifikasi tiap kali pengeluaran mendekati batas harian.' },
+    { icon: 'dashboard', text: 'Dashboard lengkap untuk mengontrol aset, net worth, dan tren finansial.' },
   ];
   // Kondisional: hutang/cicilan aktif (q16 !== 'tidak')
   if (answers.q16 !== 'tidak') {
-    staticRecos.push('💳 Pantau PayLater & cicilan — MIRA mendeteksi pola penggunaan kredit berisiko.');
+    staticRecos.push({ icon: 'card', text: 'Pantau PayLater & cicilan — MIRA mendeteksi pola penggunaan kredit berisiko.' });
   }
   // Kondisional: user berinvestasi (q13 !== 'tidak')
   if (answers.q13 !== 'tidak') {
-    staticRecos.push('📈 Lacak alokasi investasi dan kelola portofolio dengan MIRA.');
+    staticRecos.push({ icon: 'growth', text: 'Lacak alokasi investasi dan kelola portofolio dengan MIRA.' });
   }
 
-  const helps = ['💬 Spending Alerts harian', '🏦 Saving Nudges otomatis', '📊 Laporan Excel bulanan otomatis'];
+  const helps: { icon: IconName; text: string }[] = [
+    { icon: 'bell', text: 'Spending Alerts harian' },
+    { icon: 'piggy', text: 'Saving Nudges otomatis' },
+    { icon: 'report', text: 'Laporan Excel bulanan otomatis' },
+  ];
 
   return (
     <div id="outcomes-panel" className="show">
@@ -163,25 +173,32 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
             <span className="ring-label">/ 100</span>
           </div>
         </div>
-        <div className="score-cat" style={{ color }}>{cat}</div>
+        <div className="score-cat" style={{ color, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <MiraIcon name={catIcon} size={30} />
+          {cat}
+        </div>
         <p style={{ fontSize: '0.83rem', color: '#64748B', marginTop: '6px' }}>{sub}</p>
       </div>
 
       {/* ── Headline berdasarkan score_total ── */}
-      <div style={{ marginTop: '12px', background: headlineBg, border: `1px solid ${headlineBorder}`, borderRadius: '12px', padding: '12px 16px', fontSize: '0.84rem', color: headlineColor }}>
-        {headline}
+      <div style={{ marginTop: '12px', background: headlineBg, border: `1px solid ${headlineBorder}`, borderRadius: '12px', padding: '12px 14px', fontSize: '0.84rem', color: headlineColor, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <MiraIcon name={headlineIcon} size={34} />
+        <span>{headline}</span>
       </div>
 
       {/* ── PROMINENT CTA — only shown when hidePricingBanner is false ── */}
       {!hidePricingBanner && (
         <div className="pkg-cta-banner">
-          <div className="pkg-cta-badge">🎯 Berdasarkan Profil Keuanganmu</div>
+          <div className="pkg-cta-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <MiraIcon name="target" size={20} tile={false} />
+            Berdasarkan Profil Keuanganmu
+          </div>
           <p className="pkg-cta-headline">
             Paket MIRA mulai <strong>Rp29.000<span className="pkg-cta-per">/bulan</span></strong>
           </p>
-          <p className="pkg-cta-sub">Kurang dari secangkir kopi — langsung aktif di WhatsApp</p>
+          <p className="pkg-cta-sub">Kurang dari secangkir kopi — langsung aktif {WHATSAPP_AUTH_ENABLED ? 'di WhatsApp' : 'setelah daftar'}</p>
           <button className="btn btn-lg btn-full pkg-cta-btn" onClick={onNext}>
-            🔥 Lihat Paket yang Cocok Untukmu →
+            Lihat Paket yang Cocok Untukmu →
           </button>
           <div className="pkg-cta-badges">
             <span>✓ Tanpa download app</span>
@@ -193,7 +210,10 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
 
       {/* ── Batas Aman Harian ── */}
       <div className="daily-limit-box">
-        <div className="dl-label">💰 Batas Aman Pengeluaran Harian</div>
+        <div className="dl-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MiraIcon name="money-bag" size={28} />
+          Batas Aman Pengeluaran Harian
+        </div>
         <div className="dl-amount">
           {editingLimit ? (
             <input
@@ -221,7 +241,7 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
       <div className="outcome-cards">
         {outcomeCards.map((c, i) => (
           <div key={i} className={`oc ${c.type}`}>
-            <div className="oc-title">{c.icon} {c.title}</div>
+            <div className="oc-title"><MiraIcon name={STATUS_ICON[c.type]} size={26} />{c.title}</div>
             <div className="oc-body">{c.body}</div>
           </div>
         ))}
@@ -229,24 +249,29 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
 
       {/* ── Rekomendasi Prioritas — Static ── */}
       <div style={{ marginTop: '18px' }}>
-        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.95rem', marginBottom: '10px' }}>
-          🎯 Rekomendasi Prioritas
+        <div style={{ fontFamily: "'Sora', sans-serif", fontWeight: 700, fontSize: '0.95rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MiraIcon name="target" size={28} />
+          Rekomendasi Prioritas
         </div>
         <div className="reco-list">
-          {staticRecos.map((text, i) => (
-            <div key={i} className="reco-item">
-              <span>{text}</span>
+          {staticRecos.map((r, i) => (
+            <div key={i} className="reco-item" style={{ alignItems: 'center' }}>
+              <MiraIcon name={r.icon} size={32} />
+              <span>{r.text}</span>
             </div>
           ))}
         </div>
       </div>
 
       <div style={{ marginTop: '18px', background: 'var(--blue-ultra)', borderRadius: '12px', padding: '14px 16px', fontSize: '0.84rem', color: 'var(--text-body)' }}>
-        <strong style={{ color: 'var(--blue)' }}>🤖 MIRA Bisa Membantu Dengan:</strong>
-        <br />
+        <strong style={{ color: 'var(--blue)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <MiraIcon name="buddy-happy" size={30} />
+          MIRA Bisa Membantu Dengan:
+        </strong>
         {helps.map((h, i) => (
-          <span key={i} style={{ display: 'inline-block', background: '#fff', border: '1px solid var(--border)', borderRadius: '99px', padding: '3px 10px', margin: '3px 3px 3px 0', fontSize: '0.8rem' }}>
-            {h}
+          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#fff', border: '1px solid var(--border)', borderRadius: '99px', padding: '3px 10px 3px 4px', margin: '3px 3px 3px 0', fontSize: '0.8rem' }}>
+            <MiraIcon name={h.icon} size={22} tile={false} />
+            {h.text}
           </span>
         ))}
       </div>
@@ -261,7 +286,7 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
           disabled={ctaDisabled}
           style={{ opacity: ctaDisabled ? 0.6 : 1, cursor: ctaDisabled ? 'not-allowed' : 'pointer' }}
         >
-          {ctaDisabled ? '⏳ Menyimpan…' : (ctaLabel || 'Lihat Pilihan Paket →')}
+          {ctaDisabled ? 'Menyimpan…' : (ctaLabel || 'Lihat Pilihan Paket →')}
         </button>
       </div>
     </div>

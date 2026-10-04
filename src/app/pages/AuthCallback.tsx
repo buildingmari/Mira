@@ -1,29 +1,43 @@
 /**
- * AuthCallback — landing spot after "Masuk / Daftar dengan Google"
+ * AuthCallback — where Supabase Auth sends the browser back
  * Route: /auth/callback
  *
- * Supabase Auth (implicit flow) sends the browser back here with
- * #access_token=… (or #error=…). We ask the auth-google Edge Function who
- * this Google account belongs to:
- *   - linked      → set the normal MIRA session (mira_phone / mira_user) → /dashboard
- *   - not_linked  → signup intent: continue the signup flow (/?signup=1)
- *                   login intent : let the user link their WhatsApp number
- *                                  (Login OTP) or start a signup instead
+ * Handles every redirect with #access_token=… (or #error=…):
+ *   - Google sign-in (login or signup)
+ *   - email confirmation link (type=signup)
+ *   - password reset link   (type=recovery) → set a new password first
+ * The tokens become the login session (lib/auth.ts) and the auth-account
+ * Edge Function says which MIRA account they belong to:
+ *   - linked     → set the normal MIRA session (mira_phone / mira_user) → /dashboard
+ *   - new / pending → back into the signup: straight to the account step if
+ *                  a signup was in progress (/?signup=resume), otherwise
+ *                  offer to start one.
+ * The WhatsApp-number linking below is only reachable while
+ * WHATSAPP_AUTH_ENABLED is on.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   authGoogle,
   clearGoogleIntent,
-  clearGooglePending,
-  getFreshGoogleToken,
   getGoogleIntent,
-  getGooglePending,
   parseAuthHash,
-  setGooglePending,
   startGoogleAuth,
 } from '../lib/google-auth';
-import type { GoogleIntent, GooglePending } from '../lib/google-auth';
+import type { GoogleIntent } from '../lib/google-auth';
+import {
+  WHATSAPP_AUTH_ENABLED,
+  authAccount,
+  clearAuthSession,
+  clearSignupDraft,
+  getAuthSession,
+  getFreshAuthToken,
+  getSignupDraft,
+  saveMiraSession,
+  setAuthSession,
+  updatePassword,
+} from '../lib/auth';
+import type { AuthSession } from '../lib/auth';
 
 const LOGIN_URL = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/login-mira';
 
@@ -42,14 +56,7 @@ const normalizePhone = (raw: string): string => {
   return p;
 };
 
-// Same app session as the WhatsApp OTP login in LoginModal.tsx.
-const saveMiraSession = (phone: string, user: any) => {
-  if (user) localStorage.setItem('mira_user', JSON.stringify(user));
-  localStorage.setItem('mira_phone', phone);
-};
-
-type TokenSet = Pick<GooglePending, 'access_token' | 'refresh_token' | 'expires_at'>;
-type Phase = 'loading' | 'choose' | 'phone' | 'otp' | 'error';
+type Phase = 'loading' | 'choose' | 'reset' | 'phone' | 'otp' | 'error';
 
 const ACB_CSS = `
   @keyframes acbSpin { to { transform: rotate(360deg); } }
@@ -147,10 +154,11 @@ export function AuthCallback() {
   const navigate = useNavigate();
   const [intent] = useState<GoogleIntent>(() => getGoogleIntent());
   const [phase, setPhase]       = useState<Phase>('loading');
-  const [loadTxt, setLoadTxt]   = useState('Menghubungkan akun Google…');
+  const [loadTxt, setLoadTxt]   = useState('Menghubungkan akun…');
   const [errTitle, setErrTitle] = useState('');
   const [errText, setErrText]   = useState('');
-  const [profile, setProfile]   = useState<GooglePending | null>(null);
+  const [profile, setProfile]   = useState<AuthSession | null>(null);
+  const [newPw, setNewPw]       = useState('');
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [phone, setPhone]       = useState('');
   const [otp, setOtp]           = useState(['', '', '', '']);
@@ -170,60 +178,58 @@ export function AuthCallback() {
   };
 
   const showExpired = () => {
-    clearGooglePending();
-    showError('Sesi Google sudah habis', 'Masuk dengan Google sekali lagi ya, habis itu kita lanjut dari sini.');
+    clearAuthSession();
+    showError('Sesi login sudah habis', 'Masuk sekali lagi ya, habis itu kita lanjut dari sini.');
   };
 
   const goHome = () => {
-    clearGooglePending();
+    clearAuthSession();
     clearGoogleIntent();
     navigate('/', { replace: true });
   };
 
-  const goSignup = () => {
-    const p = getGooglePending() || profile;
-    if (p) setGooglePending(p);
+  const goLogin = () => {
+    clearAuthSession();
     clearGoogleIntent();
-    navigate('/?signup=1', { replace: true });
+    navigate('/?login=1', { replace: true });
   };
 
-  const retryGoogle = () => startGoogleAuth(intent);
+  // Keeps the login session: the signup's account step picks it up.
+  const goSignup = () => {
+    clearGoogleIntent();
+    navigate(getSignupDraft() ? '/?signup=resume' : '/?signup=1', { replace: true });
+  };
 
-  /* ── Who does this Google account belong to? ── */
-  const resolve = async (tokens: TokenSet) => {
+  const retry = () => (getAuthSession()?.provider === 'email' ? goLogin() : startGoogleAuth(intent));
+
+  /* ── Which MIRA account does this login belong to? ── */
+  const resolve = async (session: AuthSession) => {
     setPhase('loading');
-    setLoadTxt('Menghubungkan akun Google…');
+    setLoadTxt('Membuka akun MIRA…');
 
-    const r = await authGoogle({ op: 'resolve', access_token: tokens.access_token });
+    const r = await authAccount({ op: 'resolve', access_token: session.access_token });
     const d = r.data || {};
 
-    if (r.status === 200 && d.status === 'linked') {
-      const phoneNumber = String(d.phone || d.user?.primary_phone || d.user?.phone_number || '');
-      if (phoneNumber) {
-        saveMiraSession(phoneNumber, d.user || null);
-        clearGooglePending();
-        clearGoogleIntent();
-        navigate('/dashboard', { replace: true });
-        return;
-      }
+    if (r.status === 200 && d.status === 'linked' && d.phone) {
+      saveMiraSession(String(d.phone), d.user || null);
+      clearSignupDraft();
+      clearGoogleIntent();
+      navigate('/dashboard', { replace: true });
+      return;
     }
 
-    if (r.status === 200 && d.status === 'not_linked') {
-      const pending: GooglePending = {
-        access_token : tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        expires_at   : tokens.expires_at,
-        email        : d.email ?? null,
-        name         : d.name ?? null,
-        avatar_url   : d.avatar_url ?? null,
+    if (r.status === 200 && (d.status === 'new' || d.status === 'pending')) {
+      const s: AuthSession = {
+        ...session,
+        email: session.email || d.email || null,
+        name: session.name || d.name || null,
+        avatar_url: session.avatar_url || d.avatar_url || null,
       };
-      setGooglePending(pending);
-      if (intent === 'signup') {
-        clearGoogleIntent();
-        navigate('/?signup=1', { replace: true });
-        return;
-      }
-      setProfile(pending);
+      setAuthSession(s);
+      // Mid-signup (Google button / confirmation link on the account step):
+      // continue right where the user left off.
+      if (getSignupDraft() || intent === 'signup') { goSignup(); return; }
+      setProfile(s);
       setAvatarFailed(false);
       setPhase('choose');
       return;
@@ -231,10 +237,19 @@ export function AuthCallback() {
 
     if (r.status === 401) { showExpired(); return; }
 
-    showError(
-      'Waduh, ada gangguan',
-      d.message || 'Gagal menghubungkan akun Google. Coba lagi beberapa saat ya.',
-    );
+    showError('Waduh, ada gangguan', d.message || 'Gagal membuka akun. Coba lagi beberapa saat ya.');
+  };
+
+  /* ── Password reset link: choose a new password, then log in ── */
+  const saveNewPassword = async () => {
+    if (newPw.length < 6) { setErr('Password minimal 6 karakter.'); return; }
+    setErr(''); setPhase('loading'); setLoadTxt('Menyimpan password…');
+    const token = await getFreshAuthToken();
+    if (!token) { showExpired(); return; }
+    const e = await updatePassword(token, newPw);
+    if (e) { setErr(e); setPhase('reset'); return; }
+    const s = getAuthSession();
+    if (s) await resolve({ ...s, access_token: token });
   };
 
   /* ── On mount: read the URL hash, then strip it from the address bar ── */
@@ -248,37 +263,46 @@ export function AuthCallback() {
     }
 
     if (result && !result.ok) {
-      if (result.error === 'access_denied') {
-        showError('Login Google dibatalkan', 'Nggak apa-apa! Kamu bisa coba lagi, atau masuk pakai nomor WhatsApp.');
+      const expiredLink = /expired|invalid/i.test(result.error_description) || result.error === 'otp_expired';
+      if (result.error === 'access_denied' && !expiredLink) {
+        showError('Login dibatalkan', 'Nggak apa-apa! Kamu bisa coba lagi kapan aja.');
+      } else if (expiredLink) {
+        showError('Link-nya sudah kedaluwarsa', 'Link di email cuma berlaku sebentar. Minta link baru dari halaman masuk ya.');
       } else {
-        showError('Login Google gagal', 'Ada kendala waktu masuk dengan Google. Coba lagi ya, atau masuk pakai nomor WhatsApp.');
+        showError('Login gagal', 'Ada kendala waktu masuk. Coba lagi ya.');
       }
       return;
     }
 
     if (result && result.ok) {
-      void resolve({
+      // Google redirects carry no type; email links say signup / recovery / …
+      const session: AuthSession = {
         access_token : result.access_token,
         refresh_token: result.refresh_token,
         expires_at   : result.expires_at,
-      });
+        email: null, name: null, avatar_url: null,
+        provider: result.type ? 'email' : 'google',
+      };
+      setAuthSession(session);
+      if (result.type === 'recovery') { setNewPw(''); setPhase('reset'); return; }
+      void resolve(session);
       return;
     }
 
     // No tokens in the URL (e.g. the page was refreshed) → resume from the
-    // Google identity we stored earlier in this tab, if any.
-    if (getGooglePending()) {
+    // login session stored earlier, if any.
+    if (getAuthSession()) {
       void (async () => {
         setPhase('loading');
-        const token = await getFreshGoogleToken();
-        const fresh = getGooglePending();
+        const token = await getFreshAuthToken();
+        const fresh = getAuthSession();
         if (!token || !fresh) { showExpired(); return; }
-        await resolve({ access_token: token, refresh_token: fresh.refresh_token, expires_at: fresh.expires_at });
+        await resolve({ ...fresh, access_token: token });
       })();
       return;
     }
 
-    showError('Sesi login nggak ketemu', 'Coba masuk dengan Google sekali lagi ya.');
+    showError('Sesi login nggak ketemu', 'Coba masuk sekali lagi ya.');
   }, []);
 
   /* ── Link step 1: phone → login-mira check → open WhatsApp "Login OTP" ── */
@@ -311,7 +335,7 @@ export function AuthCallback() {
         setTimeout(() => refs[0].current?.focus(), 60);
       } else {
         if (waWindow) waWindow.close();
-        setErr(data.message || 'Nomor tidak terdaftar di MIRA. Kalau belum punya akun, daftar pakai Google aja.');
+        setErr(data.message || 'Nomor tidak terdaftar di MIRA. Kalau belum punya akun, daftar dulu aja.');
         setPhase('phone');
       }
     } catch {
@@ -347,7 +371,7 @@ export function AuthCallback() {
     if (code.length < 4) { setErr('Masukkan kode OTP lengkap'); return; }
     setErr(''); setPhase('loading'); setLoadTxt('Memverifikasi...');
 
-    const token = await getFreshGoogleToken();
+    const token = await getFreshAuthToken();
     if (!token) { showExpired(); return; }
 
     const normalized = normalizePhone(phone);
@@ -358,14 +382,14 @@ export function AuthCallback() {
       if (d.linked === 'now') {
         const phoneNumber = String(d.phone || d.user?.primary_phone || d.user?.phone_number || normalized);
         saveMiraSession(phoneNumber, d.user || null);
-        clearGooglePending();
+        clearAuthSession();
         clearGoogleIntent();
         navigate('/dashboard', { replace: true });
         return;
       }
       // linked === 'pending': the number is verified but has no active MIRA
       // account yet — the link is applied once the signup is completed.
-      setErr('Nomor ini belum punya akun MIRA yang aktif. Selesaikan pendaftaran dulu lewat "Daftar pakai Google" ya.');
+      setErr('Nomor ini belum punya akun MIRA yang aktif. Selesaikan pendaftaran dulu lewat "Daftar sekarang" ya.');
       setOtp(['', '', '', '']);
       setPhase('phone');
       return;
@@ -395,7 +419,7 @@ export function AuthCallback() {
 
   const errorLine = (center = false) => err ? (
     <div style={{ fontSize: '.81rem', color: '#DC2626', marginBottom: 12, textAlign: center ? 'center' : 'left', lineHeight: 1.5 }}>
-      ⚠ {err}
+      {err}
     </div>
   ) : null;
 
@@ -426,7 +450,7 @@ export function AuthCallback() {
           <h1 className="acb-title">{errTitle}</h1>
           <p className="acb-sub">{errText}</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button className="acb-btn acb-btn-primary" style={mainBtn()} onClick={retryGoogle}>
+            <button className="acb-btn acb-btn-primary" style={mainBtn()} onClick={retry}>
               Coba lagi
             </button>
             <button className="acb-btn acb-btn-secondary" style={secondaryBtn} onClick={goHome}>
@@ -436,15 +460,39 @@ export function AuthCallback() {
           <button
             className="acb-link"
             style={{ ...linkBtn(), marginTop: 16, textDecoration: 'underline' }}
-            onClick={() => { clearGooglePending(); clearGoogleIntent(); navigate('/?login=1', { replace: true }); }}
+            onClick={goLogin}
           >
-            Masuk pakai nomor WhatsApp
+            Masuk pakai cara lain
+          </button>
+        </>}
+
+        {/* ── RESET: new password from the email link ── */}
+        {phase === 'reset' && <>
+          <h1 className="acb-title">Bikin password baru</h1>
+          <p className="acb-sub">Minimal 6 karakter. Habis ini kamu langsung masuk ke MIRA.</p>
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder="Password baru"
+            value={newPw}
+            autoFocus
+            onChange={e => { setNewPw(e.target.value); setErr(''); }}
+            onKeyDown={e => e.key === 'Enter' && saveNewPassword()}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '13px 14px', marginBottom: 14,
+              border: '1.5px solid #E2E8F0', borderRadius: 12, fontSize: '16px',
+              fontFamily: "'DM Sans',sans-serif", color: '#0F172A', outline: 'none',
+            }}
+          />
+          {errorLine()}
+          <button className="acb-btn acb-btn-primary" style={mainBtn(newPw.length < 6)} onClick={saveNewPassword} disabled={newPw.length < 6}>
+            Simpan & Masuk
           </button>
         </>}
 
         {/* ── CHOOSE: Google account isn't linked to MIRA yet ── */}
         {phase === 'choose' && <>
-          <h1 className="acb-title">Satu langkah lagi 👋</h1>
+          <h1 className="acb-title">Satu langkah lagi</h1>
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
@@ -480,24 +528,26 @@ export function AuthCallback() {
           </div>
 
           <p className="acb-sub" style={{ marginBottom: 18 }}>
-            Akun Google ini belum terhubung ke akun MIRA mana pun. Kamu yang mana?
+            Login ini belum punya akun MIRA. Yuk cek kesehatan finansialmu dulu (2 menit) — akunnya langsung dibuat di akhir.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              className="acb-btn acb-btn-primary"
-              style={mainBtn()}
-              onClick={() => { setErr(''); setPhase('phone'); }}
-            >
-              Aku udah punya akun MIRA — hubungkan nomor WhatsApp
+            <button className="acb-btn acb-btn-primary" style={mainBtn()} onClick={goSignup}>
+              Daftar sekarang
             </button>
-            <button className="acb-btn acb-btn-secondary" style={secondaryBtn} onClick={goSignup}>
-              Belum punya akun — daftar pakai Google
-            </button>
+            {WHATSAPP_AUTH_ENABLED && profile?.provider === 'google' && (
+              <button
+                className="acb-btn acb-btn-secondary"
+                style={secondaryBtn}
+                onClick={() => { setErr(''); setPhase('phone'); }}
+              >
+                Aku udah punya akun MIRA — hubungkan nomor WhatsApp
+              </button>
+            )}
           </div>
 
-          <button className="acb-link" style={{ ...linkBtn('#64748B'), marginTop: 18 }} onClick={goHome}>
-            ← Kembali ke beranda
+          <button className="acb-link" style={{ ...linkBtn('#64748B'), marginTop: 18 }} onClick={goLogin}>
+            Pakai akun lain
           </button>
         </>}
 
@@ -518,7 +568,7 @@ export function AuthCallback() {
               padding: '13px 14px', background: '#F8FAFC', fontSize: '1rem',
               color: '#64748B', borderRight: '1px solid #E2E8F0',
               whiteSpace: 'nowrap', fontWeight: 500,
-            }}>🇮🇩 +62</span>
+            }}>+62</span>
             <input
               type="tel"
               inputMode="numeric"
@@ -554,7 +604,7 @@ export function AuthCallback() {
               className="acb-link"
               style={{ color: '#2D4BFF', cursor: 'pointer', textDecoration: 'underline', touchAction: 'manipulation' }}
               onClick={goSignup}
-            >Daftar pakai Google</span>
+            >Daftar sekarang</span>
           </p>
 
           <button
@@ -568,7 +618,7 @@ export function AuthCallback() {
 
         {/* ── OTP ── */}
         {phase === 'otp' && <>
-          <h1 className="acb-title">🔐 Masukkan Kode OTP</h1>
+          <h1 className="acb-title">Masukkan Kode OTP</h1>
           <p className="acb-sub" style={{ marginBottom: 16 }}>
             Kode 4 digit dikirim ke +62 {phone.slice(0, 4)}****{phone.slice(-2)}
           </p>
@@ -578,7 +628,7 @@ export function AuthCallback() {
             padding: '10px 14px', marginBottom: 18,
             fontSize: '.8rem', color: '#166534', lineHeight: 1.55,
           }}>
-            📲 Di tab WhatsApp yang barusan kebuka, tekan <strong>Kirim</strong> — MIRA bakal balas dengan kode OTP. Lalu balik ke sini dan masukkan kodenya.
+            Di tab WhatsApp yang barusan kebuka, tekan <strong>Kirim</strong> — MIRA bakal balas dengan kode OTP. Lalu balik ke sini dan masukkan kodenya.
           </div>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>

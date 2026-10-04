@@ -5,8 +5,8 @@ import { CheckboxQuestion } from './questions/CheckboxQuestion';
 import { RatioSlider } from './questions/RatioSlider';
 import { CheckboxGrouped } from './questions/CheckboxGrouped';
 import { RankingQuestion } from './questions/RankingQuestion';
-import { GoogleButton, useGoogleEnabled } from '../GoogleButton';
-import { getGooglePending, startGoogleAuth } from '../../lib/google-auth';
+import { MiraIcon } from '../icons/MiraIcon';
+import { getAuthSession } from '../../lib/auth';
 import './AssessmentPanel.css';
 
 interface AssessmentPanelProps {
@@ -16,12 +16,12 @@ interface AssessmentPanelProps {
 }
 
 export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentPanelProps) {
-  // Signed in with Google but not linked yet (set by /auth/callback) →
-  // prefill the name and show a "connected" badge on the name step.
-  const [googlePending] = useState(() => getGooglePending());
-  const googleEnabled   = useGoogleEnabled();
+  // Already signed in (Google / email) but no MIRA account yet → prefill the
+  // name and show which login the account will be created for. Signing up
+  // itself only happens after the assessment (AccountPanel).
+  const [authSession] = useState(() => getAuthSession());
   const [nameStep, setNameStep]   = useState(true);
-  const [nameInput, setNameInput] = useState(() => (googlePending?.name || '').trim());
+  const [nameInput, setNameInput] = useState(() => (authSession?.name || '').trim());
   const [nameError, setNameError] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [shake, setShake] = useState(false);
@@ -165,7 +165,7 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
           lineHeight: 1.65,
           marginBottom: '28px',
         }}>
-          Hi! Mira mau kenalan dulu, nama kamu siapa? 😊
+          Hi! Mira mau kenalan dulu, nama kamu siapa?
         </div>
 
         {/* Input */}
@@ -191,11 +191,11 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
 
         {nameError && (
           <p style={{ color: '#EF4444', fontSize: '0.8rem', marginTop: '6px' }}>
-            Tulis nama panggilanmu ya (min. 2 karakter) 😊
+            Tulis nama panggilanmu ya (min. 2 karakter)
           </p>
         )}
 
-        {googlePending && (
+        {authSession && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             marginTop: '10px', padding: '5px 12px', borderRadius: '100px',
@@ -203,8 +203,9 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
             color: '#15803D', fontSize: '0.78rem', fontWeight: 600,
             maxWidth: '100%', boxSizing: 'border-box',
           }}>
+            <MiraIcon name="check-badge" size={18} tile={false} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              ✓ Terhubung dengan Google{googlePending.email ? ` · ${googlePending.email}` : ''}
+              Masuk sebagai {authSession.email || authSession.name || 'akun kamu'}
             </span>
           </div>
         )}
@@ -217,16 +218,6 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
           Mulai →
         </button>
 
-        {!googlePending && googleEnabled && (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '18px 0 14px' }}>
-              <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
-              <span style={{ fontSize: '0.76rem', color: '#94A3B8' }}>atau</span>
-              <span style={{ flex: 1, height: '1px', background: '#E2E8F0' }} />
-            </div>
-            <GoogleButton label="Daftar cepat dengan Google" onClick={() => startGoogleAuth('signup')} />
-          </>
-        )}
       </div>
     );
   }
@@ -263,7 +254,9 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
 
         <div className="q-block">
           <div className="q-label">
-            <span className="q-num">{currentQ.num}</span> {currentQ.label}
+            <span className="q-num">{currentQ.num}</span>
+            {currentQ.icon && <MiraIcon name={currentQ.icon} size={30} />}
+            <span>{currentQ.label}</span>
           </div>
 
           {currentQ.type === 'radio' && (
@@ -320,7 +313,7 @@ export function AssessmentPanel({ answers, setAnswers, onComplete }: AssessmentP
         <span className="step-counter">{currentStep + 1} / {totalQuestions}</span>
         {!isRadio && (
           <button className="btn btn-sm" onClick={handleNext}>
-            {currentStep === totalQuestions - 1 ? 'Lihat Hasil 🎯' : 'Lanjut →'}
+            {currentStep === totalQuestions - 1 ? 'Lihat Hasil →' : 'Lanjut →'}
           </button>
         )}
         {isRadio && <span />}

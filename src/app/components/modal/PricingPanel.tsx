@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { plans } from './pricingData';
 import './PricingPanel.css';
+import { MiraIcon } from '../icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -74,9 +75,9 @@ export function PricingPanel({
             // was applied — force-select the hidden 1-bulan entry so the
             // 100% discount can't be combined with a 3/6/12 bulan plan.
             setSelectedDuration('1');
-            setVoucherMsg({ type: 'ok', text: '🎉 Selamat! Kamu dapat 1 bulan MIRA gratis.' });
+            setVoucherMsg({ type: 'ok', text: 'Selamat! Kamu dapat 1 bulan MIRA gratis.' });
           } else {
-            setVoucherMsg({ type: 'ok', text: `✅ Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
+            setVoucherMsg({ type: 'ok', text: `Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
           }
           setVoucherLoading(false);
           return;
@@ -102,7 +103,7 @@ export function PricingPanel({
           setVoucherDiscount(10);
           setActiveVoucher(code);
           setAffiliateReferrerPhone(referrer.primary_phone || '');
-          setVoucherMsg({ type: 'ok', text: `✅ Kode affiliate valid! Diskon 10% diterapkan. Referral dari: ${referrer.name || code}` });
+          setVoucherMsg({ type: 'ok', text: `Kode affiliate valid! Diskon 10% diterapkan. Referral dari: ${referrer.name || code}` });
           setVoucherLoading(false);
           return;
         }
@@ -112,9 +113,9 @@ export function PricingPanel({
       setVoucherDiscount(0);
       setActiveVoucher('');
       setAffiliateReferrerPhone('');
-      setVoucherMsg({ type: 'err', text: '❌ Kode voucher tidak valid atau sudah kadaluarsa.' });
+      setVoucherMsg({ type: 'err', text: 'Kode voucher tidak valid atau sudah kadaluarsa.' });
     } catch {
-      setVoucherMsg({ type: 'err', text: '❌ Gagal terhubung ke server. Coba lagi.' });
+      setVoucherMsg({ type: 'err', text: 'Gagal terhubung ke server. Coba lagi.' });
     }
     setVoucherLoading(false);
   };
@@ -122,8 +123,9 @@ export function PricingPanel({
   return (
     <div id="pricing-panel" className="show">
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: '6px' }}>
-          🔥 Pilih Paketmu
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+          <MiraIcon name="sparkle" size={22} tile={false} />
+          Pilih Paketmu
         </div>
         <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-dark)', margin: 0 }}>
           Mulai Lebih Sehat Hari Ini
@@ -143,15 +145,17 @@ export function PricingPanel({
               setSelectedDuration('12');
             }}
           >
-            {plans[key].icon} {plans[key].name}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <MiraIcon name={plans[key].icon} size={24} tile={false} />{plans[key].name}
+            </span>
           </button>
         ))}
       </div>
 
       <div className="plan-card current-plan">
         <div className="plan-card-header">
-          <h3>
-            {currentPlan.icon} {currentPlan.name}
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MiraIcon name={currentPlan.icon} size={30} />{currentPlan.name}
           </h3>
           <p>{currentPlan.desc}</p>
         </div>
@@ -181,11 +185,13 @@ export function PricingPanel({
               <div className="dur-left">
                 <div className="dur-check"></div>
                 <div>
-                  <div className="dur-name">{d.label}</div>
+                  <div className="dur-name" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {d.label}{d.best && <MiraIcon name="sparkle" size={20} tile={false} />}
+                  </div>
                   <div className="dur-per" dangerouslySetInnerHTML={{ __html: d.per + (d.note ? ` · <em>${d.note}</em>` : '') }} />
                   {d.vsPersonal && (
-                    <div style={{ fontSize: '0.72rem', color: '#16A34A', fontWeight: 700, marginTop: '3px' }}>
-                      💚 {d.vsPersonal}
+                    <div style={{ fontSize: '0.72rem', color: '#16A34A', fontWeight: 700, marginTop: '3px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MiraIcon name="piggy" size={18} tile={false} />{d.vsPersonal}
                     </div>
                   )}
                 </div>
@@ -201,8 +207,9 @@ export function PricingPanel({
       </div>
 
       <div style={{ marginTop: '20px' }}>
-        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-dark)', marginBottom: '8px' }}>
-          🏷️ Kode Voucher (opsional)
+        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-dark)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <MiraIcon name="tag" size={26} />
+          Kode Voucher (opsional)
         </div>
         <div className="voucher-row">
           <input
@@ -220,18 +227,21 @@ export function PricingPanel({
           </button>
         </div>
         {voucherMsg && (
-          <div className={`voucher-msg ${voucherMsg.type}`}>{voucherMsg.text}</div>
+          <div className={`voucher-msg ${voucherMsg.type}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <MiraIcon name={voucherMsg.type === 'ok' ? 'check-badge' : 'alert'} size={20} tile={false} />
+            <span>{voucherMsg.text}</span>
+          </div>
         )}
       </div>
 
       <div className="order-summary">
         <div className="order-row">
-          <span>Paket {currentPlan.icon} {currentPlan.name} · {currentDuration?.label}</span>
+          <span>Paket {currentPlan.name} · {currentDuration?.label}</span>
           <span>Rp{price.toLocaleString('id-ID')}</span>
         </div>
         {discount > 0 && (
           <div className="order-row" style={{ color: 'var(--success)' }}>
-            <span>🏷️ Voucher {activeVoucher} ({voucherDiscount}%)</span>
+            <span>Voucher {activeVoucher} ({voucherDiscount}%)</span>
             <span>- Rp{discount.toLocaleString('id-ID')}</span>
           </div>
         )}

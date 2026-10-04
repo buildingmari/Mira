@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import { plans } from './pricingData';
 import { buildPayload } from './buildPayload';
 import { GoogleIcon } from '../GoogleButton';
-import { authGoogle, clearGooglePending, getFreshGoogleToken, getGooglePending } from '../../lib/google-auth';
-import type { GooglePending } from '../../lib/google-auth';
+import { authGoogle } from '../../lib/google-auth';
+import { clearAuthSession, getAuthSession, getFreshAuthToken } from '../../lib/auth';
+import type { AuthSession } from '../../lib/auth';
 import './WAPanel.css';
 
 const REGISTER_URL             = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/register-mira';
@@ -89,11 +90,14 @@ export function WAPanel({
   // Signed in with Google but not linked yet (set by /auth/callback). While
   // set, the OTP is verified through auth-google `link` so the Google
   // account gets attached to this number once the account is created.
-  const [googleInfo, setGoogleInfo] = useState<GooglePending | null>(() => getGooglePending());
+  const [googleInfo, setGoogleInfo] = useState<AuthSession | null>(() => {
+    const s = getAuthSession();
+    return s?.provider === 'google' ? s : null;
+  });
 
   // Escape hatch: continue the signup with plain WhatsApp only.
   const skipGoogle = () => {
-    clearGooglePending();
+    clearAuthSession();
     setGoogleInfo(null);
     if (errorMsg) setErrorMsg('');
   };
@@ -228,7 +232,7 @@ export function WAPanel({
     // or network error) silently falls back to the plain verify-otp path
     // below — a signup must never be blocked because of Google.
     if (googleInfo) {
-      const token = await getFreshGoogleToken();
+      const token = await getFreshAuthToken();
       if (token) {
         const r = await authGoogle({
           op          : 'link',
@@ -251,7 +255,7 @@ export function WAPanel({
         }
       }
       if (!verifyData) {
-        clearGooglePending();
+        clearAuthSession();
         setGoogleInfo(null);
       }
     }
@@ -316,7 +320,7 @@ export function WAPanel({
     // The Google link now lives server-side (pending_google_links) and is
     // applied automatically when the account is activated — the browser
     // doesn't need the Google tokens anymore. The badge stays as info.
-    if (linkedGoogle) clearGooglePending();
+    if (linkedGoogle) clearAuthSession();
   };
 
   const handleOtpChange = (i: number, value: string) => {

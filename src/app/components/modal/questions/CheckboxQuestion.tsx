@@ -1,4 +1,5 @@
 import { Question } from '../assessmentData';
+import { OptionIcon } from '../../icons/MiraIcon';
 import './Questions.css';
 
 interface CheckboxQuestionProps {
@@ -24,8 +25,9 @@ export function CheckboxQuestion({ question, value, onChange }: CheckboxQuestion
           className={`opt ${value.includes(opt.v) ? 'selected' : ''}`}
           onClick={() => handleToggle(opt.v)}
         >
-          <span className="opt-cb-check"></span>
+          <OptionIcon icon={opt.icon} brand={opt.brand} />
           <span className="opt-text">{opt.l}</span>
+          <span className="opt-cb-check"></span>
         </div>
       ))}
     </div>

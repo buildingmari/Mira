@@ -169,7 +169,7 @@ export function DashboardOverview() {
       <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting} 👋</h1>
       <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
         <div style={{fontSize:48,marginBottom:16}}>💰</div>
-        <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat via WhatsApp atau tombol Catat.</p>
+        <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat lewat Chat MIRA atau tombol Catat.</p>
       </div>
     </div>
   );

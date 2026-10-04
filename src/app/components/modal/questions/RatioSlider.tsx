@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { MiraIcon, type IconName } from '../../icons/MiraIcon';
 import './Questions.css';
 
 interface RatioSliderProps {
@@ -6,12 +7,12 @@ interface RatioSliderProps {
   onChange: (value: number) => void;
 }
 
-function getRatioHint(spendPct: number) {
-  if (spendPct <= 40) return '🏆 Luar biasa! Tabunganmu sangat tinggi';
-  if (spendPct <= 55) return '✅ Bagus! Proporsi tabunganmu sehat';
-  if (spendPct <= 70) return '🟡 Masih oke, tapi coba naikkan tabungan';
-  if (spendPct <= 85) return '🟠 Tabungan terlalu kecil, perlu diperbaiki';
-  return '🔴 Hampir semua habis untuk pengeluaran';
+function getRatioHint(spendPct: number): { icon: IconName; text: string } {
+  if (spendPct <= 40) return { icon: 'trophy', text: 'Luar biasa! Tabunganmu sangat tinggi' };
+  if (spendPct <= 55) return { icon: 'check-badge', text: 'Bagus! Proporsi tabunganmu sehat' };
+  if (spendPct <= 70) return { icon: 'buddy-meh', text: 'Masih oke, tapi coba naikkan tabungan' };
+  if (spendPct <= 85) return { icon: 'warn', text: 'Tabungan terlalu kecil, perlu diperbaiki' };
+  return { icon: 'alert', text: 'Hampir semua habis untuk pengeluaran' };
 }
 
 export function RatioSlider({ value, onChange }: RatioSliderProps) {
@@ -20,6 +21,7 @@ export function RatioSlider({ value, onChange }: RatioSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
 
   const savePct = 100 - spendPct;
+  const hint = getRatioHint(spendPct);
 
   const updateValue = (clientX: number) => {
     if (!trackRef.current) return;
@@ -88,10 +90,13 @@ export function RatioSlider({ value, onChange }: RatioSliderProps) {
         <div className="ratio-handle" style={{ left: `${spendPct}%` }} />
       </div>
       <div className="ratio-labels">
-        <span className="ratio-label-spend">🔴 Pengeluaran</span>
-        <span className="ratio-label-save">Tabungan 🟢</span>
+        <span className="ratio-label-spend"><i className="ratio-key spend" />Pengeluaran</span>
+        <span className="ratio-label-save">Tabungan<i className="ratio-key save" /></span>
       </div>
-      <div className="ratio-center-label">{getRatioHint(spendPct)}</div>
+      <div className="ratio-center-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <MiraIcon name={hint.icon} size={28} />
+        <span>{hint.text}</span>
+      </div>
     </div>
   );
 }
