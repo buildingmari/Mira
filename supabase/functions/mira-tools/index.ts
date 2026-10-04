@@ -4,7 +4,7 @@
  * Structured (non-chat) AI + write endpoints for the dashboard web app:
  *
  *   { op: 'parse_expense', phone_number, text?, image_base64?, audio_base64? }
- *     -> { expenses: [{ item, merchant, amount, category, wallet, date, transaction_type }], note }
+ *     -> { expenses: [{ item, merchant, amount, category, wallet, date, transaction_type, items }], note }
  *     Used by the "+" / Catat modal's ✨ AI mode. Categories are the modal's
  *     own labels (Makanan, Transport, …) so it can map them with CAT_TO_DB.
  *     Nothing is saved here — the modal shows editable cards first.
@@ -53,7 +53,7 @@ const EXPENSE_PARSE_SYSTEM = `Kamu parser transaksi keuangan untuk MIRA, asisten
 Ekstrak SEMUA transaksi dari teks user dan lampirannya (foto struk/bukti transfer, voice note).
 
 Balas HANYA JSON valid:
-{"expenses":[{"item":string,"merchant":string|null,"amount":number,"category":string,"wallet":string|null,"date":"YYYY-MM-DD","transaction_type":"expense"|"income"}],"note":string|null}
+{"expenses":[{"item":string,"merchant":string|null,"amount":number,"category":string,"wallet":string|null,"date":"YYYY-MM-DD","transaction_type":"expense"|"income","items":[{"item":string,"qty":number,"unit_price":number,"subtotal":number}]}],"note":string|null}
 
 ATURAN:
 - Tanggal hari ini: {{TODAY}}, kemarin: {{YESTERDAY}}. Tentukan tanggal PER TRANSAKSI: kata waktu ("kemarin", "tadi pagi", "tgl 5") hanya berlaku untuk transaksi yang LANGSUNG mengikutinya / disebut bersamanya; transaksi lain = hari ini.
@@ -65,6 +65,7 @@ ATURAN:
 - transaction_type "income" untuk uang masuk (category Pemasukan), selain itu "expense".
 - wallet: hanya kalau disebut/terlihat, dipetakan ke salah satu: ${WALLETS.join(', ')}. Tunai = Cash. Selain itu null.
 - Struk dengan banyak item = SATU transaksi dengan amount = TOTAL akhir yang dibayar dan item = ringkasan (misal "Belanja Indomaret"), kecuali user minta dipisah.
+- items = rincian baris yang benar-benar terlihat/disebut (nama, qty, harga satuan, subtotal per baris) — dari struk, atau kalau user menyebut harga per barang untuk SATU pembelian ("belanja indomaret: susu 2x15rb, roti 12rb"). Pajak/service/ongkir boleh jadi baris sendiri. Kalau tidak ada rincian: items [].
 - Beberapa transaksi berbeda dalam satu pesan ("kopi 25rb, parkir 5rb") = beberapa entri.
 - Angka Indonesia: 25rb/25k = 25000, 1,5jt = 1500000, 15.000 = 15000, goceng = 5000, ceban = 10000, gopek = 500, seceng = 1000.
 - item singkat & jelas (maks 40 karakter). merchant = nama toko/tempat kalau ada.
@@ -97,6 +98,25 @@ const inactive = () => json({
   message: 'Langganan MIRA kamu sudah tidak aktif. Perpanjang dulu di menu Langganan ya.',
 }, 403);
 
+/** Receipt rows in the expenses.items_detail shape (same as the WhatsApp flow). */
+// deno-lint-ignore no-explicit-any
+function normalizeItems(raw: any) {
+  if (!Array.isArray(raw)) return [];
+  // deno-lint-ignore no-explicit-any
+  return raw.slice(0, 50).map((r: any) => {
+    const qty = Math.max(1, Number(r?.qty) || 1);
+    const unit = Math.max(0, Math.round(Number(r?.unit_price) || 0));
+    const subtotal = Math.max(0, Math.round(Number(r?.subtotal) || unit * qty));
+    return {
+      item: String(r?.item || r?.name || '').trim().slice(0, 60),
+      qty,
+      unit_price: unit || Math.round(subtotal / qty),
+      subtotal,
+    };
+  // deno-lint-ignore no-explicit-any
+  }).filter((r: any) => r.item && r.subtotal > 0);
+}
+
 // deno-lint-ignore no-explicit-any
 function normalizeExpenses(raw: any, defaultWallet: string) {
   const list = Array.isArray(raw?.expenses) ? raw.expenses : [];
@@ -114,6 +134,7 @@ function normalizeExpenses(raw: any, defaultWallet: string) {
       wallet,
       date: sanitizeDate(e?.date),
       transaction_type: isIncome ? 'income' : 'expense',
+      items: normalizeItems(e?.items),
     };
   // deno-lint-ignore no-explicit-any
   }).filter((e: any) => e.amount > 0);

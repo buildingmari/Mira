@@ -4,6 +4,7 @@ import { X, Check, Sparkles, Camera, Loader2, Users, Pencil, Mic, Square } from 
 import { compressImage } from '../lib/image';
 import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../lib/voice';
 import { isReadOnlyError, openRenewSheet } from '../lib/subscription';
+import { parseItems, serializeItems, type ItemLine } from '../lib/items';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -141,6 +142,12 @@ const MODAL_CSS = `
   .atm-photo-btn { height: 46px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.12); background: #fff; padding: 0 14px; display: flex;
                    align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: #374151; cursor: pointer; font-family: 'DM Sans', sans-serif; }
   .atm-card { border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 12px; background: #FCFCFD; display: flex; flex-direction: column; gap: 8px; }
+  .atm-items { border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .atm-items-hd { font-size: 11.5px; font-weight: 600; color: #6B7280; margin-bottom: 2px; }
+  .atm-item { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #374151; }
+  .atm-item span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dark .atm-items { border-top-color: rgba(255,255,255,0.1); }
+  .dark .atm-item { color: #CBD5E1; }
   .atm-card-top { display: flex; align-items: center; gap: 8px; }
   .atm-pill { border: none; border-radius: 99px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif; }
   .atm-pill.exp { background: #FEF2F2; color: #DC2626; }
@@ -159,6 +166,8 @@ const TOOLS_URL = `${SUPA_URL}/functions/v1/mira-tools`;
 interface AiTx {
   item: string; merchant: string | null; amount: number; category: string;
   wallet: string; date: string; transaction_type: 'expense' | 'income';
+  /** Receipt rows, when MIRA read them (photo / itemised text). */
+  items?: ItemLine[];
 }
 
 const AI_EXAMPLES = [
@@ -287,7 +296,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
       if (!r.ok) throw new Error(data?.message || 'MIRA lagi gangguan, coba lagi ya.');
       const list: AiTx[] = Array.isArray(data.expenses) ? data.expenses : [];
       if (!list.length) { setAiNote(data.note || 'MIRA belum nemu nominalnya. Coba tulis lebih jelas ya.'); return; }
-      setAiTxs(list.map((t) => ({ ...t, wallet: WALLETS.includes(t.wallet) ? t.wallet : wallet })));
+      setAiTxs(list.map((t) => ({ ...t, items: parseItems(t.items), wallet: WALLETS.includes(t.wallet) ? t.wallet : wallet })));
     } catch (e: any) {
       failed(e, 'Gagal terhubung ke MIRA.');
     } finally {
@@ -316,6 +325,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
         wallet:           t.wallet,
         date:             t.date || today,
         transaction_type: t.transaction_type,
+        items_detail:     serializeItems(t.items || []),
         created_at:       now,
       }));
       const r = await fetch(`${SUPA_URL}/rest/v1/expenses`, {
@@ -366,7 +376,6 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                   <textarea
                     className="atm-textarea"
                     rows={3}
-                    autoFocus
                     placeholder="Misal: kopi 25rb pake gopay, parkir 5rb, kemarin gajian 8jt"
                     value={aiText}
                     onChange={e => setAiText(e.target.value)}
@@ -457,6 +466,18 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                       </select>
                       <input className="atm-input atm-sm" type="date" value={t.date} onChange={e => patchTx(i, { date: e.target.value })} />
                     </div>
+                    {!!t.items?.length && (
+                      <div className="atm-items">
+                        <div className="atm-items-hd">Rincian {t.items.length} item · bisa diubah nanti di menu Transaksi</div>
+                        {t.items.slice(0, 6).map((it, j) => (
+                          <div className="atm-item" key={j}>
+                            <span>{it.qty > 1 ? `${it.qty}× ` : ''}{it.item}</span>
+                            <span>{fmtRp(it.subtotal)}</span>
+                          </div>
+                        ))}
+                        {t.items.length > 6 && <div className="atm-item" style={{ color: '#9CA3AF' }}>+{t.items.length - 6} item lagi</div>}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {err && <div className="atm-err">{err}</div>}
@@ -505,7 +526,6 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                 placeholder="0"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                autoFocus
               />
             </div>
           </div>

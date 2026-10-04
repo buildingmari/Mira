@@ -167,7 +167,7 @@ const MOB_NAV: { path: string; label: string; icon: IconName }[] = [
 const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/dashboard':              { title: 'Dashboard',        sub: '' },
   '/dashboard/chat':         { title: 'Chat MIRA',        sub: 'Catat pengeluaran lewat chat' },
-  '/dashboard/transactions': { title: 'Transaksi',        sub: 'Riwayat pengeluaran' },
+  '/dashboard/transactions': { title: 'Transaksi',        sub: 'Semua pemasukan & pengeluaran' },
   '/dashboard/split-bill':   { title: 'Split Bill',       sub: 'Bagi tagihan & catat piutang teman' },
   '/dashboard/insights':     { title: 'Insight',          sub: 'Analisis keuangan' },
   '/dashboard/goals':        { title: 'Target',           sub: 'Progress goal kamu' },
