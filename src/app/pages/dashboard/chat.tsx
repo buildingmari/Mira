@@ -4,10 +4,8 @@ import { MiraChat } from '../../components/MiraChat';
 // This dashboard layout (dashboard/layout.tsx) uses normal page scroll, not
 // a fixed-height app shell, so a full-bleed immersive chat view has to
 // opt itself out via position:fixed rather than relying on the parent to
-// size it. The offsets below are exact, measured against the live site
-// (not guessed): desktop topbar 58px / sidebar 220px; mobile topbar 61px /
-// bottom-nav 69px, each plus the matching safe-area-inset for notched
-// devices — same values dashboard/layout.tsx itself reserves.
+// size it. Desktop: topbar 58px / sidebar 220px. Phones: the layout's
+// --mira-topbar-h / --mira-tabbar-h plus the matching safe-area insets.
 const PAGE_CSS = `
   .mira-chat-page {
     position: fixed;
@@ -16,9 +14,10 @@ const PAGE_CSS = `
   }
   @media (max-width: 900px) {
     .mira-chat-page {
-      top: calc(61px + env(safe-area-inset-top,0px));
-      left: 0;
-      bottom: calc(69px + env(safe-area-inset-bottom,0px));
+      top: calc(var(--mira-topbar-h, 60px) + env(safe-area-inset-top,0px));
+      left: env(safe-area-inset-left,0px);
+      right: env(safe-area-inset-right,0px);
+      bottom: calc(var(--mira-tabbar-h, 62px) + env(safe-area-inset-bottom,0px));
     }
   }
 `;

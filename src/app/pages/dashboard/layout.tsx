@@ -25,7 +25,20 @@ function decodeUnicode(str: string): string {
   return str;
 }
 
+// Phone chrome sizes. Everything that sits against the mobile top bar or the
+// bottom menu (chat page, chat FAB, page padding) uses these variables plus the
+// matching env(safe-area-inset-*), so notch / Dynamic Island / home-indicator
+// phones and old square-screen ones all line up.
 const LAYOUT_CSS = `
+  :root { --mira-topbar-h: 60px; --mira-tabbar-h: 62px; }
+  html:has(#mira-dash-layout), html:has(#mira-dash-layout) body { background: #F8F9FB; }
+  html.dark:has(#mira-dash-layout), html.dark:has(#mira-dash-layout) body { background: #0F172A; }
+  /* Installed app: no whole-page rubber band, like a native app shell. */
+  html.pwa-standalone:has(#mira-dash-layout), html.pwa-standalone:has(#mira-dash-layout) body { overscroll-behavior-y: none; }
+  #mira-dash-layout { -webkit-tap-highlight-color: transparent; }
+  #mira-sidebar, #mira-mobile-topbar, #mira-mobile-nav {
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
   .mira-wordmark {
     font-family: 'Sora', sans-serif; font-weight: 800; letter-spacing: -0.04em; line-height: 1;
     background: linear-gradient(135deg, #2D4BFF 0%, #22D3EE 100%);
@@ -37,7 +50,8 @@ const LAYOUT_CSS = `
     background: #F8F9FB; font-family: 'DM Sans', sans-serif;
   }
   #mira-sidebar {
-    width: 220px; background: #fff;
+    width: 220px; background: #fff; box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom,0px);
     border-right: 1px solid rgba(0,0,0,0.07);
     position: fixed; top: 0; left: 0; bottom: 0;
     display: flex; flex-direction: column;
@@ -61,17 +75,24 @@ const LAYOUT_CSS = `
     justify-content: space-between; height: 58px; box-sizing: border-box;
   }
   #mira-mobile-topbar {
-    display: none; position: sticky; top: 0; z-index: 100;
-    background: rgba(248,249,251,0.96); backdrop-filter: blur(20px);
+    display: none; position: sticky; top: 0; z-index: 100; box-sizing: border-box;
+    height: calc(var(--mira-topbar-h) + env(safe-area-inset-top,0px));
+    background: rgba(248,249,251,0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(0,0,0,0.07);
-    padding: calc(env(safe-area-inset-top,0px) + 12px) 20px 12px;
+    padding: env(safe-area-inset-top,0px) max(16px, env(safe-area-inset-right,0px)) 0 max(16px, env(safe-area-inset-left,0px));
   }
+  #mira-mobile-topbar > div { height: 100%; }
+  /* Bottom menu: fixed-height bar + the home-indicator area below it. */
   #mira-mobile-nav {
-    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
-    background: rgba(255,255,255,0.94); backdrop-filter: blur(24px) saturate(1.8);
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; box-sizing: border-box;
+    height: calc(var(--mira-tabbar-h) + env(safe-area-inset-bottom,0px));
+    background: rgba(255,255,255,0.94); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
     border-top: 1px solid rgba(0,0,0,0.07);
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom,0px));
+    padding: 0 max(6px, env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(6px, env(safe-area-inset-left,0px));
   }
+  #mira-mobile-nav > div { height: var(--mira-tabbar-h); max-width: 560px; margin: 0 auto; }
+  .mira-page-pad { padding-bottom: calc(var(--mira-tabbar-h) + env(safe-area-inset-bottom,0px) + 16px); }
+  @media (min-width: 901px) { .mira-page-pad { padding-bottom: 0; } }
   .mira-nav-btn {
     width: 100%; display: flex; align-items: center; gap: 10px;
     padding: 5px 8px; border-radius: 10px; border: none; cursor: pointer;
@@ -82,18 +103,33 @@ const LAYOUT_CSS = `
   .mira-nav-btn:hover { background: #F8F9FB; color: #111827; }
   .mira-nav-btn.active { background: #EFF6FF; color: #1D4ED8; font-weight: 600; }
   .mira-mob-btn {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    gap: 3px; padding: 6px 4px; border: none; background: transparent;
-    cursor: pointer; font-size: 10px; font-family: 'DM Sans', sans-serif;
-    color: #9CA3AF; user-select: none; transition: color .15s;
+    flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; padding: 0 2px; border: none; background: transparent;
+    cursor: pointer; font-size: 10.5px; line-height: 1.2; font-family: 'DM Sans', sans-serif;
+    color: #9CA3AF; user-select: none; transition: color .15s, transform .1s; white-space: nowrap;
+  }
+  .mira-mob-btn:active { transform: scale(.94); }
+  .mira-mob-add {
+    width: 48px; height: 48px; background: #2563EB; border-radius: 16px; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(37,99,235,0.45); transition: transform .1s;
+  }
+  .mira-mob-add:active { transform: scale(.9); }
+  /* Phone on its side: shorter bars, icon beside the label (like iOS). */
+  @media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
+    :root { --mira-topbar-h: 50px; --mira-tabbar-h: 48px; }
+    .mira-mob-btn { flex-direction: row; gap: 6px; font-size: 12px; }
+    .mira-mob-add { width: 40px; height: 36px; border-radius: 12px; }
   }
   .mira-mob-btn.active { color: #2563EB; font-weight: 600; }
   .mira-mob-btn svg { transition: filter .15s, opacity .15s; }
   .mira-mob-btn:not(.active) svg { filter: grayscale(1); opacity: .55; }
   .sb-x-btn { display: none !important; }
   @media (max-width: 900px) {
-    #mira-sidebar { transform: translateX(-220px); }
+    #mira-sidebar { transform: translateX(-100%); }
     #mira-main { margin-left: 0; width: 100%; }
+    .mira-page-pad { padding-left: env(safe-area-inset-left,0px); padding-right: env(safe-area-inset-right,0px); }
+    #mira-sidebar { padding-top: env(safe-area-inset-top,0px); padding-left: env(safe-area-inset-left,0px); width: calc(220px + env(safe-area-inset-left,0px)); }
     #mira-topbar { display: none; }
     #mira-mobile-topbar { display: block; }
     #mira-mobile-nav { display: block; }
@@ -160,6 +196,18 @@ export function DashboardLayout() {
       document.head.appendChild(s);
     }
   }, []);
+
+  // Browser / status-bar colour follows the dashboard background (Android
+  // Chrome, installed app), back to white when leaving the dashboard.
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) return;
+    // From the theme value, not the <html> class: ThemeProvider applies the
+    // class in its own effect, which runs after this child effect.
+    const dark = theme === 'dark' || (theme === 'system' && window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+    meta.content = dark ? '#0F172A' : '#F8F9FB';
+    return () => { meta.content = '#FFFFFF'; };
+  }, [theme]);
 
   useEffect(() => {
     const ph = localStorage.getItem('mira_phone');
@@ -373,7 +421,7 @@ export function DashboardLayout() {
           </div>
         </div>
 
-        <div style={{ flex: 1, paddingBottom: 'calc(68px + env(safe-area-inset-bottom,0px))' }}>
+        <div className="mira-page-pad" style={{ flex: 1 }}>
           <SubscriptionBanner />
           <Outlet />
         </div>
@@ -383,23 +431,18 @@ export function DashboardLayout() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {MOB_NAV.slice(0, 2).map(({ path, label, icon }) => (
             <button key={path} className={`mira-mob-btn${on(path) ? ' active' : ''}`} onClick={() => navigate(path)}>
-              <MiraIcon name={icon} size={28} />
+              <MiraIcon name={icon} size={26} />
               {label}
             </button>
           ))}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-            <button
-              onClick={openAdd}
-              style={{ width: 50, height: 50, background: '#2563EB', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.45)' }}
-              onTouchStart={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.9)'; }}
-              onTouchEnd={e   => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
-            >
+            <button className="mira-mob-add" onClick={openAdd} aria-label="Catat transaksi">
               <Plus style={{ width: 22, height: 22, stroke: '#fff' }} strokeWidth={2.5} />
             </button>
           </div>
           {MOB_NAV.slice(2).map(({ path, label, icon }) => (
             <button key={path} className={`mira-mob-btn${on(path) ? ' active' : ''}`} onClick={() => navigate(path)}>
-              <MiraIcon name={icon} size={28} />
+              <MiraIcon name={icon} size={26} />
               {label}
             </button>
           ))}

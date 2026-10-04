@@ -3,9 +3,8 @@ import { useLocation } from 'react-router';
 import { MessageCircle, X } from 'lucide-react';
 import { MiraChat } from './MiraChat';
 
-// Same measured offset dashboard/layout.tsx reserves for its fixed mobile
-// bottom-nav (69px + safe-area) — the FAB sits just above it so neither
-// overlaps the other.
+// On phones the FAB sits just above dashboard/layout.tsx's bottom menu
+// (--mira-tabbar-h + safe-area), so neither overlaps the other.
 const WIDGET_CSS = `
   .mcw-fab {
     position: fixed; z-index: 250;
@@ -18,7 +17,7 @@ const WIDGET_CSS = `
   }
   .mcw-fab:hover { transform: scale(1.06); }
   @media (max-width: 900px) {
-    .mcw-fab { bottom: calc(69px + 16px + env(safe-area-inset-bottom,0px)); right: 16px; }
+    .mcw-fab { bottom: calc(var(--mira-tabbar-h, 62px) + 14px + env(safe-area-inset-bottom,0px)); right: max(16px, calc(env(safe-area-inset-right,0px) + 12px)); }
   }
   .mcw-panel {
     position: fixed; z-index: 240;
@@ -35,7 +34,9 @@ const WIDGET_CSS = `
       right: 0; left: 0; bottom: 0; top: 0;
       width: auto; height: auto; max-height: none;
       border-radius: 0; border: none; z-index: 260;
-      padding-top: env(safe-area-inset-top,0px);
+      /* Full screen: keep the header below the status bar / notch and the
+         message box above the home indicator. */
+      padding: env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
       background: #fff;
     }
     /* Full-screen on phones: the panel's own header has the close button. */

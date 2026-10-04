@@ -40,10 +40,10 @@ const MODAL_CSS = `
   }
   .atm-sheet {
     background: #fff; width: 100%; max-width: 480px;
-    border-radius: 24px 24px 0 0; padding: 0 0 32px;
+    border-radius: 24px 24px 0 0; padding: 0 0 calc(24px + env(safe-area-inset-bottom,0px));
     box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
     font-family: 'DM Sans', sans-serif;
-    max-height: 92vh; overflow-y: auto;
+    max-height: 92vh; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain;
   }
   @media (min-width: 600px) {
     .atm-sheet { border-radius: 20px; max-height: 88vh; }

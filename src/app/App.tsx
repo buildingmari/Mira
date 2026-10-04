@@ -12,7 +12,10 @@ function MobileZoomFix() {
       meta.name = 'viewport';
       document.head.appendChild(meta);
     }
-    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no';
+    // viewport-fit=cover must stay: without it iOS/Android report every
+    // safe-area inset as 0 and the installed app's bottom menu sits on top of
+    // the home indicator.
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
 
     const styleId = 'mira-mobile-fix';
     if (!document.getElementById(styleId)) {

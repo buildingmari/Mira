@@ -14,6 +14,7 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 export function initPwa(): void {
+  document.documentElement.classList.toggle('pwa-standalone', isStandalone());
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); // our own banner/button asks instead of the mini-infobar
     deferred = e as InstallEvent;
