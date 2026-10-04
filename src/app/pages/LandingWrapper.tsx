@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
+import { isStandalone } from '../lib/pwa';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
 import { ValueProps } from '../components/ValueProps';
@@ -21,6 +22,16 @@ export function LandingWrapper() {
   const [resumeSignup, setResumeSignup] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // Logged in already (session lives in localStorage until logout).
+  const loggedIn = (() => { try { return !!localStorage.getItem('mira_phone'); } catch { return false; } })();
+
+  // The installed app should open on the dashboard, not the marketing page.
+  useEffect(() => {
+    if (loggedIn && isStandalone() && !searchParams.get('signup')) navigate('/dashboard', { replace: true });
+  }, []);
+
+  const openLogin = () => (loggedIn ? navigate('/dashboard') : setLoginOpen(true));
 
   // Deep links (used by /auth/callback): /?signup=1 opens the signup
   // (assessment) flow, /?signup=resume reopens it at the account step after
@@ -33,6 +44,7 @@ export function LandingWrapper() {
     if (!signup && !wantsLogin) return;
 
     if (signup) { setResumeSignup(signup === 'resume'); setModalOpen(true); }
+    else if (loggedIn) { navigate('/dashboard', { replace: true }); return; }
     else setLoginOpen(true);
 
     const next = new URLSearchParams(searchParams);
@@ -48,7 +60,8 @@ export function LandingWrapper() {
       <div id="page" className="visible">
         <Navigation
           onCTAClick={openSignup}
-          onLoginClick={() => setLoginOpen(true)}
+          onLoginClick={openLogin}
+          loginLabel={loggedIn ? 'Dashboard' : 'Masuk'}
         />
         <Hero onCTAClick={openSignup} />
         <ValueProps />

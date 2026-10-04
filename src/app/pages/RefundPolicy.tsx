@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useEffect } from 'react';
 import '../components/LegalPage.css';
 import { Footer } from '../components/Footer';
+import { MiraIcon } from '../components/icons/MiraIcon';
 
 const TOC = [
   { id: 'overview',    label: 'Ringkasan Kebijakan' },
@@ -45,11 +46,11 @@ export function RefundPolicy() {
         <main className="legal-content">
           {/* Hero */}
           <div className="legal-hero">
-            <div className="legal-badge">💸 Refund</div>
+            <div className="legal-badge"><MiraIcon name="cash" size={20} tile={false} /> Refund</div>
             <h1 className="legal-title">Kebijakan Pengembalian Dana</h1>
             <div className="legal-meta">
-              <span>📅 Berlaku sejak: 1 Januari 2025</span>
-              <span>🔄 Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
             </div>
           </div>
 
@@ -64,7 +65,7 @@ export function RefundPolicy() {
             </p>
             <div className="legal-box success">
               <p>
-                ✅ <strong>Garansi Uang Kembali 7 Hari</strong> — Jika dalam 7 hari pertama setelah pembelian Anda merasa MIRA tidak sesuai ekspektasi, kami akan kembalikan pembayaran Anda penuh, tanpa pertanyaan berlebihan.
+                <MiraIcon name="check-badge" size={20} tile={false} /> <strong>Garansi Uang Kembali 7 Hari</strong> — Jika dalam 7 hari pertama setelah pembelian Anda merasa MIRA tidak sesuai ekspektasi, kami akan kembalikan pembayaran Anda penuh, tanpa pertanyaan berlebihan.
               </p>
             </div>
             <p className="legal-p">
@@ -139,7 +140,7 @@ export function RefundPolicy() {
             </ul>
             <div className="legal-box warning">
               <p>
-                ⚠️ MIRA tidak menerapkan sistem perpanjangan otomatis, sehingga tidak ada tagihan di luar yang Anda setujui secara eksplisit saat checkout.
+                <MiraIcon name="warn" size={20} tile={false} /> MIRA tidak menerapkan sistem perpanjangan otomatis, sehingga tidak ada tagihan di luar yang Anda setujui secara eksplisit saat checkout.
               </p>
             </div>
           </section>
@@ -298,7 +299,7 @@ export function RefundPolicy() {
             </ul>
             <div className="legal-box">
               <p>
-                💡 <strong>Tips:</strong> Simpan bukti pembayaran (screenshot atau email konfirmasi) untuk mempercepat proses verifikasi.
+                <MiraIcon name="bulb" size={20} tile={false} /> <strong>Tips:</strong> Simpan bukti pembayaran (screenshot atau email konfirmasi) untuk mempercepat proses verifikasi.
               </p>
             </div>
             <p className="legal-p">

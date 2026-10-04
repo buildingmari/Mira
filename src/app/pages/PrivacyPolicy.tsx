@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useEffect } from 'react';
 import '../components/LegalPage.css';
 import { Footer } from '../components/Footer';
+import { MiraIcon } from '../components/icons/MiraIcon';
 
 const TOC = [
   { id: 'intro',       label: 'Pendahuluan' },
@@ -46,11 +47,11 @@ export function PrivacyPolicy() {
         <main className="legal-content">
           {/* Hero */}
           <div className="legal-hero">
-            <div className="legal-badge">🔒 Privasi</div>
+            <div className="legal-badge"><MiraIcon name="lock" size={20} tile={false} /> Privasi</div>
             <h1 className="legal-title">Kebijakan Privasi</h1>
             <div className="legal-meta">
-              <span>📅 Berlaku sejak: 1 Januari 2025</span>
-              <span>🔄 Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
             </div>
           </div>
 
@@ -128,7 +129,7 @@ export function PrivacyPolicy() {
             </ul>
             <div className="legal-box warning">
               <p>
-                ⚠️ Kami <strong>tidak</strong> menggunakan data transaksi keuangan pribadi Anda untuk keperluan periklanan, profiling komersial, atau dijual kepada pihak ketiga manapun.
+                <MiraIcon name="warn" size={20} tile={false} /> Kami <strong>tidak</strong> menggunakan data transaksi keuangan pribadi Anda untuk keperluan periklanan, profiling komersial, atau dijual kepada pihak ketiga manapun.
               </p>
             </div>
           </section>

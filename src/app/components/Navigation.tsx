@@ -4,9 +4,11 @@ import './Navigation.css';
 interface NavigationProps {
   onCTAClick: () => void;
   onLoginClick?: () => void;
+  /** "Masuk", or "Dashboard" when already logged in. */
+  loginLabel?: string;
 }
 
-export function Navigation({ onCTAClick, onLoginClick }: NavigationProps) {
+export function Navigation({ onCTAClick, onLoginClick, loginLabel = 'Masuk' }: NavigationProps) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -37,7 +39,7 @@ export function Navigation({ onCTAClick, onLoginClick }: NavigationProps) {
         </ul>
         <div className="nav-right">
           {onLoginClick && (
-            <button className="nav-signin" onClick={onLoginClick}>Masuk</button>
+            <button className="nav-signin" onClick={onLoginClick}>{loginLabel}</button>
           )}
           <button className="nav-cta" onClick={onCTAClick}>Mulai sekarang</button>
         </div>
@@ -76,7 +78,7 @@ export function Navigation({ onCTAClick, onLoginClick }: NavigationProps) {
         <div className="drawer-actions">
           {onLoginClick && (
             <button className="drawer-signin" onClick={() => { setMenuOpen(false); onLoginClick(); }}>
-              Masuk
+              {loginLabel}
             </button>
           )}
           <button className="drawer-cta" onClick={() => { setMenuOpen(false); onCTAClick(); }}>

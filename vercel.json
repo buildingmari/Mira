@@ -8,18 +8,32 @@
       "src": "/favicon.ico",
       "dest": "/favicon.ico"
     },
-
     {
       "src": "/(.*\\.(png|jpg|jpeg|gif|svg|ico|webp))",
       "dest": "/$1"
     },
-
+    {
+      "src": "/sw.js",
+      "headers": {
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Service-Worker-Allowed": "/"
+      },
+      "dest": "/sw.js"
+    },
+    {
+      "src": "/(manifest\\.webmanifest|offline\\.html)",
+      "dest": "/$1"
+    },
     {
       "src": "/(.*)",
-      "has": [{ "type": "host", "value": "admin.halo-mira.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "admin.halo-mira.com"
+        }
+      ],
       "dest": "/admin/index.html"
     },
-
     {
       "src": "/(.*)",
       "dest": "/index.html"

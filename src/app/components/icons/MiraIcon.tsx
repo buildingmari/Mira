@@ -643,6 +643,15 @@ const ICONS = {
     <path d="M24 19v8" strokeWidth={2.8} />
     <Dot x={24} y={31.6} r={1.8} />
   </> },
+  hourglass: { tone: 'yellow', draw: () => <>
+    <path d="M15 11h18c0 7-6 9-6 13s6 6 6 13H15c0-7 6-9 6-13s-6-6-6-13Z" fill={C.white} />
+    <path d="M18.5 14.5h11c-1 3.4-3.8 5.4-5.5 6.8-1.7-1.4-4.5-3.4-5.5-6.8Z" fill={C.yellow} {...NO} />
+    <path d="M17.6 35.4c1.4-3.4 3.9-4.9 6.4-5.4 2.5.5 5 2 6.4 5.4Z" fill={C.yellow} {...NO} />
+    <path d="M24 22.5v6" stroke={C.yellow} strokeWidth={1.8} strokeDasharray="1.5 2" />
+    <rect x={11.5} y={6.5} width={25} height={4.5} rx={2.2} fill={C.blue} />
+    <rect x={11.5} y={37} width={25} height={4.5} rx={2.2} fill={C.blue} />
+    <Spark x={40} y={14} s={3} c={C.coral} />
+  </> },
   nope: { tone: 'coral', draw: () => <>
     <circle cx={24} cy={24} r={13.5} fill={C.coralSoft} />
     <path d="M19 19l10 10M29 19L19 29" stroke={C.coral} strokeWidth={3.2} />

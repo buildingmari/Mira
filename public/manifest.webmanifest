@@ -1,0 +1,22 @@
+{
+  "id": "/dashboard",
+  "name": "MIRA — Asisten Keuangan AI",
+  "short_name": "MIRA",
+  "description": "Catat pengeluaran lewat chat, foto struk, atau voice note. Laporan dan insight keuanganmu dalam satu aplikasi.",
+  "lang": "id",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#2D4BFF",
+  "theme_color": "#FFFFFF",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Catat transaksi", "short_name": "Catat", "url": "/dashboard?add=1", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Chat MIRA", "short_name": "Chat", "url": "/dashboard/chat", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

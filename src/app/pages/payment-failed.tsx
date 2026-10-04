@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { RotateCcw, MessageCircle } from "lucide-react";
+import { MiraIcon } from "../components/icons/MiraIcon";
 
 const WA_SUPPORT = "6287889681230";
 
 const T_ICON     = 0.05;
-const X_DUR      = 0.28;
-const T_CONTENT  = T_ICON + X_DUR * 2 + 0.15; // after both X strokes drawn ~0.76s
+const T_CONTENT  = T_ICON + 0.65; // after Miri + the badge have popped in
 const T_BUTTONS  = T_CONTENT + 0.18;
 
 export function PaymentFailedPage() {
@@ -20,49 +20,24 @@ export function PaymentFailedPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[360px] flex flex-col items-center text-center">
 
-          {/* ── X icon animation ── */}
-          <div className="relative flex items-center justify-center mb-10" style={{ width: 88, height: 88 }}>
-            {/* Glow */}
+          {/* ── Miri worried ── */}
+          <motion.div
+            className="relative flex items-center justify-center mb-12"
+            style={{ width: 120, height: 120 }}
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <MiraIcon name="buddy-worried" size={120} />
             <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ background: "rgba(239,68,68,0.07)" }}
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: T_ICON - 0.05, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            />
-            {/* Circle bg */}
-            <motion.div
-              className="absolute rounded-full"
-              style={{ inset: 8, background: "#FFF1F2", border: "1.5px solid #FECDD3" }}
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: T_ICON, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            />
-            {/* X SVG */}
-            <svg
-              width="42" height="42" viewBox="0 0 42 42" fill="none"
-              style={{ position: "relative", zIndex: 1 }}
+              style={{ position: "absolute", right: -6, bottom: -6 }}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.45, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
             >
-              <motion.path
-                d="M13 13L29 29"
-                stroke="#EF4444"
-                strokeWidth="3"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ delay: T_ICON + 0.22, duration: X_DUR, ease: "easeOut" }}
-              />
-              <motion.path
-                d="M29 13L13 29"
-                stroke="#EF4444"
-                strokeWidth="3"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ delay: T_ICON + 0.22 + X_DUR + 0.04, duration: X_DUR, ease: "easeOut" }}
-              />
-            </svg>
-          </div>
+              <MiraIcon name="nope" size={48} tile={false} />
+            </motion.div>
+          </motion.div>
 
           {/* ── Copy ── */}
           <motion.div

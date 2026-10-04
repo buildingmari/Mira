@@ -472,3 +472,6 @@
 .dark #mira-dash-layout input, .dark #mira-dash-layout select, .dark #mira-dash-layout textarea { color-scheme: dark; }
 .dark #mira-dash-layout input::placeholder, .dark #mira-dash-layout textarea::placeholder { color: #64748B; }
 .dark #mira-dash-layout select option { background: #1E293B; color: #F1F5F9; }
+
+/* Floating chat panel (full-screen on phones) */
+.dark #mira-dash-layout .mcw-panel { background: #0F172A; border-color: rgba(255,255,255,0.1); }

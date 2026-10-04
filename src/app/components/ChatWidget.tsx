@@ -35,7 +35,11 @@ const WIDGET_CSS = `
       right: 0; left: 0; bottom: 0; top: 0;
       width: auto; height: auto; max-height: none;
       border-radius: 0; border: none; z-index: 260;
+      padding-top: env(safe-area-inset-top,0px);
+      background: #fff;
     }
+    /* Full-screen on phones: the panel's own header has the close button. */
+    .mcw-fab.mcw-open { display: none; }
   }
 `;
 
@@ -60,6 +64,15 @@ export function ChatWidget() {
     return () => window.removeEventListener('mira:chat-close', close);
   }, []);
 
+  // Esc closes the panel; it also closes when navigating to another page.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
   // The full chat page (/dashboard/chat) already IS this experience,
   // full-screen — no redundant floating duplicate on top of it.
   if (location.pathname === '/dashboard/chat') return null;
@@ -68,10 +81,10 @@ export function ChatWidget() {
     <>
       {open && (
         <div className="mcw-panel">
-          <MiraChat />
+          <MiraChat onClose={() => setOpen(false)} />
         </div>
       )}
-      <button className="mcw-fab" onClick={() => setOpen((v) => !v)} title={open ? 'Tutup chat' : 'Chat MIRA'}>
+      <button className={`mcw-fab${open ? ' mcw-open' : ''}`} onClick={() => setOpen((v) => !v)} title={open ? 'Tutup chat' : 'Chat MIRA'}>
         {open ? <X size={22} /> : <MessageCircle size={23} />}
       </button>
     </>

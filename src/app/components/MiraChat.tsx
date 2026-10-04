@@ -19,6 +19,7 @@ const CSS = `
                 border-bottom:1px solid rgba(0,0,0,0.07); background:#fff; flex-shrink:0; }
   .mirac-head-title { display:flex; align-items:center; gap:8px; font-family:'Sora',sans-serif; font-weight:600; font-size:14px; color:#111827; }
   .mirac-head-dot { width:7px; height:7px; border-radius:50%; background:#16A34A; }
+  .mirac-close { color:#475569; }
   .mirac-icon-btn-sm { background:none; border:none; cursor:pointer; color:#9CA3AF; padding:6px; border-radius:7px; display:flex; }
   .mirac-icon-btn-sm:hover { background:#F1F4F8; color:#6B7280; }
   .mirac-log  { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; min-height:0; }
@@ -93,7 +94,9 @@ function injectCssOnce() {
   }
 }
 
-export function MiraChat() {
+/** onClose: shown as a close button in the header (floating widget, which
+ *  is full-screen on phones and would otherwise have no way out). */
+export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -279,11 +282,18 @@ export function MiraChat() {
 
       <div className="mirac-head">
         <div className="mirac-head-title"><span className="mirac-head-dot" /> Chat MIRA</div>
-        {messages.length > 0 && (
-          <button className="mirac-icon-btn-sm" title="Hapus riwayat chat" onClick={handleClearHistory}>
-            <Trash2 size={15} />
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {messages.length > 0 && (
+            <button className="mirac-icon-btn-sm" title="Hapus riwayat chat" onClick={handleClearHistory}>
+              <Trash2 size={15} />
+            </button>
+          )}
+          {onClose && (
+            <button className="mirac-icon-btn-sm mirac-close" title="Tutup chat" aria-label="Tutup chat" onClick={onClose}>
+              <X size={20} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mirac-log">

@@ -3,15 +3,13 @@ import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { MessageCircle, LayoutDashboard } from "lucide-react";
 import { WHATSAPP_AUTH_ENABLED, authAccount, getAuthSession, getFreshAuthToken, saveMiraSession } from "../lib/auth";
+import { MiraIcon } from "../components/icons/MiraIcon";
 
 const WA_NUMBER  = "6287889681230";
 const WA_MESSAGE = encodeURIComponent("Halo MIRA! Akun saya sudah aktif. Bantu saya mulai tracking pengeluaran.");
 
-// Timing constants — everything chains after checkmark finishes
-const T_CIRCLE   = 0.05;   // circle ring scale in
-const T_CHECK    = 0.38;   // checkmark starts drawing
-const CHECK_DUR  = 0.6;    // checkmark draw duration
-const T_CONTENT  = T_CHECK + CHECK_DUR + 0.1; // ~1.08s — text fades in AFTER check done
+// Timing: copy fades in after Miri + the check badge have popped in.
+const T_CONTENT  = 0.7;
 const T_BUTTONS  = T_CONTENT + 0.18;
 
 export function PaymentSuccessPage() {
@@ -58,45 +56,24 @@ export function PaymentSuccessPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 safe-area-padding">
         <div className="w-full max-w-[360px] flex flex-col items-center text-center">
 
-          {/* ── Icon animation ── */}
-          <div className="relative flex items-center justify-center mb-10" style={{ width: 88, height: 88 }}>
-            {/* Outer glow ring */}
+          {/* ── Miri celebrating ── */}
+          <motion.div
+            className="relative flex items-center justify-center mb-12"
+            style={{ width: 120, height: 120 }}
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <MiraIcon name="buddy-strong" size={120} />
             <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ background: "rgba(16,185,129,0.08)" }}
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: T_CIRCLE - 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            />
-            {/* Circle */}
-            <motion.div
-              className="absolute rounded-full"
-              style={{
-                inset: 8,
-                background: "#F0FDF9",
-                border: "1.5px solid #A7F3D0",
-              }}
-              initial={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: T_CIRCLE, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            />
-            {/* Checkmark SVG */}
-            <svg
-              width="42" height="42" viewBox="0 0 42 42" fill="none"
-              style={{ position: "relative", zIndex: 1 }}
+              style={{ position: "absolute", right: -6, bottom: -6 }}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.45, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
             >
-              <motion.path
-                d="M9 21.5L17.5 30L33 13"
-                stroke="#10B981"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                initial={{ pathLength: 0, opacity: 1 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ delay: T_CHECK, duration: CHECK_DUR, ease: [0.16, 1, 0.3, 1] }}
-              />
-            </svg>
-          </div>
+              <MiraIcon name="check-badge" size={48} tile={false} />
+            </motion.div>
+          </motion.div>
 
           {/* ── Copy — appears after checkmark done ── */}
           <motion.div

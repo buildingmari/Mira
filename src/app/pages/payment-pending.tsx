@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 import { RefreshCw, MessageCircle } from "lucide-react";
+import { MiraIcon } from "../components/icons/MiraIcon";
 
 const WA_SUPPORT = "6287889681230";
 const TOTAL      = 300; // 5 minutes
@@ -30,12 +31,6 @@ export function PaymentPendingPage() {
     setTimeout(() => { setChecking(false); window.location.reload(); }, 1800);
   };
 
-  // Progress percentage for the ring
-  const progress = Math.max(0, countdown / TOTAL);
-
-  const RADIUS = 30;
-  const CIRC   = 2 * Math.PI * RADIUS;
-  const dash   = CIRC * progress;
 
   return (
     <div
@@ -45,53 +40,23 @@ export function PaymentPendingPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[360px] flex flex-col items-center text-center">
 
-          {/* ── Countdown ring icon ── */}
+          {/* ── Hourglass + countdown ── */}
           <motion.div
-            className="relative flex items-center justify-center mb-10"
-            style={{ width: 88, height: 88 }}
+            className="flex flex-col items-center mb-8"
             initial={{ opacity: 0, scale: 0.7 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: T_ICON, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* SVG ring */}
-            <svg width="88" height="88" viewBox="0 0 88 88" style={{ position: "absolute", top: 0, left: 0 }}>
-              {/* Track */}
-              <circle
-                cx="44" cy="44" r={RADIUS}
-                fill="none"
-                stroke="#F1F5F9"
-                strokeWidth="3.5"
-              />
-              {/* Progress */}
-              <circle
-                cx="44" cy="44" r={RADIUS}
-                fill="none"
-                stroke={isExpired ? "#CBD5E1" : "#F59E0B"}
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeDasharray={`${dash} ${CIRC}`}
-                transform="rotate(-90 44 44)"
-                style={{ transition: "stroke-dasharray 0.8s linear, stroke 0.5s" }}
-              />
-            </svg>
-            {/* Inner bg */}
-            <div
-              className="absolute rounded-full"
-              style={{ inset: 10, background: isExpired ? "#F8FAFC" : "#FFFBEB" }}
-            />
-            {/* Countdown text */}
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <p style={{
-                fontFamily: "'Sora', sans-serif",
-                fontSize: "16px",
-                fontWeight: 800,
-                color: isExpired ? "#CBD5E1" : "#D97706",
-                lineHeight: 1,
-                fontVariantNumeric: "tabular-nums",
-                letterSpacing: "-0.02em",
-              }}>
-                {fmt(countdown)}
-              </p>
+            <MiraIcon name="hourglass" size={112} />
+            <div style={{
+              marginTop: 14, padding: "6px 14px", borderRadius: 999,
+              background: isExpired ? "#F1F5F9" : "#FFF7E0",
+              border: `1.5px solid ${isExpired ? "#E2E8F0" : "#FDE68A"}`,
+              fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: "15px",
+              color: isExpired ? "#94A3B8" : "#B45309",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {isExpired ? "Waktu habis" : `Sisa ${fmt(countdown)}`}
             </div>
           </motion.div>
 

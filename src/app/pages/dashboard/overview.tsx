@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { CATEGORY_ICON, normalizeCategory } from '../../lib/category';
 import { MiraIcon } from '../../components/icons/MiraIcon';
+import { InstallBanner } from '../../components/InstallApp';
 import {
   LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, BarChart, Bar,
 } from 'recharts';
@@ -162,8 +163,9 @@ export function DashboardOverview() {
 
   if (txns.length===0) return (
     <div className="ov-wrap">
-      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:0,color:'#111827'}}>{greeting}</h1>
-      <div style={{marginTop:60,textAlign:'center',color:'#6B7280'}}>
+      <h1 style={{fontFamily:"'Sora',sans-serif",fontSize:22,fontWeight:600,margin:'0 0 20px',color:'#111827'}}>{greeting}</h1>
+      <InstallBanner />
+      <div style={{marginTop:40,textAlign:'center',color:'#6B7280'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><MiraIcon name="money-bag" size={72} /></div>
         <p style={{fontSize:14}}>Belum ada transaksi. Mulai catat lewat Chat MIRA atau tombol Catat.</p>
       </div>
@@ -182,6 +184,8 @@ export function DashboardOverview() {
           {new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
         </p>
       </div>
+
+      <InstallBanner />
 
       {/* hero */}
       <div style={{

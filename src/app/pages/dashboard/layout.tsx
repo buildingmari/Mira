@@ -7,6 +7,7 @@ import { PendingAssessmentGate } from '../../components/PendingAssessmentGate';
 import { AddTransactionModal } from '../../components/AddTransactionModal';
 import { ChatWidget } from '../../components/ChatWidget';
 import { clearAuthSession } from '../../lib/auth';
+import { InstallHelpSheet, InstallNavButton } from '../../components/InstallApp';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -158,7 +159,8 @@ export function DashboardLayout() {
 
   useEffect(() => {
     const ph = localStorage.getItem('mira_phone');
-    if (!ph) { navigate('/', { replace: true }); return; }
+    // Not logged in (e.g. first launch of the installed app) → straight to login.
+    if (!ph) { navigate('/?login=1', { replace: true }); return; }
     setPhone(ph);
 
     // Hydrate from localStorage first for instant render
@@ -186,6 +188,15 @@ export function DashboardLayout() {
       } catch {}
     })();
   }, []);
+
+  // Home-screen shortcut "Catat transaksi" → /dashboard?add=1
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (q.get('add') !== '1' || !localStorage.getItem('mira_phone')) return;
+    setShowAdd(true);
+    q.delete('add');
+    navigate({ pathname: location.pathname, search: q.toString() ? `?${q}` : '' }, { replace: true });
+  }, [location.search]);
 
   const logout = () => {
     localStorage.removeItem('mira_phone');
@@ -275,7 +286,10 @@ export function DashboardLayout() {
         </div>
 
         <div style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
-          <div style={{ padding: '10px 12px' }}>
+          <div style={{ padding: '10px 12px 0' }}>
+            <InstallNavButton className="mira-nav-btn" />
+          </div>
+          <div style={{ padding: '4px 12px 10px' }}>
             <button className="mira-nav-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {theme === 'dark'
@@ -373,6 +387,7 @@ export function DashboardLayout() {
       </div>
 
       <ChatWidget />
+      <InstallHelpSheet />
 
     </div>
   );

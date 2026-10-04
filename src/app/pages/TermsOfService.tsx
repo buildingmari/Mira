@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useEffect } from 'react';
 import '../components/LegalPage.css';
 import { Footer } from '../components/Footer';
+import { MiraIcon } from '../components/icons/MiraIcon';
 
 const TOC = [
   { id: 'intro',       label: 'Pendahuluan' },
@@ -47,11 +48,11 @@ export function TermsOfService() {
         <main className="legal-content">
           {/* Hero */}
           <div className="legal-hero">
-            <div className="legal-badge">📋 Legal</div>
+            <div className="legal-badge"><MiraIcon name="report" size={20} tile={false} /> Legal</div>
             <h1 className="legal-title">Syarat &amp; Ketentuan</h1>
             <div className="legal-meta">
-              <span>📅 Berlaku sejak: 1 Januari 2025</span>
-              <span>🔄 Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
             </div>
           </div>
 
@@ -92,7 +93,7 @@ export function TermsOfService() {
             </ul>
             <div className="legal-box warning">
               <p>
-                ⚠️ <strong>Penting:</strong> MIRA adalah alat bantu pencatatan pribadi. MIRA <strong>bukan</strong> software akuntansi resmi, bukan penasihat keuangan, dan bukan lembaga keuangan. Laporan yang dihasilkan tidak dapat digunakan sebagai dokumen resmi untuk keperluan perpajakan, audit, atau perbankan.
+                <MiraIcon name="warn" size={20} tile={false} /> <strong>Penting:</strong> MIRA adalah alat bantu pencatatan pribadi. MIRA <strong>bukan</strong> software akuntansi resmi, bukan penasihat keuangan, dan bukan lembaga keuangan. Laporan yang dihasilkan tidak dapat digunakan sebagai dokumen resmi untuk keperluan perpajakan, audit, atau perbankan.
               </p>
             </div>
           </section>

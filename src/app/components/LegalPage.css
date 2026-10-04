@@ -370,3 +370,11 @@
   }
   .legal-toc { display: none; }
 }
+
+/* MIRA icons used inline at the start of callout text */
+.legal-box p > svg:first-child,
+.legal-content p > svg:first-child {
+  display: inline-block !important;
+  vertical-align: -5px;
+  margin-right: 2px;
+}
