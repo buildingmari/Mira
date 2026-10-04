@@ -12,6 +12,11 @@ export interface PlanDuration {
   vsPersonal?: string;
 }
 
+/** Voucher that turns signup into a free 7-day trial (vouchers table, 100%). */
+export const TRIAL_VOUCHER = 'MIRA100';
+export const TRIAL_DURATION = 'trial';
+export const TRIAL_DAYS = 7;
+
 export interface Plan {
   name: string;
   icon: IconName;
@@ -28,15 +33,15 @@ export const plans: Record<string, Plan> = {
     desc: 'Untuk kamu yang ingin mulai sendiri. Kontrol penuh atas keuangan pribadi.',
     members: 1,
     baseMonthly: 33000,
+    // Same prices as RENEWAL_PLANS in supabase/functions/auth-account.
     durations: [
-      // Hidden 1-bulan trial — never rendered as a normal pickable option.
-      // Only reachable by applying the MIRA100 (100%-off) voucher code,
-      // which force-selects this id so the promo can't be combined with a
-      // longer (3/6/12 bulan) duration. See PricingPanel.tsx.
-      { id: '1', label: '1 Bulan', price: 39000, per: '≈ Rp39.000 / bulan', save: 'GRATIS', vsPersonal: '' },
-      { id: '3', label: '3 Bulan', price: 99000, per: '≈ Rp33.000 / bulan', save: '', vsPersonal: '' },
-      { id: '6', label: '6 Bulan', price: 159000, per: '≈ Rp26.500 / bulan', save: 'Hemat 20%', vsPersonal: '' },
-      { id: '12', label: '12 Bulan', best: true, price: 249000, per: '≈ Rp20.750 / bulan', save: 'Hemat 37%', note: 'Cuma setara harga 1 kopi kekinian', vsPersonal: '' }
+      // Hidden 7-day trial — only reachable through the TRIAL_VOUCHER code,
+      // which force-selects it (see PricingPanel.tsx). auth-account's
+      // start_trial creates the account; no Midtrans order.
+      { id: TRIAL_DURATION, label: 'Trial 7 Hari', price: 0, per: 'Coba semua fitur gratis 7 hari', save: '', vsPersonal: '' },
+      { id: '1', label: '1 Bulan', price: 39000, per: 'Rp39.000 / bulan', save: '', vsPersonal: '' },
+      { id: '3', label: '3 Bulan', price: 99000, per: '≈ Rp33.000 / bulan', save: 'Hemat 15%', vsPersonal: '' },
+      { id: '12', label: 'Tahunan', best: true, price: 249000, per: '≈ Rp20.750 / bulan', save: 'Paling hemat', note: 'Cuma setara harga 1 kopi kekinian', vsPersonal: '' }
     ]
   },
   duo: {

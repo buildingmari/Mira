@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { calcScore, getIncomeMonthly, calcDailyLimit } from './scoring';
 import { MiraIcon, type IconName } from '../icons/MiraIcon';
 import { WHATSAPP_AUTH_ENABLED } from '../../lib/auth';
+import { TRIAL_DAYS, TRIAL_VOUCHER } from './pricingData';
 import './OutcomesPanel.css';
 
 interface OutcomesPanelProps {
@@ -9,7 +10,7 @@ interface OutcomesPanelProps {
   onNext: () => void;
   /** Jika diisi, ganti label tombol CTA bawah */
   ctaLabel?: string;
-  /** Jika true, sembunyikan pkg-cta-banner (blok harga Rp29.000) */
+  /** Jika true, sembunyikan pkg-cta-banner (blok harga "mulai Rp20 ribuan") */
   hidePricingBanner?: boolean;
   /** Jika true, tombol CTA disabled (misal saat submit masih berlangsung) */
   ctaDisabled?: boolean;
@@ -194,9 +195,9 @@ export function OutcomesPanel({ answers, onNext, ctaLabel, hidePricingBanner, ct
             Berdasarkan Profil Keuanganmu
           </div>
           <p className="pkg-cta-headline">
-            Paket MIRA mulai <strong>Rp29.000<span className="pkg-cta-per">/bulan</span></strong>
+            Paket MIRA mulai <strong>Rp20 ribuan<span className="pkg-cta-per">/bulan</span></strong>
           </p>
-          <p className="pkg-cta-sub">Kurang dari secangkir kopi — langsung aktif {WHATSAPP_AUTH_ENABLED ? 'di WhatsApp' : 'setelah daftar'}</p>
+          <p className="pkg-cta-sub">Kurang dari secangkir kopi — atau coba gratis {TRIAL_DAYS} hari pakai kode <strong>{TRIAL_VOUCHER}</strong></p>
           <button className="btn btn-lg btn-full pkg-cta-btn" onClick={onNext}>
             Lihat Paket yang Cocok Untukmu →
           </button>

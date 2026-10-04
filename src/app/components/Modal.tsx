@@ -4,6 +4,7 @@ import { OutcomesPanel } from './modal/OutcomesPanel';
 import { PricingPanel } from './modal/PricingPanel';
 import { WAPanel } from './modal/WAPanel';
 import { AccountPanel } from './modal/AccountPanel';
+import { plans, TRIAL_DURATION, TRIAL_VOUCHER } from './modal/pricingData';
 import { MiraIcon, type IconName } from './icons/MiraIcon';
 import { WHATSAPP_AUTH_ENABLED, getSignupDraft } from '../lib/auth';
 import './Modal.css';
@@ -44,7 +45,9 @@ export function Modal({ isOpen, onClose, resume = false }: ModalProps) {
       if (saved) {
         setAnswers(saved.answers);
         setSelectedPlan(saved.selectedPlan);
-        setSelectedDuration(saved.selectedDuration);
+        // Drafts saved before a price change may name a duration that's gone.
+        const known = plans[saved.selectedPlan]?.durations.some((d) => d.id === saved.selectedDuration);
+        setSelectedDuration(saved.activeVoucher === TRIAL_VOUCHER ? TRIAL_DURATION : known ? saved.selectedDuration : '12');
         setVoucherDiscount(saved.voucherDiscount);
         setActiveVoucher(saved.activeVoucher);
         setAffiliateReferrerPhone(saved.affiliateReferrerPhone);

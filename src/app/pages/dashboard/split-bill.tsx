@@ -6,6 +6,8 @@ import { compressImage } from '../../lib/image';
 import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../../lib/voice';
 import { SPLIT_PREFILL_KEY } from '../../components/MiraChat';
 import { MiraIcon } from '../../components/icons/MiraIcon';
+import { ReadOnlyNotice } from '../../components/SubscriptionNotices';
+import { requireActive } from '../../lib/subscription';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -309,6 +311,7 @@ export function DashboardSplitBill() {
   };
 
   const parse = async (payload: { text?: string; image_base64?: string; audio_base64?: string }) => {
+    if (!requireActive('Split bill butuh langganan aktif.')) return;
     setBusy('parse'); setErr(null); setSaved(null);
     try {
       const res = await callTools<{ draft: Draft }>({ op: 'parse_split', ...payload });
@@ -386,6 +389,7 @@ export function DashboardSplitBill() {
 
   const tweakWithAI = async () => {
     if (!draft || !aiEdit.trim()) return;
+    if (!requireActive('Split bill butuh langganan aktif.')) return;
     setBusy('tweak'); setErr(null);
     try {
       const res = await callTools<{ draft: Draft }>({ op: 'parse_split', text: aiEdit.trim(), current: draft });
@@ -414,6 +418,7 @@ export function DashboardSplitBill() {
 
   const save = async () => {
     if (!draft || problem) return;
+    if (!requireActive('Simpan split bill butuh langganan aktif.')) return;
     setBusy('save'); setErr(null);
     try {
       const res = await callTools<{ id: string; message: string }>({
@@ -444,6 +449,7 @@ export function DashboardSplitBill() {
   const openWA = (text: string) => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 
   const settle = async (row: PiutangRow) => {
+    if (!requireActive('Tandai lunas butuh langganan aktif.')) return;
     setSettling(row.id);
     try {
       await callTools({ op: 'settle_piutang', asset_id: row.id });
@@ -468,6 +474,7 @@ export function DashboardSplitBill() {
   return (
     <div className="sb-wrap">
       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickPhoto} />
+      <ReadOnlyNotice what="bikin split bill" style={{ marginBottom: 16 }} />
 
       {/* ── Saved confirmation ── */}
       {saved && (

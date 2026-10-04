@@ -187,7 +187,9 @@ export async function updatePassword(token: string, password: string): Promise<s
 
 export type AuthAccountBody =
   | { op: 'resolve'; access_token: string }
-  | { op: 'start_signup'; access_token: string; name?: string };
+  | { op: 'start_signup'; access_token: string; name?: string }
+  | { op: 'start_trial'; access_token: string; payload: Record<string, unknown> }
+  | { op: 'start_renewal'; access_token: string; duration: string; voucher?: string };
 
 /** Never throws: a network failure comes back as { status: 0, data: {} }. */
 export async function authAccount(body: AuthAccountBody): Promise<{ status: number; data: any }> {

@@ -4,6 +4,8 @@ import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban, SlidersHo
 import { compressImage } from '../lib/image';
 import { useVoiceRecorder, fmtSeconds } from '../lib/voice';
 import { MiraIcon } from './icons/MiraIcon';
+import { ReadOnlyNotice } from './SubscriptionNotices';
+import { useSubscription } from '../lib/subscription';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -178,6 +180,7 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
     (message) => setMessages((m) => [...m, { id: crypto.randomUUID(), from: 'mira', error: true, text: message }]),
   );
   const recording = voice.recording;
+  const sub = useSubscription();
   const startRecording = voice.start;
   const stopRecording = voice.stop;
 
@@ -358,6 +361,9 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
         <div ref={logEndRef} />
       </div>
 
+      {!sub.active ? (
+        <div className="mirac-composer"><ReadOnlyNotice what="chat & catat bareng MIRA" /></div>
+      ) : (
       <div className="mirac-composer">
         {pendingAttachment && (
           <div className="mirac-preview">
@@ -400,6 +406,7 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function Upsell({ onCTAClick }: UpsellProps) {
           Gabung Sekarang →
         </button>
         <p style={{ marginTop: '12px', fontSize: '0.8rem', color: '#94A3B8' }}>
-          Tanpa download aplikasi baru. Langsung aktif setelah daftar.
+          Coba gratis 7 hari pakai kode <strong>MIRA100</strong> · tanpa download aplikasi.
         </p>
       </div>
     </section>

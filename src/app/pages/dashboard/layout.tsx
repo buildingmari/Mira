@@ -8,6 +8,8 @@ import { AddTransactionModal } from '../../components/AddTransactionModal';
 import { ChatWidget } from '../../components/ChatWidget';
 import { clearAuthSession } from '../../lib/auth';
 import { InstallHelpSheet, InstallNavButton } from '../../components/InstallApp';
+import { RenewSheet, SubscriptionBanner } from '../../components/SubscriptionNotices';
+import { RENEW_PATH, requireActive, setSubscriptionUser, subscriptionOf } from '../../lib/subscription';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -112,6 +114,7 @@ const NAV_SECTIONS: { label: string; items: { path: string; label: string; icon:
     { path: '/dashboard/assets',   label: 'Aset & Net Worth', icon: 'gem' },
   ]},
   { label: 'Akun', items: [
+    { path: RENEW_PATH,             label: 'Langganan',   icon: 'card-clock' },
     { path: '/dashboard/affiliate', label: 'Affiliate',   icon: 'gift' },
     { path: '/dashboard/export',    label: 'Export Data', icon: 'report' },
     { path: '/dashboard/settings',  label: 'Pengaturan',  icon: 'gear' },
@@ -136,6 +139,7 @@ const PAGE_META: Record<string, { title: string; sub: string }> = {
   '/dashboard/settings':     { title: 'Pengaturan',       sub: 'Preferensi akun' },
   '/dashboard/affiliate':    { title: 'Affiliate',        sub: 'Program referral' },
   '/dashboard/assets':       { title: 'Aset & Net Worth', sub: 'Total kekayaan bersih' },
+  [RENEW_PATH]:              { title: 'Langganan',        sub: 'Status paket & perpanjangan' },
 };
 
 export function DashboardLayout() {
@@ -166,7 +170,7 @@ export function DashboardLayout() {
     // Hydrate from localStorage first for instant render
     try {
       const raw = localStorage.getItem('mira_user');
-      if (raw) setUser(JSON.parse(raw));
+      if (raw) { const u = JSON.parse(raw); setUser(u); setSubscriptionUser(u); }
     } catch {}
 
     setReady(true);
@@ -182,6 +186,7 @@ export function DashboardLayout() {
           const a = await r.json();
           if (Array.isArray(a) && a.length > 0) {
             setUser(a[0]);
+            setSubscriptionUser(a[0]);
             localStorage.setItem('mira_user', JSON.stringify(a[0]));
           }
         }
@@ -193,14 +198,25 @@ export function DashboardLayout() {
   useEffect(() => {
     const q = new URLSearchParams(location.search);
     if (q.get('add') !== '1' || !localStorage.getItem('mira_phone')) return;
-    setShowAdd(true);
+    openAdd();
     q.delete('add');
+    navigate({ pathname: location.pathname, search: q.toString() ? `?${q}` : '' }, { replace: true });
+  }, [location.search]);
+
+  const openAdd = () => { if (requireActive('Catat transaksi butuh langganan aktif.')) setShowAdd(true); };
+
+  // Fresh trial from signup: drop the marker param once the dashboard is open.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search);
+    if (!q.has('welcome')) return;
+    q.delete('welcome');
     navigate({ pathname: location.pathname, search: q.toString() ? `?${q}` : '' }, { replace: true });
   }, [location.search]);
 
   const logout = () => {
     localStorage.removeItem('mira_phone');
     localStorage.removeItem('mira_user');
+    setSubscriptionUser(null);
     clearAuthSession();
     navigate('/');
   };
@@ -235,7 +251,10 @@ export function DashboardLayout() {
   const rawName = user?.name || 'User';
   const name    = decodeUnicode(rawName);
   const init    = name.charAt(0).toUpperCase();
-  const planLabel = user?.plan_name || 'Personal';
+  const sub = subscriptionOf(user);
+  const planLabel = !sub.active ? 'Tidak aktif'
+    : sub.trial ? `Trial · ${sub.daysLeft ?? 0} hari lagi`
+    : user?.plan_name || 'Personal';
   const meta = { ...(PAGE_META[location.pathname] ?? { title: 'MIRA', sub: '' }) };
   if (meta.title === 'Dashboard')
     meta.sub = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) + ' · ' + planLabel;
@@ -322,7 +341,7 @@ export function DashboardLayout() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
-              onClick={() => setShowAdd(true)}
+              onClick={openAdd}
               style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
             >
               <Plus style={{ width: 15, height: 15 }} strokeWidth={2.5} /> Catat
@@ -355,6 +374,7 @@ export function DashboardLayout() {
         </div>
 
         <div style={{ flex: 1, paddingBottom: 'calc(68px + env(safe-area-inset-bottom,0px))' }}>
+          <SubscriptionBanner />
           <Outlet />
         </div>
       </div>
@@ -369,7 +389,7 @@ export function DashboardLayout() {
           ))}
           <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
             <button
-              onClick={() => setShowAdd(true)}
+              onClick={openAdd}
               style={{ width: 50, height: 50, background: '#2563EB', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(37,99,235,0.45)' }}
               onTouchStart={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.9)'; }}
               onTouchEnd={e   => { (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
@@ -388,6 +408,7 @@ export function DashboardLayout() {
 
       <ChatWidget />
       <InstallHelpSheet />
+      <RenewSheet />
 
     </div>
   );

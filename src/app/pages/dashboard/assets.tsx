@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, X } from 'lucide-react';
+import { requireActive } from '../../lib/subscription';
 import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -187,6 +188,7 @@ export function DashboardAssets() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!requireActive('Hapus aset butuh langganan aktif.')) return;
     setAssets(prev => prev.filter(a => a.id !== id));
     try {
       await fetch(`${SUPA_URL}/rest/v1/user_assets?id=eq.${id}`, {
@@ -216,7 +218,7 @@ export function DashboardAssets() {
           <p style={{ fontSize: 13, color: '#6B7280', margin: '3px 0 0' }}>Pantau total kekayaan bersih kamu</p>
         </div>
         <button
-          onClick={() => { setShowModal(true); setErr(null); }}
+          onClick={() => { requireActive('Tambah aset butuh langganan aktif.') && setShowModal(true); setErr(null); }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
         >
           <Plus style={{ width: 16, height: 16 }} strokeWidth={2.5} /> Tambah Aset
@@ -254,7 +256,7 @@ export function DashboardAssets() {
         <div style={{ textAlign: 'center', paddingTop: 60, color: '#6B7280' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="gem" size={72} /></div>
           <p style={{ fontSize: 14, marginBottom: 20 }}>Belum ada aset. Mulai catat aset pertama kamu!</p>
-          <button onClick={() => setShowModal(true)}
+          <button onClick={() => requireActive('Tambah aset butuh langganan aktif.') && setShowModal(true)}
             style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             + Tambah Aset Pertama
           </button>

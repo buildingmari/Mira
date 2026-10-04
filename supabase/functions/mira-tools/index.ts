@@ -91,6 +91,12 @@ function isActiveMember(user: any): boolean {
   return s === 'pro' || s === 'paid';
 }
 
+// Expired / unpaid accounts stay read-only: no AI parsing and no writes.
+const inactive = () => json({
+  error: 'inactive',
+  message: 'Langganan MIRA kamu sudah tidak aktif. Perpanjang dulu di menu Langganan ya.',
+}, 403);
+
 // deno-lint-ignore no-explicit-any
 function normalizeExpenses(raw: any, defaultWallet: string) {
   const list = Array.isArray(raw?.expenses) ? raw.expenses : [];
@@ -174,7 +180,7 @@ Deno.serve(async (req: Request) => {
 
     switch (op) {
       case 'parse_expense': {
-        if (!isActiveMember(user)) return json({ error: 'inactive', message: 'Langganan MIRA kamu belum aktif.' }, 403);
+        if (!isActiveMember(user)) return inactive();
         const text = typeof body.text === 'string' ? body.text.trim() : '';
         const image = typeof body.image_base64 === 'string' ? body.image_base64 : '';
         const audio = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
@@ -192,7 +198,7 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'parse_split': {
-        if (!isActiveMember(user)) return json({ error: 'inactive', message: 'Langganan MIRA kamu belum aktif.' }, 403);
+        if (!isActiveMember(user)) return inactive();
         const text = typeof body.text === 'string' ? body.text.trim() : '';
         const image = typeof body.image_base64 === 'string' ? body.image_base64 : '';
         const audio = typeof body.audio_base64 === 'string' ? body.audio_base64 : '';
@@ -204,6 +210,7 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'save_split': {
+        if (!isActiveMember(user)) return inactive();
         const d = body.draft;
         if (!d || typeof d !== 'object' || !Array.isArray(d.participants)) return json({ error: 'invalid_draft' }, 400);
         // Re-sanitize server-side: never trust client math for what gets written.
@@ -221,6 +228,7 @@ Deno.serve(async (req: Request) => {
       }
 
       case 'settle_piutang': {
+        if (!isActiveMember(user)) return inactive();
         const assetId = String(body.asset_id || '');
         if (!assetId) return json({ error: 'asset_id_required' }, 400);
         const result = await settlePiutang(sb, phone, assetId);

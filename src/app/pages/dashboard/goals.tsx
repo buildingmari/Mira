@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, Calendar, TrendingUp, X, Check, RotateCcw } from 'lucide-react';
+import { requireActive } from '../../lib/subscription';
 import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -148,6 +149,7 @@ export function DashboardGoals() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!requireActive('Hapus target butuh langganan aktif.')) return;
     try {
       await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
         method: 'DELETE', headers: HR,
@@ -160,6 +162,7 @@ export function DashboardGoals() {
   const handleSaveProgress = async (id: string) => {
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
+    if (!requireActive('Update progress target butuh langganan aktif.')) return;
     const raw = progressInputs[id] ?? String(goal.achieved_amount);
     const newAmount = Math.min(Math.max(Number(raw) || 0, 0), goal.target_amount);
     setSavingProgress(p => ({ ...p, [id]: true }));
@@ -216,7 +219,7 @@ export function DashboardGoals() {
           <p style={{ fontSize: 13, color: '#6B7280', margin: '3px 0 0' }}>Track progress menuju target saving kamu</p>
         </div>
         <button
-          onClick={() => { setShowModal(true); setErr(null); }}
+          onClick={() => { requireActive('Tambah target butuh langganan aktif.') && setShowModal(true); setErr(null); }}
           style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
         >
           <Plus style={{ width: 16, height: 16 }} strokeWidth={2.5} /> Add Goal
@@ -245,7 +248,7 @@ export function DashboardGoals() {
         <div style={{ textAlign: 'center', paddingTop: 60, color: '#6B7280' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="target" size={72} /></div>
           <p style={{ fontSize: 14, marginBottom: 20 }}>Belum ada goal. Mulai dengan menambahkan target pertama kamu!</p>
-          <button onClick={() => setShowModal(true)}
+          <button onClick={() => requireActive('Tambah target butuh langganan aktif.') && setShowModal(true)}
             style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
             + Add Goal Pertama
           </button>

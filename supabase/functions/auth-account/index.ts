@@ -21,6 +21,17 @@
  *   { op: 'start_signup', access_token, name? }
  *     -> { status: 'ready', primary_phone }       use as primary_phone in the signup payload
  *      | { status: 'linked', phone, user }        already has an account → just log in
+ *
+ *   { op: 'start_trial', access_token, payload }  payload = buildPayload() output
+ *     -> { status: 'linked', phone, user }        7-day trial (voucher MIRA100) created
+ *     Creates the users row directly — no Midtrans order for a free trial.
+ *
+ *   { op: 'start_renewal', access_token, duration: '1'|'3'|'12', voucher? }
+ *     -> { status: 'payment', redirect_url, subs_id, price_final }
+ *     Existing account pays for more time. register-mira refuses existing
+ *     users, so the order goes into users_draft here; n8n's
+ *     midtrans-notification then extends valid_to from max(now, valid_to)
+ *     ("recurring_extended") and trg_users_billing_guard copies the plan.
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -35,6 +46,33 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const CREATE_TRANSACTION_URL = 'https://n8n-nkpskgzjoaqk.jkt1.sumopod.my.id/webhook/create-transaction';
+
+const TRIAL_VOUCHER = 'MIRA100';
+const TRIAL_DAYS = 7;
+
+// Personal plan prices — src/app/components/modal/pricingData.ts shows the same.
+const RENEWAL_PLANS: Record<string, { months: number; price: number; label: string }> = {
+  '1':  { months: 1,  price: 39000,  label: '1 Bulan' },
+  '3':  { months: 3,  price: 99000,  label: '3 Bulan' },
+  '12': { months: 12, price: 249000, label: 'Tahunan' },
+};
+
+// Assessment answers copied from the signup payload into a trial account
+// (n8n copies the same columns from users_draft for paid signups).
+const PROFILE_FIELDS = [
+  'score_total', 'score_income_stability', 'score_expense_pressure', 'score_spending_control',
+  'score_saving_discipline', 'score_emergency_fund', 'score_investment', 'score_debt', 'score_behavior',
+  'income_range', 'income_range_raw', 'income_estimated_idr', 'income_type', 'income_type_raw',
+  'payday_pattern', 'payday_pattern_raw', 'mandatory_expenses', 'mandatory_expenses_raw', 'mandatory_expense_count',
+  'biggest_spend_category', 'biggest_spend_raw', 'impulse_buy_frequency', 'impulse_buy_raw',
+  'expense_allocation_pct', 'saving_allocation_pct', 'saving_goals', 'saving_goals_raw',
+  'emergency_fund_duration', 'emergency_fund_raw', 'investment_status', 'investment_status_raw',
+  'investment_instruments', 'investment_instruments_raw', 'debt_status', 'debt_status_raw',
+  'paylater_habit', 'paylater_habit_raw', 'banks_used', 'banks_used_raw', 'ewallets_used', 'ewallets_used_raw',
+  'paylater_active', 'paylater_active_raw', 'payment_method_ranking', 'submitted_at',
+];
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -120,6 +158,117 @@ async function newAccountId(): Promise<string> {
   throw new Error('account_id_exhausted');
 }
 
+async function voucherPercent(code: string): Promise<number | null> {
+  const { data } = await sb.from('vouchers').select('discount_percent')
+    .eq('code', code).eq('is_active', true).maybeSingle();
+  return data ? Number(data.discount_percent) || 0 : null;
+}
+
+/** Same shape n8n gives new accounts: 4 letters of the name + last 4 digits. */
+async function affiliateCode(name: string, phone: string): Promise<string> {
+  const letters = name.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4).padEnd(4, 'X');
+  let code = letters + phone.slice(-4);
+  for (let i = 0; i < 5; i++) {
+    const { count } = await sb.from('users').select('id', { count: 'exact', head: true }).eq('affiliate_code', code);
+    if (!count) return code;
+    code = letters + phone.slice(-4) + String(Math.floor(Math.random() * 90) + 10);
+  }
+  return code;
+}
+
+async function takenBy(column: 'email' | 'google_id', value: string | null): Promise<boolean> {
+  if (!value) return false;
+  const { count } = await sb.from('users').select('id', { count: 'exact', head: true }).eq(column, value);
+  return (count ?? 0) > 0;
+}
+
+// deno-lint-ignore no-explicit-any
+async function startTrial(id: Identity, body: any): Promise<Response> {
+  if ((await voucherPercent(TRIAL_VOUCHER)) !== 100) {
+    return json({ error: 'voucher_inactive', message: `Kode ${TRIAL_VOUCHER} lagi nggak aktif. Pilih paket berbayar dulu ya.` }, 400);
+  }
+  const phone = (await pendingPhone(id)) || (await newAccountId());
+  // deno-lint-ignore no-explicit-any
+  const p: Record<string, any> = body.payload && typeof body.payload === 'object' ? body.payload : {};
+  const name = String(p.full_name || body.name || id.name || '').replace(/^-$/, '').trim().slice(0, 80) || 'Sobat MIRA';
+  const now = new Date();
+
+  const profile: Record<string, unknown> = {};
+  for (const k of PROFILE_FIELDS) {
+    const v = p[k];
+    if (v === null || typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v))) profile[k] = v;
+  }
+  const account = {
+    primary_phone: phone, name, additional_phones: '-', total_phones: 1,
+    plan_id: 'trial', plan_name: 'Trial', plan_duration_months: 0, plan_duration_label: `Trial ${TRIAL_DAYS} Hari`,
+    price_original: 0, voucher_code: TRIAL_VOUCHER, voucher_discount_percent: 100, price_final: 0,
+    subs_id: `${phone}_trial`,
+    valid_from: now.toISOString(),
+    valid_to: new Date(now.getTime() + TRIAL_DAYS * 86_400_000).toISOString(),
+    account_status: 'pro', limit_nominal: 0,
+    affiliate_code: await affiliateCode(name, phone),
+    auth_user_id: id.uid,
+    email: id.email && !(await takenBy('email', id.email)) ? id.email : null,
+    google_id: id.googleId && !(await takenBy('google_id', id.googleId)) ? id.googleId : null,
+    avatar_url: id.avatar_url,
+    created_at: now.toISOString(), updated_at: now.toISOString(),
+  };
+
+  let { data: user, error } = await sb.from('users').insert({ ...profile, ...account }).select('*').single();
+  if (error) {
+    // A malformed answer must not block the trial — retry without them.
+    console.error('start_trial insert with profile failed:', error.message);
+    ({ data: user, error } = await sb.from('users').insert(account).select('*').single());
+  }
+  if (error || !user) throw new Error('trial_insert_failed: ' + (error?.message || 'no row'));
+  await sb.from('pending_google_links').delete().eq('auth_user_id', id.uid);
+  return json({ status: 'linked', phone, user });
+}
+
+// deno-lint-ignore no-explicit-any
+async function startRenewal(user: any, body: any): Promise<Response> {
+  const plan = RENEWAL_PLANS[String(body.duration || '')];
+  if (!plan) return json({ error: 'invalid_duration', message: 'Pilih durasi paketnya dulu ya.' }, 400);
+
+  const code = String(body.voucher || '').trim().toUpperCase();
+  let discount = 0;
+  if (code) {
+    const pct = await voucherPercent(code);
+    if (pct === null) return json({ error: 'invalid_voucher', message: 'Kode voucher nggak ditemukan atau sudah nggak aktif.' }, 400);
+    if (pct >= 100) return json({ error: 'trial_only', message: `${code} cuma buat trial pertama. Pakai kode lain atau bayar normal ya.` }, 400);
+    discount = Math.max(0, pct);
+  }
+  const priceFinal = plan.price - Math.round((plan.price * discount) / 100);
+  const phone = String(user.primary_phone);
+  const now = new Date();
+  const subsId = `${phone}_${now.toISOString().replace(/[^0-9]/g, '')}`;
+
+  const order = {
+    primary_phone: phone, name: user.name || 'Sobat MIRA', additional_phones: '-', total_phones: 1,
+    plan_id: 'personal', plan_name: 'Personal',
+    plan_duration_months: plan.months, plan_duration_label: plan.label,
+    price_original: plan.price, voucher_code: code || '-', voucher_discount_percent: discount, price_final: priceFinal,
+    subs_id: subsId, account_status: 'pro', submitted_at: now.toISOString(),
+  };
+  const { error } = await sb.from('users_draft').insert(order);
+  if (error) throw new Error('renewal_draft_failed: ' + error.message);
+
+  const res = await fetch(CREATE_TRANSACTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...order, full_name: order.name, email: user.email || undefined, source: 'mira-dashboard-renewal' }),
+  });
+  // deno-lint-ignore no-explicit-any
+  const pay: any = await res.json().catch(() => ({}));
+  const redirectUrl = pay?.redirect_url || pay?.data?.redirect_url;
+  if (!redirectUrl) {
+    console.error('create-transaction failed:', res.status, JSON.stringify(pay).slice(0, 300));
+    await sb.from('users_draft').delete().eq('subs_id', subsId);
+    return json({ error: 'payment_failed', message: 'Gagal membuat link pembayaran. Coba lagi sebentar ya.' }, 502);
+  }
+  return json({ status: 'payment', redirect_url: redirectUrl, subs_id: subsId, price_final: priceFinal });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -134,7 +283,13 @@ Deno.serve(async (req: Request) => {
     if (!id) return json({ error: 'invalid_token', message: 'Sesi login sudah habis. Masuk lagi ya.' }, 401);
 
     const user = await linkedUser(id);
+    if (op === 'start_renewal') {
+      if (!user) return json({ error: 'no_account', message: 'Akun MIRA untuk login ini belum ada.' }, 404);
+      return await startRenewal(user, body);
+    }
     if (user) return json({ status: 'linked', phone: user.primary_phone, user });
+
+    if (op === 'start_trial') return await startTrial(id, body);
 
     if (op === 'resolve') {
       const pending = await pendingPhone(id);

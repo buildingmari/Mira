@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, redirect } from 'react-router';
 import { LandingWrapper } from './pages/LandingWrapper';
 import { RootLayout, RootErrorBoundary, NotFound } from './pages/RootLayout';
 import { PaymentSuccessPage } from './pages/payment-success';
@@ -21,6 +21,8 @@ import { DashboardAffiliate }    from './pages/dashboard/affiliate';
 import { DashboardAssets }       from './pages/dashboard/assets';
 import { DashboardChat }         from './pages/dashboard/chat';
 import { DashboardSplitBill }    from './pages/dashboard/split-bill';
+import { DashboardBilling }      from './pages/dashboard/billing';
+import { RENEW_PATH }            from './lib/subscription';
 
 export const router = createBrowserRouter([
   {
@@ -44,8 +46,12 @@ export const router = createBrowserRouter([
           { path: 'export',             Component: DashboardExport },
           { path: 'affiliate',          Component: DashboardAffiliate },
           { path: 'assets',             Component: DashboardAssets },
+          { path: 'langganan',          Component: DashboardBilling },
         ],
       },
+
+      // Renewal link used in reminder emails and chat replies.
+      { path: 'subscription',     loader: () => redirect(RENEW_PATH) },
 
       { path: 'auth/callback',    Component: AuthCallback },
       { path: 'payment-success',  Component: PaymentSuccessPage },

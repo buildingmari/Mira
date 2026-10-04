@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { MessageCircle, LayoutDashboard } from "lucide-react";
 import { WHATSAPP_AUTH_ENABLED, authAccount, getAuthSession, getFreshAuthToken, saveMiraSession } from "../lib/auth";
 import { MiraIcon } from "../components/icons/MiraIcon";
+import { RENEWAL_MARKER } from "../lib/subscription";
 
 const WA_NUMBER  = "6287889681230";
 const WA_MESSAGE = encodeURIComponent("Halo MIRA! Akun saya sudah aktif. Bantu saya mulai tracking pengeluaran.");
@@ -15,6 +16,15 @@ const T_BUTTONS  = T_CONTENT + 0.18;
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
   useEffect(() => { sessionStorage.removeItem("assessment_data"); }, []);
+
+  // Back from a renewal paid on the Langganan page (marker < 6 hours old).
+  const [renewal] = useState(() => {
+    try {
+      const t = Number(localStorage.getItem(RENEWAL_MARKER));
+      localStorage.removeItem(RENEWAL_MARKER);
+      return t > 0 && Date.now() - t < 6 * 3600_000 && !!localStorage.getItem("mira_phone");
+    } catch { return false; }
+  });
 
   // Web account (Google / email): log in automatically. Midtrans → n8n
   // activation can land a few seconds after the redirect, so retry briefly.
@@ -44,7 +54,7 @@ export function PaymentSuccessPage() {
       setOpening(false);
       if (!ok) { setNotReady(true); return; }
     }
-    navigate("/dashboard");
+    navigate(renewal ? "/dashboard/langganan" : "/dashboard");
   };
 
   return (
@@ -91,7 +101,7 @@ export function PaymentSuccessPage() {
               letterSpacing: "-0.02em",
               marginBottom: "12px",
             }}>
-              Pembayaran berhasil!
+              {renewal ? "Langganan diperpanjang!" : "Pembayaran berhasil!"}
             </h1>
             <p style={{
               fontSize: "15px",
@@ -99,7 +109,9 @@ export function PaymentSuccessPage() {
               lineHeight: 1.7,
               marginBottom: "36px",
             }}>
-              {WHATSAPP_AUTH_ENABLED
+              {renewal
+                ? "Makasih udah lanjut bareng MIRA! Masa aktif barumu sudah ditambahkan — cek detailnya di menu Langganan."
+                : WHATSAPP_AUTH_ENABLED
                 ? "Akun MIRA kamu sudah aktif. Mulai lacak pengeluaran dan atur keuanganmu langsung dari WhatsApp."
                 : "Akun MIRA kamu sudah aktif. Mulai lacak pengeluaran dan atur keuanganmu langsung dari dashboard MIRA."}
             </p>

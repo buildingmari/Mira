@@ -10,10 +10,12 @@
  *   3. Same n8n flow as the WhatsApp signup: register-mira (draft) →
  *      create-transaction (Midtrans) or, for a 100% voucher, the
  *      midtrans-notification settlement that activates the account.
+ *      The MIRA100 trial skips all of that: auth-account `start_trial`
+ *      creates a 7-day account directly.
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { plans } from './pricingData';
+import { plans, TRIAL_DURATION } from './pricingData';
 import { buildPayload } from './buildPayload';
 import { GoogleButton, useGoogleEnabled } from '../GoogleButton';
 import { MiraIcon } from '../icons/MiraIcon';
@@ -93,6 +95,7 @@ export function AccountPanel(props: AccountPanelProps) {
   const price    = duration?.price || 0;
   const final    = price - Math.round((price * voucherDiscount) / 100);
   const isFree   = final === 0;
+  const isTrial  = selectedDuration === TRIAL_DURATION;
   const nama     = answers.user_name || '';
 
   const [session, setSession]   = useState<AuthSession | null>(() => getAuthSession());
@@ -193,6 +196,20 @@ export function AccountPanel(props: AccountPanelProps) {
 
     const token = await getFreshAuthToken();
     if (!token) { switchAccount(); fail('Sesi login sudah habis. Masuk lagi ya.'); return; }
+
+    if (isTrial) {
+      // Free trial: the account is created right away, no payment step.
+      const payload = buildPayload({
+        phones: ['-'], nama: nama || session?.name || '',
+        selectedPlan, selectedDuration, voucherDiscount, activeVoucher, finalAmount: 0, answers,
+      });
+      const r = await authAccount({ op: 'start_trial', access_token: token, payload });
+      if (r.data?.status !== 'linked') { fail(r.data?.message || 'Gagal memulai trial. Coba lagi ya.'); return; }
+      saveMiraSession(r.data.phone, r.data.user);
+      clearSignupDraft();
+      navigate('/dashboard?welcome=trial');
+      return;
+    }
 
     const start = await authAccount({ op: 'start_signup', access_token: token, name: nama });
     if (start.data?.status === 'linked') { setBusy(''); setExisting({ phone: start.data.phone, user: start.data.user }); return; }
@@ -304,7 +321,7 @@ export function AccountPanel(props: AccountPanelProps) {
         <div className="acp-plan">
           <MiraIcon name={isFree ? 'sparkle' : 'gem'} size={36} />
           <div>
-            <div className="acp-plan-name">Paket {plan.name}</div>
+            <div className="acp-plan-name">{isTrial ? 'Trial gratis MIRA' : `Paket ${plan.name}`}</div>
             <div className="acp-plan-sub">{duration?.label?.replace(/[^\p{L}\p{N}\s.,/+-]/gu, '').trim()}{activeVoucher ? ` · voucher ${activeVoucher}` : ''}</div>
           </div>
           <div className="acp-plan-price">{isFree ? 'Gratis' : `Rp${final.toLocaleString('id-ID')}`}</div>
@@ -376,7 +393,9 @@ export function AccountPanel(props: AccountPanelProps) {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: busy === 'pay' ? 0.75 : 1, background: 'linear-gradient(135deg, #16A34A, #15803D)' }}
           >
             {busy === 'pay' && <Spinner />}
-            {busy === 'pay' ? (isFree ? 'Mengaktifkan akun…' : 'Menyiapkan pembayaran…') : (isFree ? 'Aktifkan Gratis' : 'Bayar Sekarang')}
+            {busy === 'pay'
+              ? (isFree ? 'Mengaktifkan akun…' : 'Menyiapkan pembayaran…')
+              : (isTrial ? 'Mulai Trial Gratis' : isFree ? 'Aktifkan Gratis' : 'Bayar Sekarang')}
           </button>
           <div className="acp-center">
             <button className="acp-muted" onClick={switchAccount} disabled={busy === 'pay'}>Pakai akun lain</button>

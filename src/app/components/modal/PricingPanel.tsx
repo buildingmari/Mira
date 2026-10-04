@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { plans } from './pricingData';
+import { plans, TRIAL_DAYS, TRIAL_DURATION, TRIAL_VOUCHER } from './pricingData';
 import './PricingPanel.css';
 import { MiraIcon } from '../icons/MiraIcon';
 
@@ -42,10 +42,12 @@ export function PricingPanel({
   const price = currentDuration?.price || 0;
   const discount = Math.round((price * voucherDiscount) / 100);
   const final = price - discount;
+  const isTrial = selectedDuration === TRIAL_DURATION;
 
-  const handleApplyVoucher = async () => {
-    const code = voucherInput.trim().toUpperCase();
+  const handleApplyVoucher = async (typed?: string) => {
+    const code = (typed ?? voucherInput).trim().toUpperCase();
     if (!code) return;
+    if (typed) setVoucherInput(typed);
 
     setVoucherLoading(true);
     try {
@@ -69,14 +71,14 @@ export function PricingPanel({
           setVoucherDiscount(discountPercent);
           setActiveVoucher(voucher.code);
           setAffiliateReferrerPhone('');
-          if (voucher.code === 'MIRA100') {
-            // Special-cased on purpose: this exact code grants a 1-bulan
-            // free trial, never whatever duration was selected before it
-            // was applied — force-select the hidden 1-bulan entry so the
-            // 100% discount can't be combined with a 3/6/12 bulan plan.
-            setSelectedDuration('1');
-            setVoucherMsg({ type: 'ok', text: 'Selamat! Kamu dapat 1 bulan MIRA gratis.' });
+          if (voucher.code === TRIAL_VOUCHER) {
+            // This exact code is the free trial, never a discount on the
+            // selected plan — force-select the hidden trial entry so 100%
+            // off can't be combined with a paid duration.
+            setSelectedDuration(TRIAL_DURATION);
+            setVoucherMsg({ type: 'ok', text: `Trial gratis ${TRIAL_DAYS} hari aktif! Semua fitur MIRA langsung bisa kamu pakai.` });
           } else {
+            if (isTrial) setSelectedDuration('12');
             setVoucherMsg({ type: 'ok', text: `Voucher berhasil! Diskon ${discountPercent}% diterapkan.` });
           }
           setVoucherLoading(false);
@@ -100,6 +102,7 @@ export function PricingPanel({
         const affiliateData = await affiliateRes.json();
         if (Array.isArray(affiliateData) && affiliateData.length > 0) {
           const referrer = affiliateData[0];
+          if (isTrial) setSelectedDuration('12');
           setVoucherDiscount(10);
           setActiveVoucher(code);
           setAffiliateReferrerPhone(referrer.primary_phone || '');
@@ -161,9 +164,9 @@ export function PricingPanel({
         </div>
         <div className="duration-opts">
           {currentPlan.durations
-            .filter((d) => d.id !== '1' || selectedDuration === '1')
+            .filter((d) => d.id !== TRIAL_DURATION || isTrial)
             .map((d) => {
-              const isFreeTrial = d.id === '1';
+              const isFreeTrial = d.id === TRIAL_DURATION;
               return (
             <div
               key={d.id}
@@ -172,10 +175,9 @@ export function PricingPanel({
               onClick={() => {
                 if (isFreeTrial) return; // locked while the free-trial voucher is active
                 setSelectedDuration(d.id);
-                if (activeVoucher === 'MIRA100') {
-                  // Switching away from the free trial's forced duration
-                  // drops the 100%-off voucher too, so it can't leak onto
-                  // a paid 3/6/12 bulan plan.
+                if (activeVoucher === TRIAL_VOUCHER) {
+                  // Picking a paid plan ends the trial choice and drops the
+                  // 100%-off voucher, so it can't leak onto a paid plan.
                   setVoucherDiscount(0);
                   setActiveVoucher('');
                   setVoucherMsg(null);
@@ -197,7 +199,7 @@ export function PricingPanel({
                 </div>
               </div>
               <div className="dur-right">
-                <div className="dur-price">Rp{d.price.toLocaleString('id-ID')}</div>
+                <div className="dur-price">{isFreeTrial ? 'Gratis' : `Rp${d.price.toLocaleString('id-ID')}`}</div>
                 {d.save && <div className="dur-save">{d.save}</div>}
               </div>
             </div>
@@ -205,6 +207,18 @@ export function PricingPanel({
             })}
         </div>
       </div>
+
+      {!activeVoucher && (
+        <div className="trial-hint">
+          <MiraIcon name="gift" size={36} />
+          <div className="trial-hint-txt">
+            <strong>Mau coba dulu?</strong> Pakai kode <span className="trial-code">{TRIAL_VOUCHER}</span> — gratis {TRIAL_DAYS} hari, semua fitur, tanpa kartu kredit.
+          </div>
+          <button className="btn btn-sm" onClick={() => void handleApplyVoucher(TRIAL_VOUCHER)} disabled={voucherLoading}>
+            Pakai
+          </button>
+        </div>
+      )}
 
       <div style={{ marginTop: '20px' }}>
         <div style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--text-dark)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -222,7 +236,7 @@ export function PricingPanel({
               setVoucherMsg(null);
             }}
           />
-          <button className="btn btn-sm btn-outline" onClick={handleApplyVoucher} disabled={voucherLoading}>
+          <button className="btn btn-sm btn-outline" onClick={() => void handleApplyVoucher()} disabled={voucherLoading}>
             {voucherLoading ? 'Memverifikasi...' : 'Terapkan'}
           </button>
         </div>
@@ -236,7 +250,7 @@ export function PricingPanel({
 
       <div className="order-summary">
         <div className="order-row">
-          <span>Paket {currentPlan.name} · {currentDuration?.label}</span>
+          <span>{isTrial ? `MIRA ${currentDuration?.label}` : `Paket ${currentPlan.name} · ${currentDuration?.label}`}</span>
           <span>Rp{price.toLocaleString('id-ID')}</span>
         </div>
         {discount > 0 && (
@@ -249,11 +263,16 @@ export function PricingPanel({
           <span>Total</span>
           <span style={{ color: 'var(--blue)' }}>Rp{final.toLocaleString('id-ID')}</span>
         </div>
+        {isTrial && (
+          <div className="order-note">
+            Setelah {TRIAL_DAYS} hari, pilih paket buat lanjut — mulai Rp20 ribuan/bulan. Nggak ada tagihan otomatis.
+          </div>
+        )}
       </div>
 
       <div style={{ marginTop: '20px' }}>
         <button className="btn btn-full btn-lg" onClick={onNext}>
-          Lanjut →
+          {isTrial ? 'Mulai Trial Gratis →' : 'Lanjut →'}
         </button>
       </div>
       <div style={{ textAlign: 'center', marginTop: '10px' }}>

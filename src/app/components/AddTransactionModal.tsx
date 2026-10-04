@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { X, Check, Sparkles, Camera, Loader2, Users, Pencil, Mic, Square } from 'lucide-react';
 import { compressImage } from '../lib/image';
 import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../lib/voice';
+import { isReadOnlyError, openRenewSheet } from '../lib/subscription';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -185,6 +186,12 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
   const [entry, setEntry] = useState<'ai' | 'manual'>(() => {
     try { return localStorage.getItem('mira_add_mode') === 'manual' ? 'manual' : 'ai'; } catch { return 'ai'; }
   });
+  // The plan ran out while the modal was open — show the renew sheet instead.
+  const failed = (e: any, fallback: string) => {
+    if (isReadOnlyError(e?.message)) { onClose(); openRenewSheet('Langganan kamu baru saja berakhir.'); return; }
+    setErr(e?.message || fallback);
+  };
+
   const switchEntry = (m: 'ai' | 'manual') => {
     setEntry(m); setErr(null);
     try { localStorage.setItem('mira_add_mode', m); } catch {}
@@ -248,7 +255,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
       setDone(true);
       setTimeout(() => { onSuccess?.(); onClose(); }, 1000);
     } catch (e: any) {
-      setErr(e.message || 'Terjadi kesalahan. Coba lagi.');
+      failed(e, 'Terjadi kesalahan. Coba lagi.');
     }
     setSaving(false);
   };
@@ -282,7 +289,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
       if (!list.length) { setAiNote(data.note || 'MIRA belum nemu nominalnya. Coba tulis lebih jelas ya.'); return; }
       setAiTxs(list.map((t) => ({ ...t, wallet: WALLETS.includes(t.wallet) ? t.wallet : wallet })));
     } catch (e: any) {
-      setErr(e.message || 'Gagal terhubung ke MIRA.');
+      failed(e, 'Gagal terhubung ke MIRA.');
     } finally {
       setAiBusy(false);
     }
@@ -320,7 +327,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
       setDone(true);
       setTimeout(() => { onSuccess?.(); onClose(); }, 1000);
     } catch (e: any) {
-      setErr(e.message || 'Terjadi kesalahan. Coba lagi.');
+      failed(e, 'Terjadi kesalahan. Coba lagi.');
     }
     setSaving(false);
   };

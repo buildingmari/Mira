@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { CATEGORY_ICON, normalizeCategory } from '../../lib/category';
 import { MiraIcon } from '../../components/icons/MiraIcon';
+import { isReadOnlyError, openRenewSheet, requireActive } from '../../lib/subscription';
 import { X, SlidersHorizontal, ChevronDown, Pencil } from 'lucide-react';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -24,6 +25,11 @@ const CAT_BG: Record<string, string> = {
 const mapCat = (c: string) => normalizeCategory(c, 'Others');
 
 const CATEGORIES = ['Makanan', 'Transport', 'Belanja', 'Tagihan', 'Kesehatan', 'Hiburan', 'Pemasukan', 'Investasi', 'Others'];
+// Stored values — same as AddTransactionModal's CAT_TO_DB.
+const CAT_TO_DB: Record<string, string> = {
+  Makanan: 'food', Transport: 'transport', Belanja: 'shopping', Tagihan: 'bills', Kesehatan: 'health',
+  Hiburan: 'entertainment', Pemasukan: 'income', Investasi: 'Savings & Investment', Others: 'others',
+};
 const FILTER_CATEGORIES = CATEGORIES;
 
 const TXN_CSS = `
@@ -217,6 +223,7 @@ export function DashboardTransactions() {
 
   // ── Open edit modal ──────────────────────────────────────────────────
   const openEdit = (txn: any) => {
+    if (!requireActive('Ubah transaksi butuh langganan aktif.')) return;
     setSaveError('');
     setEditingTxn(txn);
     setEditForm({
@@ -238,10 +245,13 @@ export function DashboardTransactions() {
     try {
       const payload: Record<string, any> = {
         amount:   Number(editForm.amount),
-        category: editForm.category,
+        category: CAT_TO_DB[editForm.category] || editForm.category,
         merchant: editForm.merchant,
         date:     editForm.date,
         wallet:   editForm.wallet,
+        // Moving a row to/from Pemasukan flips it between income and expense.
+        transaction_type: editForm.category === 'Pemasukan' ? 'income'
+          : editingTxn.transaction_type === 'income' ? 'expense' : (editingTxn.transaction_type || 'expense'),
       };
 
       const r = await fetch(
@@ -268,6 +278,7 @@ export function DashboardTransactions() {
       ));
       closeEdit();
     } catch (e: any) {
+      if (isReadOnlyError(e.message)) { closeEdit(); openRenewSheet('Langganan kamu baru saja berakhir.'); return; }
       setSaveError(e.message || 'Terjadi kesalahan. Coba lagi.');
     } finally {
       setSaving(false);
@@ -330,7 +341,7 @@ export function DashboardTransactions() {
                 onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
               >
                 {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{CAT_EMOJI[c]} {c}</option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
