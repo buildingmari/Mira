@@ -4,6 +4,7 @@ import { isStandalone } from '../lib/pwa';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
 import { ValueProps } from '../components/ValueProps';
+import { FeatureShowcase } from '../components/FeatureShowcase';
 import { Process } from '../components/Process';
 import { DashboardPreview } from '../components/DashboardPreview';
 import { Stats } from '../components/Stats';
@@ -65,6 +66,7 @@ export function LandingWrapper() {
         />
         <Hero onCTAClick={openSignup} />
         <ValueProps />
+        <FeatureShowcase onCTAClick={openSignup} />
         <Process />
         <DashboardPreview onCTAClick={openSignup} />
         <Stats onCTAClick={openSignup} />

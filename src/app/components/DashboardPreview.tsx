@@ -27,8 +27,8 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
         <span className="section-label">Dashboard</span>
         <h2 className="section-title">Semua Keuanganmu<br />dalam Satu Tampilan</h2>
         <p className="section-desc">
-          Dashboard real-time yang cerdas — lihat tren, analisis pengeluaran,<br />
-          dan insight personal kapanpun kamu butuhkan.
+          Tampilan asli aplikasinya: kalender pengeluaran, insight yang dibandingkan<br />
+          dengan rencanamu, dan semua catatan yang bisa diedit kapan aja.
         </p>
 
         <div className="dbprev-devices-row">
@@ -53,10 +53,10 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
           {/* ── Mobile: two phones with real screenshots ── */}
           <div className="dbprev-img-mobile dbprev-phones">
             <div className="dbprev-phone dbprev-phone-back">
-              <img src="/assets/dashboard-mobile-home.jpg" alt="Dashboard MIRA di HP" draggable={false} loading="lazy" />
+              <img src="/assets/dashboard-mobile-calendar.jpg" alt="Kalender pengeluaran di menu Transaksi MIRA" draggable={false} loading="lazy" />
             </div>
             <div className="dbprev-phone dbprev-phone-front">
-              <img src="/assets/dashboard-mobile-insight.jpg" alt="Insight kategori pengeluaran di MIRA" draggable={false} loading="lazy" />
+              <img src="/assets/dashboard-mobile-insight.jpg?v=2" alt="Insight pengeluaran dibanding rencana di MIRA" draggable={false} loading="lazy" />
             </div>
           </div>
 
@@ -81,7 +81,7 @@ export function DashboardPreview({ onCTAClick }: DashboardPreviewProps) {
             <button className="btn btn-lg" onClick={onCTAClick}>
               Coba Gratis Sekarang →
             </button>
-            <p className="dbprev-cta-note">Tanpa download aplikasi · Langsung aktif setelah daftar</p>
+            <p className="dbprev-cta-note">Coba gratis 7 hari pakai kode MIRA100 · tanpa download aplikasi</p>
           </div>
         </div>
 
