@@ -1,115 +1,169 @@
+/**
+ * Target — saving goals with a history of every deposit / withdrawal.
+ *   user_goals          the goal (name, target, deadline, achieved_amount)
+ *   user_goal_entries   history (+ nabung / − ambil) via mira-tools; a DB
+ *                       trigger keeps achieved_amount = earlier balance + entries
+ * Goals themselves are created / edited / deleted through the REST API like
+ * before; what was saved before history existed shows as "Saldo awal".
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Calendar, TrendingUp, X, Check, RotateCcw } from 'lucide-react';
-import { requireActive } from '../../lib/subscription';
+import { Plus, Pencil, Trash2, Check, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { isReadOnlyError, openRenewSheet, requireActive } from '../../lib/subscription';
+import { callTools } from '../../lib/tools';
 import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
+import { AmountInput, Sheet } from '../../components/Sheet';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
 const HR = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'application/json' };
 const HW = { ...HR, 'Content-Type': 'application/json', Prefer: 'return=representation' };
 
-// Table: user_goals
-// Key fields: achieved_amount (not current_amount), target_amount, deadline
 type Goal = {
   id: string;
-  phone_number: string;
   name: string;
+  category?: string | null;
   target_amount: number;
   achieved_amount: number;
-  deadline?: string;
+  deadline?: string | null;
   created_at?: string;
-  category?: string;
-  icon?: string;
 };
+type Entry = { id: string; amount: number; note: string | null; date: string; created_at: string };
 
 const fmt = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
+/** Summary tiles: Rp10jt / Rp1,5jt so big targets fit on a phone. */
+const fmtShort = (n: number) => (Math.abs(n) >= 1e6 ? 'Rp' + (Math.abs(n) / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + 'jt' : fmt(n));
+const todayWIB = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+const parseDay = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const fmtDate = (s?: string | null, long = false) => (s ? parseDay(s.slice(0, 10)).toLocaleDateString('id-ID', { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric' }) : '');
 
-const GOALS_CSS = `
-  .gl-wrap { padding: 28px 32px 40px; max-width: 960px; margin: 0 auto; font-family: 'DM Sans', sans-serif; }
-  .gl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-  .gl-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
-  .gl-modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .gl-modal { background: #fff; border-radius: 20px; width: 100%; max-width: 440px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); font-family: 'DM Sans', sans-serif; }
-  .gl-modal-hdr { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid rgba(0,0,0,0.07); }
-  .gl-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .gl-label { display: block; font-size: 12px; font-weight: 500; color: #6B7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
-  .gl-input { height: 44px; width: 100%; border: 1px solid rgba(0,0,0,0.10); border-radius: 10px; padding: 0 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; background: #F8F9FB; outline: none; box-sizing: border-box; color: #111827; }
-  .gl-input:focus { border-color: #2563EB; box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
-  .gl-submit { width: 100%; height: 48px; background: #2563EB; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background .15s; }
-  .gl-submit:hover { background: #1D4ED8; }
-  .gl-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-  .gl-progress-input { height: 36px; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; background: #F8F9FB; outline: none; box-sizing: border-box; color: #111827; width: 100%; min-width: 0; }
-  .gl-progress-input:focus { border-color: #2563EB; box-shadow: 0 0 0 2px rgba(37,99,235,0.08); }
-  .gl-quick-btn { flex: 1; height: 32px; background: #F8F9FB; border: 1px solid rgba(0,0,0,0.10); border-radius: 7px; font-size: 11px; font-weight: 500; color: #374151; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: background .12s, border-color .12s; }
-  .gl-quick-btn:hover { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-  .gl-save-btn { height: 32px; padding: 0 14px; background: #2563EB; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
-  .gl-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .gl-reset-btn { height: 32px; width: 32px; background: #FEF2F2; border: 1px solid #FECACA; border-radius: 7px; color: #DC2626; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .gl-reset-btn:hover { background: #FEE2E2; }
-  @media (max-width: 900px) {
-    .gl-wrap { padding: 16px 16px 24px; }
-    .gl-stats { grid-template-columns: 1fr; gap: 10px; }
-    .gl-grid  { grid-template-columns: 1fr; gap: 10px; }
-  }
-  @media (max-width: 600px) {
-    .gl-stats { grid-template-columns: 1fr 1fr; }
-  }
+const GOAL_CATS: { key: string; icon: IconName; match: RegExp }[] = [
+  { key: 'Dana Darurat', icon: 'shield', match: /darurat|emergency/i },
+  { key: 'Rumah & Properti', icon: 'dream-house', match: /rumah|properti|kavling|apartemen|house|kpr/i },
+  { key: 'Kendaraan', icon: 'car', match: /kendaraan|mobil|motor|mclaren|car\b/i },
+  { key: 'Liburan', icon: 'plane', match: /liburan|travel|trip|holiday|jalan/i },
+  { key: 'Pendidikan', icon: 'grad-cap', match: /pendidikan|sekolah|kuliah|kursus|edu/i },
+  { key: 'Menikah', icon: 'ring', match: /nikah|wedding|lamaran/i },
+  { key: 'Gadget', icon: 'gadget', match: /gadget|hp\b|laptop|iphone|kamera/i },
+  { key: 'Bisnis', icon: 'shop', match: /bisnis|usaha|modal/i },
+  { key: 'Investasi & Pensiun', icon: 'growth', match: /invest|pensiun|haji|umroh|saham/i },
+  { key: 'Lainnya', icon: 'target', match: /$^/ },
+];
+const catOf = (g: Pick<Goal, 'category' | 'name'>) =>
+  GOAL_CATS.find((c) => c.key === g.category) ||
+  GOAL_CATS.find((c) => c.match.test(g.category || '')) ||
+  GOAL_CATS.find((c) => c.match.test(g.name || '')) ||
+  GOAL_CATS[GOAL_CATS.length - 1];
 
-  .dark .gl-modal { background: #1E293B; }
-  .dark .gl-modal-hdr { border-bottom-color: rgba(255,255,255,0.07); }
-  .dark .gl-label { color: #94A3B8; }
-  .dark .gl-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
-  .dark .gl-input::placeholder { color: #475569; }
-  .dark .gl-progress-input { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
-  .dark .gl-progress-input::placeholder { color: #475569; }
-  .dark .gl-quick-btn { background: #0F172A; border-color: rgba(255,255,255,0.10); color: #CBD5E1; }
-  .dark .gl-quick-btn:hover { background: rgba(37,99,235,0.15); border-color: rgba(59,130,246,0.4); color: #93C5FD; }
-  .dark .gl-reset-btn { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #FCA5A5; }
-`;
-
-const CARD: React.CSSProperties = {
-  background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 16, overflow: 'hidden',
+const pctOf = (g: Goal) => (g.target_amount > 0 ? Math.min((g.achieved_amount / g.target_amount) * 100, 100) : 0);
+/** Whole months from today to the deadline (at least 1 while it's in the future). */
+const monthsLeft = (deadline?: string | null) => {
+  if (!deadline) return 0;
+  const d = parseDay(deadline), t = parseDay(todayWIB());
+  if (d <= t) return 0;
+  const m = (d.getFullYear() - t.getFullYear()) * 12 + (d.getMonth() - t.getMonth()) + (d.getDate() >= t.getDate() ? 0 : -1);
+  return Math.max(1, m);
 };
 
-export function DashboardGoals() {
-  const navigate   = useNavigate();
-  const [phone,     setPhone]     = useState('');
-  const [goals,     setGoals]     = useState<Goal[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [name,      setName]      = useState('');
-  const [target,    setTarget]    = useState('');
-  const [current,   setCurrent]   = useState('');
-  const [deadline,  setDeadline]  = useState('');
-  const [saving,    setSaving]    = useState(false);
-  const [saved,     setSaved]     = useState(false);
-  const [err,       setErr]       = useState<string | null>(null);
+const CSS = `
+  .gl-wrap { padding: 24px 32px 48px; max-width: 960px; margin: 0 auto; font-family: 'DM Sans', sans-serif; color: #111827; }
+  .gl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .gl-head h1 { font: 600 20px 'Sora', sans-serif; margin: 0; }
+  .gl-head p { font-size: 13px; color: #6B7280; margin: 3px 0 0; }
+  .gl-add { display: inline-flex; align-items: center; gap: 6px; background: #2563EB; color: #fff; border: 0; border-radius: 12px; padding: 10px 16px;
+    font: 600 14px 'DM Sans', sans-serif; cursor: pointer; }
+  .gl-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .gl-stat { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+  .gl-stat-l { font-size: 12px; color: #6B7280; }
+  .gl-stat-v { font: 700 16px 'Sora', sans-serif; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .gl-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    cursor: pointer; text-align: left; font-family: inherit; color: inherit; transition: box-shadow .15s, transform .1s; -webkit-tap-highlight-color: transparent; }
+  .gl-card:hover { box-shadow: 0 6px 20px rgba(15,23,42,.06); }
+  .gl-card:active { transform: scale(.99); }
+  .gl-card-top { display: flex; gap: 12px; align-items: center; }
+  .gl-name { font: 600 15px 'Sora', sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gl-sub { font-size: 12px; color: #6B7280; margin-top: 2px; }
+  .gl-pct { margin-left: auto; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: #F1F5F9; color: #475569; flex-shrink: 0; }
+  .gl-pct.done { background: #DCFCE7; color: #166534; }
+  .gl-bar { height: 8px; background: #EEF1F6; border-radius: 99px; overflow: hidden; }
+  .gl-bar > div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #2563EB, #22D3EE); transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .gl-bar.done > div { background: #16A34A; }
+  .gl-amts { display: flex; justify-content: space-between; font-size: 12.5px; }
+  .gl-amts strong { font-family: 'Sora', sans-serif; }
+  .gl-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #475569; }
+  .gl-meta span { background: #F8FAFC; border-radius: 8px; padding: 4px 8px; }
+  .gl-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .gl-act { height: 38px; border-radius: 11px; border: 1.5px solid #E5E7EB; background: #fff; font: 600 13px 'DM Sans', sans-serif; color: #374151;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  .gl-act.in { border-color: #BBF7D0; background: #F0FDF4; color: #15803D; }
+  .gl-empty { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 18px; padding: 40px 20px; text-align: center; color: #6B7280; font-size: 14px; }
+  .gl-hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.05); }
+  .gl-hist-row:last-child { border-bottom: 0; }
+  .gl-hist-ic { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .gl-hist-amt { font: 700 14px 'Sora', sans-serif; white-space: nowrap; }
+  .gl-mini { width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; color: #9CA3AF; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .gl-mini:hover { background: #F1F5F9; color: #374151; }
+  .gl-big { text-align: center; padding: 4px 0 14px; }
+  .gl-big-amt { font: 800 26px 'Sora', sans-serif; }
+  .gl-cats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .gl-cat { border: 1.5px solid #E5E7EB; background: #fff; border-radius: 12px; padding: 7px 2px 6px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; font: 600 10.5px 'DM Sans', sans-serif; color: #374151; text-align: center; line-height: 1.2; }
+  .gl-cat.on { border-color: #2563EB; background: #EFF6FF; color: #1D4ED8; }
+  .gl-tips { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 16px; padding: 14px 16px; }
+  .gl-tips li { font-size: 13px; color: #374151; margin: 6px 0; }
+  @media (max-width: 900px) {
+    .gl-wrap { padding: 16px 12px 28px; }
+    .gl-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .gl-stats { gap: 6px; }
+    .gl-stat { padding: 10px; }
+    .gl-stat-v { font-size: 13.5px; }
+    .gl-cats { grid-template-columns: repeat(4, 1fr); }
+  }
+  .dark .gl-wrap { color: #F1F5F9; }
+  .dark .gl-stat, .dark .gl-card, .dark .gl-empty, .dark .gl-tips { background: #1E293B; border-color: rgba(255,255,255,.08); }
+  .dark .gl-stat-l, .dark .gl-sub, .dark .gl-head p { color: #94A3B8; }
+  .dark .gl-pct { background: #334155; color: #CBD5E1; }
+  .dark .gl-pct.done { background: rgba(22,163,74,.2); color: #86EFAC; }
+  .dark .gl-bar { background: #334155; }
+  .dark .gl-meta { color: #CBD5E1; }
+  .dark .gl-meta span { background: #0F172A; }
+  .dark .gl-act { background: #0F172A; border-color: rgba(255,255,255,.12); color: #E2E8F0; }
+  .dark .gl-act.in { background: rgba(22,163,74,.15); border-color: rgba(74,222,128,.3); color: #86EFAC; }
+  .dark .gl-hist-row { border-color: rgba(255,255,255,.06); }
+  .dark .gl-mini:hover { background: #334155; color: #E2E8F0; }
+  .dark .gl-cat { background: #0F172A; border-color: rgba(255,255,255,.1); color: #CBD5E1; }
+  .dark .gl-cat.on { background: rgba(37,99,235,.18); border-color: #3B82F6; color: #93C5FD; }
+  .dark .gl-tips li { color: #CBD5E1; }
+`;
 
-  // Per-card progress input state: goalId -> input string
-  const [progressInputs, setProgressInputs] = useState<Record<string, string>>({});
-  const [savingProgress, setSavingProgress] = useState<Record<string, boolean>>({});
+type Panel =
+  | { kind: 'form'; goal: Goal | null }
+  | { kind: 'move'; goal: Goal; dir: 1 | -1; entry?: Entry }
+  | { kind: 'detail'; goal: Goal };
+
+export function DashboardGoals() {
+  const navigate = useNavigate();
+  const [phone, setPhone] = useState('');
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [panel, setPanel] = useState<Panel | null>(null);
 
   useEffect(() => {
     const id = 'mira-gl-css';
     if (!document.getElementById(id)) {
-      const s = document.createElement('style'); s.id = id; s.textContent = GOALS_CSS;
+      const s = document.createElement('style'); s.id = id; s.textContent = CSS;
       document.head.appendChild(s);
     }
-    return () => { document.getElementById('mira-gl-css')?.remove(); };
+    return () => { document.getElementById(id)?.remove(); };
   }, []);
 
   const fetchGoals = useCallback(async (ph: string) => {
-    setLoading(true);
     try {
-      const r = await fetch(
-        `${SUPA_URL}/rest/v1/user_goals?phone_number=eq.${ph}&order=created_at.desc`,
-        { headers: HR }
-      );
-      if (r.ok) {
-        const a = await r.json();
-        if (Array.isArray(a)) setGoals(a);
-      }
+      const r = await fetch(`${SUPA_URL}/rest/v1/user_goals?phone_number=eq.${ph}&order=created_at.desc`, { headers: HR });
+      if (r.ok) { const a = await r.json(); if (Array.isArray(a)) setGoals(a.map((g) => ({ ...g, target_amount: Number(g.target_amount || 0), achieved_amount: Number(g.achieved_amount || 0) }))); }
     } catch {}
     setLoading(false);
   }, []);
@@ -118,256 +172,86 @@ export function DashboardGoals() {
     const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
     setPhone(ph);
-    fetchGoals(ph);
+    void fetchGoals(ph);
   }, []);
 
-  const handleAdd = async () => {
-    if (!name.trim() || !target || !deadline) return;
-    setSaving(true); setErr(null);
-    try {
-      const payload: any = {
-        phone_number:    phone,
-        name:            name.trim(),
-        target_amount:   Number(target),
-        achieved_amount: Number(current) || 0,
-        deadline,
-      };
-      const r = await fetch(`${SUPA_URL}/rest/v1/user_goals`, {
-        method: 'POST',
-        headers: HW,
-        body: JSON.stringify(payload),
-      });
-      if (!r.ok) throw new Error(await r.text());
-      setSaved(true);
-      setName(''); setTarget(''); setCurrent(''); setDeadline('');
-      await fetchGoals(phone);
-      setTimeout(() => { setSaved(false); setShowModal(false); }, 800);
-    } catch (e: any) {
-      setErr(e.message || 'Gagal menyimpan goal');
-    }
-    setSaving(false);
+  const refresh = () => phone && fetchGoals(phone);
+  const patchGoal = (id: string, p: Partial<Goal>) => {
+    setGoals((list) => list.map((g) => (g.id === id ? { ...g, ...p } : g)));
+    setPanel((pn) => (pn && 'goal' in pn && pn.goal?.id === id ? { ...pn, goal: { ...pn.goal, ...p } } as Panel : pn));
   };
 
-  const handleDelete = async (id: string) => {
-    if (!requireActive('Hapus target butuh langganan aktif.')) return;
-    try {
-      await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
-        method: 'DELETE', headers: HR,
-      });
-      setGoals(prev => prev.filter(g => g.id !== id));
-    } catch {}
-  };
-
-  // Save achieved_amount directly (manual input value)
-  const handleSaveProgress = async (id: string) => {
-    const goal = goals.find(g => g.id === id);
-    if (!goal) return;
-    if (!requireActive('Update progress target butuh langganan aktif.')) return;
-    const raw = progressInputs[id] ?? String(goal.achieved_amount);
-    const newAmount = Math.min(Math.max(Number(raw) || 0, 0), goal.target_amount);
-    setSavingProgress(p => ({ ...p, [id]: true }));
-    setGoals(prev => prev.map(g => g.id === id ? { ...g, achieved_amount: newAmount } : g));
-    try {
-      await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: HW,
-        body: JSON.stringify({ achieved_amount: newAmount }),
-      });
-    } catch {
-      setGoals(prev => prev.map(g => g.id === id ? goal : g));
-    }
-    setSavingProgress(p => ({ ...p, [id]: false }));
-  };
-
-  // Quick-add: add preset amount to the input field (not saved yet)
-  const handleQuickAdd = (id: string, add: number) => {
-    const goal = goals.find(g => g.id === id);
-    if (!goal) return;
-    const current = Number(progressInputs[id] ?? goal.achieved_amount) || goal.achieved_amount;
-    const next = Math.min(current + add, goal.target_amount);
-    setProgressInputs(p => ({ ...p, [id]: String(next) }));
-  };
-
-  // Reset input to current DB value
-  const handleResetInput = (id: string) => {
-    const goal = goals.find(g => g.id === id);
-    if (!goal) return;
-    setProgressInputs(p => ({ ...p, [id]: String(goal.achieved_amount) }));
-  };
-
-  const progress = (g: Goal) => g.target_amount > 0 ? Math.min((g.achieved_amount / g.target_amount) * 100, 100) : 0;
-  const monthsLeft = (deadline?: string) => {
-    if (!deadline) return 0;
-    const months = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
-    return Math.max(months, 0);
-  };
-  const monthlyNeeded = (g: Goal) => {
-    const m = monthsLeft(g.deadline);
-    return m > 0 ? (g.target_amount - g.achieved_amount) / m : g.target_amount - g.achieved_amount;
-  };
-
-  const totalTarget   = goals.reduce((s, g) => s + g.target_amount, 0);
-  const totalCurrent  = goals.reduce((s, g) => s + g.achieved_amount, 0);
+  const totalTarget = goals.reduce((s, g) => s + g.target_amount, 0);
+  const totalSaved = goals.reduce((s, g) => s + g.achieved_amount, 0);
+  const guard = (msg: string, then: () => void) => { if (requireActive(msg)) then(); };
 
   return (
     <div className="gl-wrap">
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
+      <div className="gl-head">
         <div>
-          <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 600, margin: 0, color: '#111827' }}>Target</h1>
-          <p style={{ fontSize: 13, color: '#6B7280', margin: '3px 0 0' }}>Track progress menuju target saving kamu</p>
+          <h1>Target</h1>
+          <p>Nabung pelan-pelan, semua tercatat di riwayat</p>
         </div>
-        <button
-          onClick={() => { requireActive('Tambah target butuh langganan aktif.') && setShowModal(true); setErr(null); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}
-        >
-          <Plus style={{ width: 16, height: 16 }} strokeWidth={2.5} /> Add Goal
+        <button className="gl-add" onClick={() => guard('Tambah target butuh langganan aktif.', () => setPanel({ kind: 'form', goal: null }))}>
+          <Plus size={16} strokeWidth={2.5} /> Target baru
         </button>
       </div>
 
-      {/* Stats */}
       <div className="gl-stats">
-        {[
-          { label: 'Total Goals',     val: String(goals.length), icon: 'target' as IconName,  sub: 'active goals' },
-          { label: 'Total Target',    val: fmt(totalTarget),     icon: 'growth' as IconName,  sub: 'target amount' },
-          { label: 'Total Terkumpul', val: fmt(totalCurrent),    icon: 'piggy' as IconName,   sub: 'current savings' },
-        ].map(({ label, val, icon }) => (
-          <div key={label} style={{ ...CARD, padding: '18px 20px' }}>
-            <div style={{ marginBottom: 10 }}><MiraIcon name={icon} size={40} /></div>
-            <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</div>
-            <div style={{ fontSize: 12, color: '#6B7280' }}>{label}</div>
-          </div>
-        ))}
+        <div className="gl-stat"><div className="gl-stat-l">Target aktif</div><div className="gl-stat-v">{goals.length}</div></div>
+        <div className="gl-stat"><div className="gl-stat-l">Terkumpul</div><div className="gl-stat-v" style={{ color: '#16A34A' }}>{fmtShort(totalSaved)}</div></div>
+        <div className="gl-stat"><div className="gl-stat-l">Dari total</div><div className="gl-stat-v">{fmtShort(totalTarget)}</div></div>
       </div>
 
-      {/* Goals list */}
       {loading ? (
-        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 14, paddingTop: 40 }}>Memuat goals...</p>
+        <div className="gl-empty">Memuat target…</div>
       ) : goals.length === 0 ? (
-        <div style={{ textAlign: 'center', paddingTop: 60, color: '#6B7280' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="target" size={72} /></div>
-          <p style={{ fontSize: 14, marginBottom: 20 }}>Belum ada goal. Mulai dengan menambahkan target pertama kamu!</p>
-          <button onClick={() => requireActive('Tambah target butuh langganan aktif.') && setShowModal(true)}
-            style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif" }}>
-            + Add Goal Pertama
-          </button>
+        <div className="gl-empty">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><MiraIcon name="target" size={64} /></div>
+          Belum ada target. Mulai dari yang kecil — dana darurat, liburan, atau gadget impian.
+          <div style={{ marginTop: 14 }}>
+            <button className="gl-add" onClick={() => guard('Tambah target butuh langganan aktif.', () => setPanel({ kind: 'form', goal: null }))}>
+              <Plus size={16} strokeWidth={2.5} /> Bikin target pertama
+            </button>
+          </div>
         </div>
       ) : (
         <div className="gl-grid">
-          {goals.map(g => {
-            const pct  = progress(g);
-            const ml   = monthsLeft(g.deadline);
-            const mn   = monthlyNeeded(g);
+          {goals.map((g) => {
+            const pct = pctOf(g);
             const done = pct >= 100;
-            const inputVal = progressInputs[g.id] ?? String(g.achieved_amount);
-            const isSaving = savingProgress[g.id] || false;
+            const ml = monthsLeft(g.deadline);
+            const need = Math.max(0, g.target_amount - g.achieved_amount);
             return (
-              <div key={g.id} style={{ ...CARD }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 2 }}>
-                      {g.icon ? `${g.icon} ` : ''}{g.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#6B7280' }}>Target: {fmt(g.target_amount)}</div>
+              <div key={g.id} className="gl-card" role="button" tabIndex={0}
+                onClick={() => setPanel({ kind: 'detail', goal: g })} onKeyDown={(e) => e.key === 'Enter' && setPanel({ kind: 'detail', goal: g })}>
+                <div className="gl-card-top">
+                  <MiraIcon name={catOf(g).icon} size={44} />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="gl-name">{g.name}</div>
+                    <div className="gl-sub">Target {fmt(g.target_amount)}</div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, fontWeight: 600, background: done ? '#D1FAE5' : pct >= 75 ? '#DBEAFE' : '#F1F4F8', color: done ? '#065F46' : pct >= 75 ? '#1D4ED8' : '#6B7280' }}>
-                      {pct.toFixed(0)}%
-                    </span>
-                    <button onClick={() => handleDelete(g.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: 2, display: 'flex' }}>
-                      <X style={{ width: 14, height: 14 }} />
-                    </button>
-                  </div>
+                  <span className={`gl-pct${done ? ' done' : ''}`}>{done ? 'Tercapai' : `${pct < 1 && pct > 0 ? '<1' : Math.round(pct)}%`}</span>
                 </div>
-
-                <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {/* Progress bar */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
-                      <span style={{ fontWeight: 500, color: '#111827' }}>{fmt(g.achieved_amount)}</span>
-                      <span style={{ color: '#9CA3AF' }}>{fmt(g.target_amount - g.achieved_amount)} lagi</span>
-                    </div>
-                    <div style={{ height: 8, background: '#F1F4F8', borderRadius: 99, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', borderRadius: 99, background: done ? '#16A34A' : '#2563EB', width: `${Math.min(pct, 100)}%`, transition: 'width .8s cubic-bezier(.4,0,.2,1)' }} />
-                    </div>
+                <div className={`gl-bar${done ? ' done' : ''}`}><div style={{ width: `${pct}%` }} /></div>
+                <div className="gl-amts">
+                  <span><strong>{fmt(g.achieved_amount)}</strong> terkumpul</span>
+                  <span style={{ color: '#6B7280' }}>{done ? 'Selamat!' : `${fmt(need)} lagi`}</span>
+                </div>
+                {!done && g.deadline && (
+                  <div className="gl-meta">
+                    <span>Deadline {fmtDate(g.deadline)}</span>
+                    {ml > 0 ? <span>≈ {fmt(Math.ceil(need / ml))}/bulan</span> : <span style={{ color: '#DC2626' }}>Lewat deadline</span>}
                   </div>
-
-                  {/* Details */}
-                  {g.deadline && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9CA3AF', marginBottom: 3 }}>
-                          <Calendar style={{ width: 12, height: 12 }} />
-                          <span style={{ fontSize: 11 }}>Deadline</span>
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>
-                          {new Date(g.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ml} bulan lagi</div>
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9CA3AF', marginBottom: 3 }}>
-                          <TrendingUp style={{ width: 12, height: 12 }} />
-                          <span style={{ fontSize: 11 }}>Per bulan</span>
-                        </div>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: '#111827' }}>{fmt(mn)}</div>
-                        <div style={{ fontSize: 11, color: '#9CA3AF' }}>dibutuhkan</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Status */}
-                  <div style={{ background: done ? '#F0FDF4' : mn > 5000000 ? '#FFF1F2' : '#EFF6FF', borderRadius: 10, padding: '10px 12px' }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: done ? '#065F46' : mn > 5000000 ? '#DC2626' : '#1D4ED8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <MiraIcon name={done ? 'trophy' : mn > 5000000 ? 'warn' : 'sparkle'} size={24} tile={false} />
-                      {done ? 'Goal tercapai! Selamat!' : mn > 5000000 ? 'Target bulanan tinggi — pertimbangkan adjust deadline' : 'On track! Keep going!'}
-                    </p>
-                  </div>
-
-                  {/* Progress update — manual input + quick add buttons */}
-                  {!done && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {/* Manual input + save + reset */}
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-                          <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#6B7280', pointerEvents: 'none' }}>Rp</span>
-                          <input
-                            className="gl-progress-input"
-                            type="number"
-                            style={{ paddingLeft: 30 }}
-                            value={inputVal}
-                            onChange={e => setProgressInputs(p => ({ ...p, [g.id]: e.target.value }))}
-                            placeholder="0"
-                            min={0}
-                            max={g.target_amount}
-                          />
-                        </div>
-                        <button
-                          className="gl-save-btn"
-                          disabled={isSaving}
-                          onClick={() => handleSaveProgress(g.id)}
-                        >
-                          {isSaving ? '...' : <Check style={{ width: 13, height: 13 }} />}
-                        </button>
-                        <button
-                          className="gl-reset-btn"
-                          onClick={() => handleResetInput(g.id)}
-                          title="Reset ke nilai tersimpan"
-                        >
-                          <RotateCcw style={{ width: 13, height: 13 }} />
-                        </button>
-                      </div>
-                      {/* Quick-add chips */}
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        {[100000, 500000, 1000000].map(v => (
-                          <button key={v} onClick={() => handleQuickAdd(g.id, v)} className="gl-quick-btn">
-                            +{v >= 1000000 ? (v / 1000000) + 'jt' : v / 1000 + 'rb'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                )}
+                <div className="gl-acts" onClick={(e) => e.stopPropagation()}>
+                  <button className="gl-act in" onClick={() => guard('Nabung ke target butuh langganan aktif.', () => setPanel({ kind: 'move', goal: g, dir: 1 }))}>
+                    <ArrowDownLeft size={15} /> Nabung
+                  </button>
+                  <button className="gl-act" disabled={g.achieved_amount <= 0}
+                    onClick={() => guard('Ambil dana target butuh langganan aktif.', () => setPanel({ kind: 'move', goal: g, dir: -1 }))}>
+                    <ArrowUpRight size={15} /> Ambil
+                  </button>
                 </div>
               </div>
             );
@@ -375,64 +259,289 @@ export function DashboardGoals() {
         </div>
       )}
 
-      {/* Tips */}
-      <div style={{ ...CARD, padding: '16px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <MiraIcon name="bulb" size={30} />
-          <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, color: '#111827' }}>Tips Mencapai Goal</span>
+      <div className="gl-tips">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontFamily: "'Sora',sans-serif", fontSize: 14 }}>
+          <MiraIcon name="bulb" size={28} /> Tips
         </div>
-        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {[
-            'Set auto-transfer ke rekening saving setiap terima gaji',
-            'Kurangi pengeluaran di kategori yang tidak penting',
-            'Review progress setiap minggu dan adjust spending jika perlu',
-          ].map(tip => (
-            <li key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#374151' }}>
-              <span style={{ color: '#2563EB', fontWeight: 700, flexShrink: 0 }}>•</span>
-              <span>{tip}</span>
-            </li>
-          ))}
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          <li>Nabung tepat setelah gajian, sebelum belanja — catat di sini biar progresnya kelihatan.</li>
+          <li>Pecah target besar jadi setoran bulanan; MIRA hitung kebutuhan per bulannya.</li>
+          <li>Kepakai sebagian? Pakai "Ambil" supaya saldo target tetap jujur.</li>
         </ul>
       </div>
 
-      {/* Add Goal Modal */}
-      {showModal && (
-        <div className="gl-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="gl-modal">
-            <div className="gl-modal-hdr">
-              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 600, color: '#111827' }}>Tambah Goal</span>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex' }}>
-                <X style={{ width: 18, height: 18 }} />
-              </button>
-            </div>
-            <div className="gl-modal-body">
-              {err && <div style={{ fontSize: 13, color: '#EF4444', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8 }}>{err}</div>}
-              <div>
-                <span className="gl-label">Nama Goal</span>
-                <input className="gl-input" placeholder="e.g. Dana Liburan Bali" value={name} onChange={e => setName(e.target.value)} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <span className="gl-label">Target (Rp)</span>
-                  <input className="gl-input" type="number" placeholder="10000000" value={target} onChange={e => setTarget(e.target.value)} />
-                </div>
-                <div>
-                  <span className="gl-label">Sudah Ada (Rp)</span>
-                  <input className="gl-input" type="number" placeholder="0" value={current} onChange={e => setCurrent(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <span className="gl-label">Deadline</span>
-                <input className="gl-input" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} />
-              </div>
-              <button className="gl-submit" onClick={handleAdd} disabled={saving || saved || !name.trim() || !target || !deadline}>
-                {saved ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><Check style={{ width: 16, height: 16 }} /> Tersimpan!</span>
-                       : saving ? 'Menyimpan...' : 'Simpan Goal'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {panel?.kind === 'form' && (
+        <GoalForm goal={panel.goal} phone={phone} onClose={() => setPanel(null)}
+          onSaved={(g, isNew) => { if (isNew) void refresh(); else patchGoal(g.id, g); setPanel(isNew ? null : { kind: 'detail', goal: { ...(panel.goal as Goal), ...g } }); }} />
+      )}
+      {panel?.kind === 'move' && (
+        <MoveSheet goal={panel.goal} dir={panel.dir} entry={panel.entry}
+          onClose={() => setPanel(panel.entry ? { kind: 'detail', goal: panel.goal } : null)}
+          onDone={(achieved) => { patchGoal(panel.goal.id, { achieved_amount: achieved }); setPanel({ kind: 'detail', goal: { ...panel.goal, achieved_amount: achieved } }); }} />
+      )}
+      {panel?.kind === 'detail' && (
+        <GoalDetail goal={panel.goal} onClose={() => setPanel(null)}
+          onMove={(dir, entry) => guard('Ubah riwayat target butuh langganan aktif.', () => setPanel({ kind: 'move', goal: panel.goal, dir, entry }))}
+          onEdit={() => guard('Ubah target butuh langganan aktif.', () => setPanel({ kind: 'form', goal: panel.goal }))}
+          onAchieved={(a) => patchGoal(panel.goal.id, { achieved_amount: a })}
+          onDeleted={() => { setGoals((l) => l.filter((x) => x.id !== panel.goal.id)); setPanel(null); }} />
       )}
     </div>
+  );
+}
+
+/* ── Create / edit a goal ─────────────────────────────────────────── */
+
+function GoalForm({ goal, phone, onClose, onSaved }: {
+  goal: Goal | null; phone: string; onClose: () => void; onSaved: (g: Goal, isNew: boolean) => void;
+}) {
+  const [name, setName] = useState(goal?.name || '');
+  const [cat, setCat] = useState(goal ? catOf(goal).key : 'Dana Darurat');
+  const [target, setTarget] = useState(goal?.target_amount || 0);
+  const [initial, setInitial] = useState(0);
+  const [deadline, setDeadline] = useState(goal?.deadline?.slice(0, 10) || '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const save = async () => {
+    if (!name.trim()) { setErr('Kasih nama targetnya dulu.'); return; }
+    if (target <= 0) { setErr('Isi nominal targetnya.'); return; }
+    setBusy(true); setErr('');
+    try {
+      const body: Record<string, unknown> = { name: name.trim(), category: cat, target_amount: target, deadline: deadline || null, updated_at: new Date().toISOString() };
+      const r = goal
+        ? await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${goal.id}`, { method: 'PATCH', headers: HW, body: JSON.stringify(body) })
+        : await fetch(`${SUPA_URL}/rest/v1/user_goals`, { method: 'POST', headers: HW, body: JSON.stringify({ ...body, phone_number: phone, achieved_amount: initial }) });
+      if (!r.ok) throw new Error((await r.text().catch(() => '')) || 'Gagal menyimpan target');
+      const rows = await r.json().catch(() => []);
+      onSaved({ ...(goal || {}), ...body, ...(rows?.[0] || {}) } as Goal, !goal);
+    } catch (e: any) {
+      if (isReadOnlyError(e?.message)) { onClose(); openRenewSheet('Langganan kamu baru saja berakhir.'); return; }
+      setErr('Gagal menyimpan. Coba lagi ya.');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <Sheet title={goal ? 'Edit target' : 'Target baru'} onClose={onClose} busy={busy}>
+      <div className="msh-field">
+        <span className="msh-label">Nama target</span>
+        <input className="msh-input" placeholder="Misal: Liburan ke Jepang" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+      <div className="msh-field">
+        <span className="msh-label">Jenis</span>
+        <div className="gl-cats">
+          {GOAL_CATS.map((c) => (
+            <button key={c.key} className={`gl-cat${cat === c.key ? ' on' : ''}`} onClick={() => setCat(c.key)}>
+              <MiraIcon name={c.icon} size={26} />{c.key}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="msh-field">
+        <span className="msh-label">Nominal target</span>
+        <AmountInput value={target} onChange={setTarget} />
+      </div>
+      <div className={goal ? 'msh-field' : 'msh-two msh-field'}>
+        {!goal && (
+          <div>
+            <span className="msh-label">Sudah terkumpul</span>
+            <input className="msh-input" inputMode="numeric" placeholder="0" value={initial ? initial.toLocaleString('id-ID') : ''}
+              onChange={(e) => setInitial(Number(e.target.value.replace(/\D/g, '')) || 0)} />
+          </div>
+        )}
+        <div>
+          <span className="msh-label">Deadline (opsional)</span>
+          <input className="msh-input" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        </div>
+      </div>
+      {err && <div className="msh-err">{err}</div>}
+      <div className="msh-btns">
+        <button className="msh-btn ghost" onClick={onClose} disabled={busy}>Batal</button>
+        <button className="msh-btn primary" onClick={() => void save()} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</button>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ── Nabung / ambil (new or edited history entry) ─────────────────── */
+
+function MoveSheet({ goal, dir, entry, onClose, onDone }: {
+  goal: Goal; dir: 1 | -1; entry?: Entry; onClose: () => void; onDone: (achieved: number) => void;
+}) {
+  const [amount, setAmount] = useState(entry ? Math.abs(entry.amount) : 0);
+  const [note, setNote] = useState(entry?.note || '');
+  const [date, setDate] = useState(entry?.date || todayWIB());
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const sign = entry ? Math.sign(entry.amount) || 1 : dir;
+  const left = Math.max(0, goal.target_amount - goal.achieved_amount);
+
+  const save = async () => {
+    if (amount <= 0) { setErr('Isi nominalnya dulu.'); return; }
+    setBusy(true); setErr('');
+    try {
+      if (entry) {
+        await callTools({ op: 'goal_entry_update', entry_id: entry.id, amount: sign * amount, note, date });
+        onDone(goal.achieved_amount + sign * amount - entry.amount);
+      } else {
+        const r = await callTools<{ achieved_amount: number }>({ op: 'goal_entry_add', goal_id: goal.id, amount: sign * amount, note, date });
+        onDone(r.achieved_amount);
+      }
+    } catch (e: any) {
+      if (isReadOnlyError(e?.message)) { onClose(); openRenewSheet('Langganan kamu baru saja berakhir.'); return; }
+      setErr(e?.message || 'Gagal menyimpan. Coba lagi ya.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet title={`${entry ? 'Edit' : ''} ${sign > 0 ? 'Nabung' : 'Ambil dana'} · ${goal.name}`.trim()} onClose={onClose} busy={busy}>
+      <div className="msh-field">
+        <span className="msh-label">{sign > 0 ? 'Nominal ditabung' : 'Nominal diambil'}</span>
+        <AmountInput value={amount} onChange={setAmount} />
+        <div className="msh-chips">
+          {(sign > 0 ? [50000, 100000, 500000, 1000000] : [50000, 100000, 500000]).map((v) => (
+            <button key={v} className="msh-chip" onClick={() => setAmount((a) => a + v)}>+{v >= 1e6 ? v / 1e6 + 'jt' : v / 1000 + 'rb'}</button>
+          ))}
+          {sign > 0 && left > 0 && <button className="msh-chip" onClick={() => setAmount(left)}>Lunasi {fmt(left)}</button>}
+          {sign < 0 && <button className="msh-chip" onClick={() => setAmount(goal.achieved_amount + (entry ? Math.abs(entry.amount) : 0))}>Semua</button>}
+        </div>
+      </div>
+      <div className="msh-two msh-field">
+        <div>
+          <span className="msh-label">Catatan</span>
+          <input className="msh-input" placeholder={sign > 0 ? 'Misal: sisa gaji' : 'Misal: servis motor'} value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <div>
+          <span className="msh-label">Tanggal</span>
+          <input className="msh-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+      </div>
+      {err && <div className="msh-err">{err}</div>}
+      <div className="msh-btns">
+        <button className="msh-btn ghost" onClick={onClose} disabled={busy}>Batal</button>
+        <button className={`msh-btn ${sign > 0 ? 'green' : 'primary'}`} onClick={() => void save()} disabled={busy || amount <= 0}>
+          {busy ? 'Menyimpan…' : sign > 0 ? `Tabung ${amount ? fmt(amount) : ''}` : `Ambil ${amount ? fmt(amount) : ''}`}
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/* ── Goal detail + history ────────────────────────────────────────── */
+
+function GoalDetail({ goal, onClose, onMove, onEdit, onAchieved, onDeleted }: {
+  goal: Goal; onClose: () => void; onMove: (dir: 1 | -1, entry?: Entry) => void; onEdit: () => void;
+  onAchieved: (a: number) => void; onDeleted: () => void;
+}) {
+  const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [err, setErr] = useState('');
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await callTools<{ entries: Entry[]; achieved_amount: number }>({ op: 'goal_entries', goal_id: goal.id });
+      setEntries(r.entries.map((e) => ({ ...e, amount: Number(e.amount) })));
+      if (r.achieved_amount !== goal.achieved_amount) onAchieved(r.achieved_amount);
+    } catch (e: any) { setErr(e?.message || 'Gagal memuat riwayat.'); setEntries([]); }
+  }, [goal.id]);
+  useEffect(() => { void load(); }, [load]);
+
+  const removeEntry = async (e: Entry) => {
+    if (!requireActive('Ubah riwayat target butuh langganan aktif.')) return;
+    setErr('');
+    try {
+      await callTools({ op: 'goal_entry_delete', entry_id: e.id });
+      setEntries((l) => (l || []).filter((x) => x.id !== e.id));
+      onAchieved(goal.achieved_amount - e.amount);
+    } catch (x: any) { setErr(x?.message || 'Gagal menghapus.'); }
+  };
+
+  const removeGoal = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch(`${SUPA_URL}/rest/v1/user_goals?id=eq.${goal.id}`, { method: 'DELETE', headers: HR });
+      if (!r.ok) throw new Error();
+      onDeleted();
+    } catch { setErr('Gagal menghapus target.'); setBusy(false); }
+  };
+
+  const pct = pctOf(goal);
+  const ml = monthsLeft(goal.deadline);
+  const need = Math.max(0, goal.target_amount - goal.achieved_amount);
+  const sumEntries = (entries || []).reduce((s, e) => s + e.amount, 0);
+  const opening = goal.achieved_amount - sumEntries; // saved before history existed
+  const cat = catOf(goal);
+
+  return (
+    <Sheet title={goal.name} onClose={onClose} busy={busy}>
+      <div className="gl-big">
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6 }}><MiraIcon name={cat.icon} size={52} /></div>
+        <div className="gl-big-amt">{fmt(goal.achieved_amount)}</div>
+        <div style={{ fontSize: 13, color: '#6B7280' }}>dari {fmt(goal.target_amount)} · {Math.round(pct)}%</div>
+        <div className={`gl-bar${pct >= 100 ? ' done' : ''}`} style={{ marginTop: 10 }}><div style={{ width: `${pct}%` }} /></div>
+        <div className="gl-meta" style={{ justifyContent: 'center', marginTop: 10 }}>
+          <span>{cat.key}</span>
+          {goal.deadline && <span>Deadline {fmtDate(goal.deadline, true)}</span>}
+          {need > 0 && ml > 0 && <span>≈ {fmt(Math.ceil(need / ml))}/bulan · {ml} bln lagi</span>}
+        </div>
+      </div>
+
+      <div className="msh-btns" style={{ marginBottom: 14 }}>
+        <button className="msh-btn green" onClick={() => onMove(1)}><ArrowDownLeft size={16} />Nabung</button>
+        <button className="msh-btn ghost" onClick={() => onMove(-1)} disabled={goal.achieved_amount <= 0}><ArrowUpRight size={16} />Ambil</button>
+      </div>
+
+      <div className="msh-label">Riwayat</div>
+      {err && <div className="msh-err">{err}</div>}
+      {entries === null ? (
+        <div style={{ fontSize: 13, color: '#9CA3AF', padding: '10px 0' }}>Memuat…</div>
+      ) : (
+        <div style={{ marginBottom: 14 }}>
+          {entries.length === 0 && opening === 0 && <div style={{ fontSize: 13, color: '#9CA3AF', padding: '10px 0' }}>Belum ada setoran. Tap "Nabung" buat mulai.</div>}
+          {entries.map((e) => (
+            <div className="gl-hist-row" key={e.id}>
+              <div className="gl-hist-ic" style={{ background: e.amount > 0 ? '#DCFCE7' : '#FEF3C7', color: e.amount > 0 ? '#15803D' : '#B45309' }}>
+                {e.amount > 0 ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.note || (e.amount > 0 ? 'Nabung' : 'Ambil dana')}</div>
+                <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(e.date)}</div>
+              </div>
+              <div className="gl-hist-amt" style={{ color: e.amount > 0 ? '#16A34A' : '#B45309' }}>{e.amount > 0 ? '+' : '−'}{fmt(e.amount)}</div>
+              <button className="gl-mini" aria-label="Edit" onClick={() => onMove(e.amount > 0 ? 1 : -1, e)}><Pencil size={14} /></button>
+              <button className="gl-mini" aria-label="Hapus" onClick={() => void removeEntry(e)}><Trash2 size={14} /></button>
+            </div>
+          ))}
+          {opening !== 0 && (
+            <div className="gl-hist-row">
+              <div className="gl-hist-ic" style={{ background: '#EEF2FF', color: '#4338CA' }}><Check size={16} /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>Saldo awal</div>
+                <div style={{ fontSize: 12, color: '#6B7280' }}>Terkumpul sebelum riwayat dicatat{goal.created_at ? ` · ${fmtDate(goal.created_at)}` : ''}</div>
+              </div>
+              <div className="gl-hist-amt">{opening < 0 ? '−' : ''}{fmt(opening)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {confirmDel ? (
+        <>
+          <div className="msh-confirm"><strong>Hapus target ini?</strong> {goal.name} beserta riwayatnya akan dihapus permanen.</div>
+          <div className="msh-btns">
+            <button className="msh-btn ghost" onClick={() => setConfirmDel(false)} disabled={busy}>Batal</button>
+            <button className="msh-btn danger-solid" onClick={() => void removeGoal()} disabled={busy}>{busy ? 'Menghapus…' : 'Ya, hapus'}</button>
+          </div>
+        </>
+      ) : (
+        <div className="msh-btns">
+          <button className="msh-btn danger" onClick={() => { if (requireActive('Hapus target butuh langganan aktif.')) setConfirmDel(true); }}><Trash2 size={16} />Hapus</button>
+          <button className="msh-btn primary" onClick={onEdit}><Pencil size={16} />Edit target</button>
+        </div>
+      )}
+    </Sheet>
   );
 }

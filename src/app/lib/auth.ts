@@ -123,6 +123,7 @@ function authError(d: any, status: number): string {
   if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'Email atau password salah.';
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) return 'Email kamu belum dikonfirmasi. Cek inbox (atau folder spam) untuk link konfirmasinya.';
   if (code === 'user_already_exists' || /already registered/i.test(msg)) return 'Email ini sudah terdaftar. Masuk pakai password-nya ya.';
+  if (code === 'same_password' || /different from the old/i.test(msg)) return 'Password baru harus beda dari password lama.';
   if (code === 'weak_password' || /password should be/i.test(msg)) return 'Password minimal 6 karakter.';
   if (code === 'email_address_invalid' || /invalid.*email|email.*invalid/i.test(msg)) return 'Format email-nya belum benar.';
   if (status === 429 || /rate limit/i.test(msg)) return 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.';
@@ -183,13 +184,26 @@ export async function updatePassword(token: string, password: string): Promise<s
   return r.ok ? null : authError(r.data, r.status);
 }
 
+/** Email login: checks the current password (a fresh sign-in), then sets the new one. */
+export async function changePassword(email: string, current: string, next: string): Promise<string | null> {
+  const r = await gotrue('/token?grant_type=password', { email, password: current });
+  const fresh = r.ok ? sessionFrom(r.data, 'email') : null;
+  if (!fresh) return r.status === 400 ? 'Password lama salah.' : authError(r.data, r.status);
+  const err = await updatePassword(fresh.access_token, next);
+  if (err) return err;
+  const old = getAuthSession();
+  setAuthSession({ ...fresh, name: fresh.name || old?.name || null, avatar_url: fresh.avatar_url || old?.avatar_url || null });
+  return null;
+}
+
 /* ── auth-account Edge Function ──────────────────────────────────── */
 
 export type AuthAccountBody =
   | { op: 'resolve'; access_token: string }
   | { op: 'start_signup'; access_token: string; name?: string }
   | { op: 'start_trial'; access_token: string; payload: Record<string, unknown> }
-  | { op: 'start_renewal'; access_token: string; duration: string; voucher?: string };
+  | { op: 'start_renewal'; access_token: string; duration: string; voucher?: string }
+  | { op: 'delete_account'; access_token: string; confirm: 'HAPUS' };
 
 /** Never throws: a network failure comes back as { status: 0, data: {} }. */
 export async function authAccount(body: AuthAccountBody): Promise<{ status: number; data: any }> {

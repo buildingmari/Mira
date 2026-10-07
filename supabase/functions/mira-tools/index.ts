@@ -18,6 +18,23 @@
  *     -> { id, message }   (persists exactly like WhatsApp's Confirm Split Bill)
  *
  *   { op: 'settle_piutang', phone_number, asset_id } -> { ok }
+ *     The settled piutang is kept in piutang_history (see piutang_* below).
+ *
+ *   Piutang (receivables): active = user_assets category 'piutang' (counted
+ *   in net worth), lunas = piutang_history.
+ *   { op: 'piutang_list' }                                   -> { active, settled }
+ *   { op: 'piutang_add', friend, amount, note? }             -> { id }
+ *   { op: 'piutang_update', asset_id, friend?, note?, amount? }
+ *   { op: 'piutang_delete', asset_id }
+ *   { op: 'piutang_reopen', history_id }                     -> back to active
+ *   { op: 'piutang_history_update', history_id, friend?, note?, amount?, settled_on? }
+ *   { op: 'piutang_history_delete', history_id }
+ *
+ *   Target history (user_goal_entries; a trigger keeps user_goals.achieved_amount in step):
+ *   { op: 'goal_entries', goal_id }                          -> { entries }
+ *   { op: 'goal_entry_add', goal_id, amount (+ nabung / − ambil), note?, date? }
+ *   { op: 'goal_entry_update', entry_id, amount?, note?, date? }
+ *   { op: 'goal_entry_delete', entry_id }
  *
  * Writes go through here (service role) because user_reminders has RLS with
  * no anon policy. Secret: OPENROUTER_API_KEY (every model, Gemini included, goes through OpenRouter).
@@ -140,6 +157,30 @@ function normalizeExpenses(raw: any, defaultWallet: string) {
   }).filter((e: any) => e.amount > 0);
 }
 
+/** "Piutang Budi (Solaria)" ⇄ { friend: 'Budi', note: 'Solaria' } — the WhatsApp flow's naming. */
+function splitPiutangName(name: string): { friend: string; note: string } {
+  const m = /^Piutang (.+?) \((.+)\)$/.exec(name || '') || /^Piutang (.+)$/.exec(name || '');
+  return m ? { friend: m[1].trim(), note: (m[2] || '').trim() } : { friend: (name || '').trim(), note: '' };
+}
+const piutangName = (friend: string, note: string) => (note ? `Piutang ${friend} (${note})` : `Piutang ${friend}`);
+const reminderName = (friend: string, note: string) => `Tagih piutang ${friend} — ${note}`;
+const cleanText = (v: unknown, max = 60) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+const money = (v: unknown) => Math.max(0, Math.round(Number(v) || 0));
+const isDay = (v: unknown) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+
+// deno-lint-ignore no-explicit-any
+async function splitWithAsset(phone: string, assetId: string): Promise<any | null> {
+  const { data } = await sb.from('split_bills').select('id, participants')
+    .eq('phone_number', phone).contains('participants', JSON.stringify([{ asset_id: assetId }])).limit(1);
+  return data?.[0] ?? null;
+}
+
+// deno-lint-ignore no-explicit-any
+async function goalOf(phone: string, goalId: string): Promise<any | null> {
+  const { data } = await sb.from('user_goals').select('id, achieved_amount, target_amount').eq('id', goalId).eq('phone_number', phone).maybeSingle();
+  return data;
+}
+
 // deno-lint-ignore no-explicit-any
 function sanitizeDraft(d: any, defaultWallet: string): SplitDraft {
   const seen = new Set<string>();
@@ -252,8 +293,186 @@ Deno.serve(async (req: Request) => {
         if (!isActiveMember(user)) return inactive();
         const assetId = String(body.asset_id || '');
         if (!assetId) return json({ error: 'asset_id_required' }, 400);
+        const { data: asset } = await sb.from('user_assets').select('id, name, value, subtype, updated_date, created_at')
+          .eq('id', assetId).eq('phone_number', phone).maybeSingle();
+        if (!asset) return json({ ok: false }, 404);
+        const split = await splitWithAsset(phone, assetId);
+        await sb.from('piutang_history').insert({
+          phone_number: phone, name: asset.name, amount: money(asset.value), subtype: asset.subtype,
+          split_bill_id: split?.id ?? null, opened_on: asset.updated_date || String(asset.created_at || '').slice(0, 10) || null,
+        });
         const result = await settlePiutang(sb, phone, assetId);
         return json(result, result.ok ? 200 : 404);
+      }
+
+      case 'piutang_list': {
+        const [a, h] = await Promise.all([
+          sb.from('user_assets').select('id, name, value, subtype, updated_date, created_at')
+            .eq('phone_number', phone).eq('category', 'piutang').order('created_at', { ascending: false }),
+          sb.from('piutang_history').select('id, name, amount, subtype, split_bill_id, opened_on, settled_at')
+            .eq('phone_number', phone).order('settled_at', { ascending: false }).limit(200),
+        ]);
+        return json({ active: a.data || [], settled: h.data || [] });
+      }
+
+      case 'piutang_add': {
+        if (!isActiveMember(user)) return inactive();
+        const friend = cleanText(body.friend, 40);
+        const amount = money(body.amount);
+        if (!friend || amount <= 0) return json({ error: 'invalid', message: 'Isi nama teman dan nominalnya dulu ya.' }, 400);
+        const { data, error } = await sb.from('user_assets').insert({
+          phone_number: phone, category: 'piutang', subtype: 'Piutang Pribadi',
+          name: piutangName(friend, cleanText(body.note)), value: amount, updated_date: todayWIB(),
+        }).select('id').single();
+        if (error) throw new Error('piutang_add_failed: ' + error.message);
+        return json({ id: data.id });
+      }
+
+      case 'piutang_update': {
+        if (!isActiveMember(user)) return inactive();
+        const assetId = String(body.asset_id || '');
+        const { data: asset } = await sb.from('user_assets').select('id, name, value')
+          .eq('id', assetId).eq('phone_number', phone).eq('category', 'piutang').maybeSingle();
+        if (!asset) return json({ error: 'not_found' }, 404);
+        const old = splitPiutangName(asset.name);
+        const friend = body.friend !== undefined ? cleanText(body.friend, 40) || old.friend : old.friend;
+        const note = body.note !== undefined ? cleanText(body.note) : old.note;
+        const amount = body.amount !== undefined ? money(body.amount) : money(asset.value);
+        if (amount <= 0) return json({ error: 'invalid', message: 'Nominalnya belum diisi.' }, 400);
+        await sb.from('user_assets').update({ name: piutangName(friend, note), value: amount }).eq('id', assetId);
+        // Keep the split bill and its "tagih" reminder in step.
+        const split = await splitWithAsset(phone, assetId);
+        if (split) {
+          // deno-lint-ignore no-explicit-any
+          const parts = (split.participants || []).map((p: any) => (p.asset_id === assetId ? { ...p, name: friend, amount } : p));
+          await sb.from('split_bills').update({ participants: parts }).eq('id', split.id);
+        }
+        await sb.from('user_reminders').update({ name: reminderName(friend, note), nominal: amount })
+          .eq('phone_number', phone).eq('name', reminderName(old.friend, old.note));
+        return json({ ok: true });
+      }
+
+      case 'piutang_delete': {
+        if (!isActiveMember(user)) return inactive();
+        const assetId = String(body.asset_id || '');
+        const { data: asset } = await sb.from('user_assets').select('id, name')
+          .eq('id', assetId).eq('phone_number', phone).eq('category', 'piutang').maybeSingle();
+        if (!asset) return json({ error: 'not_found' }, 404);
+        const n = splitPiutangName(asset.name);
+        await sb.from('user_reminders').update({ active: false }).eq('phone_number', phone).eq('name', reminderName(n.friend, n.note));
+        await sb.from('user_assets').delete().eq('id', assetId).eq('phone_number', phone);
+        return json({ ok: true });
+      }
+
+      case 'piutang_reopen': {
+        if (!isActiveMember(user)) return inactive();
+        const { data: h } = await sb.from('piutang_history').select('*')
+          .eq('id', String(body.history_id || '')).eq('phone_number', phone).maybeSingle();
+        if (!h) return json({ error: 'not_found' }, 404);
+        const { data: asset, error } = await sb.from('user_assets').insert({
+          phone_number: phone, category: 'piutang', subtype: h.subtype || 'Piutang Pribadi',
+          name: h.name, value: money(h.amount), updated_date: h.opened_on || todayWIB(),
+        }).select('id').single();
+        if (error) throw new Error('piutang_reopen_failed: ' + error.message);
+        if (h.split_bill_id) {
+          const { data: split } = await sb.from('split_bills').select('id, participants').eq('id', h.split_bill_id).eq('phone_number', phone).maybeSingle();
+          if (split) {
+            const friend = splitPiutangName(h.name).friend.toLowerCase();
+            let done = false;
+            // deno-lint-ignore no-explicit-any
+            const parts = (split.participants || []).map((p: any) => {
+              if (done || p.is_me || String(p.name || '').toLowerCase() !== friend || !p.paid) return p;
+              done = true;
+              return { ...p, paid: false, asset_id: asset.id };
+            });
+            await sb.from('split_bills').update({ participants: parts }).eq('id', split.id);
+          }
+        }
+        await sb.from('piutang_history').delete().eq('id', h.id);
+        return json({ ok: true, id: asset.id });
+      }
+
+      case 'piutang_history_update': {
+        if (!isActiveMember(user)) return inactive();
+        const { data: h } = await sb.from('piutang_history').select('id, name, amount')
+          .eq('id', String(body.history_id || '')).eq('phone_number', phone).maybeSingle();
+        if (!h) return json({ error: 'not_found' }, 404);
+        const old = splitPiutangName(h.name);
+        const friend = body.friend !== undefined ? cleanText(body.friend, 40) || old.friend : old.friend;
+        const note = body.note !== undefined ? cleanText(body.note) : old.note;
+        const patch: Record<string, unknown> = { name: piutangName(friend, note) };
+        if (body.amount !== undefined) {
+          if (money(body.amount) <= 0) return json({ error: 'invalid', message: 'Nominalnya belum diisi.' }, 400);
+          patch.amount = money(body.amount);
+        }
+        if (isDay(body.settled_on)) patch.settled_at = `${body.settled_on}T12:00:00+07:00`;
+        await sb.from('piutang_history').update(patch).eq('id', h.id);
+        return json({ ok: true });
+      }
+
+      case 'piutang_history_delete': {
+        if (!isActiveMember(user)) return inactive();
+        await sb.from('piutang_history').delete().eq('id', String(body.history_id || '')).eq('phone_number', phone);
+        return json({ ok: true });
+      }
+
+      case 'goal_entries': {
+        const goal = await goalOf(phone, String(body.goal_id || ''));
+        if (!goal) return json({ error: 'not_found' }, 404);
+        const { data } = await sb.from('user_goal_entries').select('id, amount, note, date, created_at')
+          .eq('goal_id', goal.id).order('date', { ascending: false }).order('created_at', { ascending: false }).limit(500);
+        return json({ entries: data || [], achieved_amount: Number(goal.achieved_amount || 0) });
+      }
+
+      case 'goal_entry_add': {
+        if (!isActiveMember(user)) return inactive();
+        const goal = await goalOf(phone, String(body.goal_id || ''));
+        if (!goal) return json({ error: 'not_found' }, 404);
+        const amount = Math.round(Number(body.amount) || 0);
+        if (!amount) return json({ error: 'invalid', message: 'Isi nominalnya dulu ya.' }, 400);
+        if (Number(goal.achieved_amount || 0) + amount < 0) {
+          return json({ error: 'insufficient', message: `Saldo target cuma ${Number(goal.achieved_amount || 0).toLocaleString('id-ID')}, nggak cukup buat diambil segitu.` }, 400);
+        }
+        const { data, error } = await sb.from('user_goal_entries').insert({
+          goal_id: goal.id, phone_number: phone, amount,
+          note: cleanText(body.note, 80) || null, date: isDay(body.date) ? body.date : todayWIB(),
+        }).select('id, amount, note, date, created_at').single();
+        if (error) throw new Error('goal_entry_failed: ' + error.message);
+        return json({ entry: data, achieved_amount: Number(goal.achieved_amount || 0) + amount });
+      }
+
+      case 'goal_entry_update': {
+        if (!isActiveMember(user)) return inactive();
+        const { data: e } = await sb.from('user_goal_entries').select('id, goal_id, amount')
+          .eq('id', String(body.entry_id || '')).eq('phone_number', phone).maybeSingle();
+        if (!e) return json({ error: 'not_found' }, 404);
+        const goal = await goalOf(phone, e.goal_id);
+        const patch: Record<string, unknown> = {};
+        if (body.amount !== undefined) {
+          const amount = Math.round(Number(body.amount) || 0);
+          if (!amount) return json({ error: 'invalid', message: 'Nominalnya nggak boleh 0.' }, 400);
+          if (Number(goal?.achieved_amount || 0) + (amount - Number(e.amount)) < 0) {
+            return json({ error: 'insufficient', message: 'Saldo target jadi minus kalau diubah segitu.' }, 400);
+          }
+          patch.amount = amount;
+        }
+        if (body.note !== undefined) patch.note = cleanText(body.note, 80) || null;
+        if (isDay(body.date)) patch.date = body.date;
+        await sb.from('user_goal_entries').update(patch).eq('id', e.id);
+        return json({ ok: true });
+      }
+
+      case 'goal_entry_delete': {
+        if (!isActiveMember(user)) return inactive();
+        const { data: e } = await sb.from('user_goal_entries').select('id, goal_id, amount')
+          .eq('id', String(body.entry_id || '')).eq('phone_number', phone).maybeSingle();
+        if (!e) return json({ error: 'not_found' }, 404);
+        const goal = await goalOf(phone, e.goal_id);
+        if (Number(goal?.achieved_amount || 0) - Number(e.amount) < 0) {
+          return json({ error: 'insufficient', message: 'Nggak bisa dihapus: saldo target jadi minus. Hapus penarikan setelahnya dulu ya.' }, 400);
+        }
+        await sb.from('user_goal_entries').delete().eq('id', e.id);
+        return json({ ok: true });
       }
 
       default:

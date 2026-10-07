@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Save, AlertTriangle, Check } from 'lucide-react';
-import { clearAuthSession } from '../../lib/auth';
+import { authAccount, changePassword, clearAuthSession, getAuthSession, getFreshAuthToken, requestPasswordReset } from '../../lib/auth';
 import { MiraIcon } from '../../components/icons/MiraIcon';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
@@ -73,6 +73,19 @@ const SET_CSS = `
                     cursor: pointer; border: 1.5px solid rgba(0,0,0,0.10);
                     font-family: 'DM Sans', sans-serif; transition: all .15s; background: #F8F9FB; color: #374151; }
   .set-chip.active { background: #EFF6FF; border-color: #2563EB; color: #1D4ED8; }
+  .set-ok         { font-size: 13px; color: #15803D; padding: 10px 14px; background: #F0FDF4; border-radius: 8px; margin-bottom: 12px; }
+  .set-row-info   { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+  .set-row-info:last-child { border-bottom: none; padding-bottom: 0; }
+  .set-row-info:first-child { padding-top: 0; }
+  .set-btn2       { height: 42px; padding: 0 18px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: #fff;
+                    font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; color: #111827; }
+  .set-btn2:disabled { opacity: .6; cursor: not-allowed; }
+  .set-link       { background: none; border: 0; padding: 0; color: #2563EB; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .set-pill       { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #EFF6FF; color: #1D4ED8; }
+  .dark .set-btn2 { background: #0F172A; border-color: rgba(255,255,255,0.12); color: #F1F5F9; }
+  .dark .set-pill { background: rgba(37,99,235,.18); color: #93C5FD; }
+  .dark .set-row-info { border-color: rgba(255,255,255,0.05); }
+  .dark .set-ok { background: rgba(22,163,74,.12); color: #86EFAC; }
 
   /* ─── Savings Slider ───────────────────────────────────────────── */
   .savings-slider-wrap { margin: 12px 0 6px; }
@@ -117,9 +130,20 @@ export function DashboardSettings() {
   const [activeBanks,    setActiveBanks]    = useState<string[]>([]);
   const [activeEwallets, setActiveEwallets] = useState<string[]>([]);
   const [activePaylater, setActivePaylater] = useState<string[]>([]);
-  const [reminder,       setReminder]       = useState(true);
-  const [weeklyReport,   setWeeklyReport]   = useState(true);
-  const [budgetAlert,    setBudgetAlert]    = useState(true);
+  const [email,          setEmail]          = useState('');
+  const authSession = getAuthSession();
+  const loginMethod: 'google' | 'email' | null = authSession?.provider ?? null;
+  // Change password (email logins)
+  const [pwOld,          setPwOld]          = useState('');
+  const [pwNew,          setPwNew]          = useState('');
+  const [pwNew2,         setPwNew2]         = useState('');
+  const [pwBusy,         setPwBusy]         = useState(false);
+  const [pwMsg,          setPwMsg]          = useState<{ ok: boolean; text: string } | null>(null);
+  // Delete account
+  const [delOpen,        setDelOpen]        = useState(false);
+  const [delText,        setDelText]        = useState('');
+  const [delBusy,        setDelBusy]        = useState(false);
+  const [delErr,         setDelErr]         = useState('');
   const [saving,         setSaving]         = useState(false);
   const [saved,          setSaved]          = useState(false);
   const [err,            setErr]            = useState<string | null>(null);
@@ -136,6 +160,7 @@ export function DashboardSettings() {
 
   const hydrateUser = (u: Record<string, any>) => {
     if (u.name)                          setName(decodeUnicode(u.name));
+    if (u.email)                         setEmail(u.email);
     if (u.limit_nominal != null)         setMonthlyLimit(String(u.limit_nominal));
     if (u.saving_allocation_pct != null) setSavingsRatio(Number(u.saving_allocation_pct));
     setActiveBanks(parseList(u.banks_used));
@@ -156,7 +181,7 @@ export function DashboardSettings() {
     (async () => {
       try {
         const r = await fetch(
-          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=name,limit_nominal,saving_allocation_pct,expense_allocation_pct,banks_used,ewallets_used,paylater_active`,
+          `${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=name,email,limit_nominal,saving_allocation_pct,expense_allocation_pct,banks_used,ewallets_used,paylater_active`,
           { headers: HR }
         );
         if (r.ok) {
@@ -211,43 +236,41 @@ export function DashboardSettings() {
     setSaving(false);
   };
 
+  const shownEmail = email || authSession?.email || '';
+
+  const handleChangePassword = async () => {
+    setPwMsg(null);
+    if (pwNew.length < 6) { setPwMsg({ ok: false, text: 'Password baru minimal 6 karakter.' }); return; }
+    if (pwNew !== pwNew2) { setPwMsg({ ok: false, text: 'Ulangi password baru — keduanya belum sama.' }); return; }
+    if (!shownEmail) { setPwMsg({ ok: false, text: 'Email akun nggak ketemu. Keluar lalu masuk lagi ya.' }); return; }
+    setPwBusy(true);
+    const e = await changePassword(shownEmail, pwOld, pwNew);
+    setPwBusy(false);
+    if (e) { setPwMsg({ ok: false, text: e }); return; }
+    setPwOld(''); setPwNew(''); setPwNew2('');
+    setPwMsg({ ok: true, text: 'Password berhasil diganti. Pakai password baru ini untuk masuk berikutnya.' });
+  };
+
+  const handleSendReset = async () => {
+    if (!shownEmail) return;
+    setPwBusy(true);
+    const e = await requestPasswordReset(shownEmail);
+    setPwBusy(false);
+    setPwMsg(e ? { ok: false, text: e } : { ok: true, text: `Link buat bikin password baru sudah dikirim ke ${shownEmail}. Cek inbox atau folder spam.` });
+  };
+
   const handleDelete = async () => {
-    const confirmed = confirm(
-      'Apakah kamu yakin ingin menghapus akun?\n\nSemua data transaksi akan dihapus permanen dan tidak bisa dikembalikan.'
-    );
-    if (!confirmed) return;
-    try {
-      await Promise.allSettled([
-        fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${phone}`,     { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${phone}`,   { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/user_goals?phone_number=eq.${phone}`, { method: 'DELETE', headers: HW }),
-        fetch(`${SUPA_URL}/rest/v1/user_assets?phone_number=eq.${phone}`,{ method: 'DELETE', headers: HW }),
-      ]);
-    } catch {}
+    if (delText.trim().toUpperCase() !== 'HAPUS') return;
+    setDelBusy(true); setDelErr('');
+    const token = await getFreshAuthToken();
+    if (!token) { setDelBusy(false); setDelErr('Sesi login sudah lama. Keluar lalu masuk lagi, habis itu ulangi hapus akun.'); return; }
+    const r = await authAccount({ op: 'delete_account', access_token: token, confirm: 'HAPUS' });
+    if (r.data?.status !== 'deleted') { setDelBusy(false); setDelErr(r.data?.message || 'Gagal menghapus akun. Coba lagi atau hubungi support@halo-mira.com.'); return; }
     localStorage.removeItem('mira_phone');
     localStorage.removeItem('mira_user');
     clearAuthSession();
-    navigate('/');
+    navigate('/', { replace: true });
   };
-
-  function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
-    return (
-      <button
-        onClick={onChange}
-        style={{
-          width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
-          background: value ? '#2563EB' : '#D1D5DB', transition: 'background .2s',
-          position: 'relative', flexShrink: 0, padding: 0,
-        }}
-      >
-        <div style={{
-          width: 22, height: 22, borderRadius: '50%', background: '#fff',
-          position: 'absolute', top: 3, left: value ? 23 : 3,
-          transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        }} />
-      </button>
-    );
-  }
 
   const spendRatio = 100 - savingsRatio;
 
@@ -262,9 +285,11 @@ export function DashboardSettings() {
         </div>
         <div className="set-card-body">
           <div className="set-field">
-            <label className="set-label">Nomor WhatsApp</label>
-            <input className="set-input" value={phone || '—'} disabled />
-            <p className="set-hint">Nomor WhatsApp tidak bisa diubah</p>
+            <label className="set-label">Email</label>
+            <input className="set-input" value={shownEmail || '—'} disabled />
+            <p className="set-hint">
+              {loginMethod === 'google' ? 'Kamu masuk pakai akun Google ini.' : loginMethod === 'email' ? 'Kamu masuk pakai email & password.' : 'Email akun MIRA kamu.'}
+            </p>
           </div>
           <div className="set-field">
             <label className="set-label">Nama (Opsional)</label>
@@ -275,6 +300,52 @@ export function DashboardSettings() {
               onChange={e => setName(e.target.value)}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Keamanan akun */}
+      <div className="set-card">
+        <div className="set-card-hdr">
+          <MiraIcon name="lock" size={30} />
+          <h3>Keamanan Akun</h3>
+        </div>
+        <div className="set-card-body">
+          {loginMethod === 'google' ? (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <span className="set-pill">Google</span>
+              <p style={{ margin: 0, fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+                Kamu masuk pakai Google{shownEmail ? <> (<strong>{shownEmail}</strong>)</> : ''}. Password dan keamanan login diatur langsung dari akun Google kamu, jadi nggak ada password MIRA yang perlu diganti.
+              </p>
+            </div>
+          ) : loginMethod === 'email' ? (
+            <>
+              <div className="set-field">
+                <label className="set-label">Password lama</label>
+                <input className="set-input" type="password" autoComplete="current-password" value={pwOld} onChange={e => { setPwOld(e.target.value); setPwMsg(null); }} />
+              </div>
+              <div className="set-field" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label className="set-label">Password baru</label>
+                  <input className="set-input" type="password" autoComplete="new-password" placeholder="Minimal 6 karakter" value={pwNew} onChange={e => { setPwNew(e.target.value); setPwMsg(null); }} />
+                </div>
+                <div>
+                  <label className="set-label">Ulangi password baru</label>
+                  <input className="set-input" type="password" autoComplete="new-password" value={pwNew2} onChange={e => { setPwNew2(e.target.value); setPwMsg(null); }} />
+                </div>
+              </div>
+              {pwMsg && <div className={pwMsg.ok ? 'set-ok' : 'set-err'}>{pwMsg.text}</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <button className="set-btn2" onClick={() => void handleChangePassword()} disabled={pwBusy || !pwOld || !pwNew || !pwNew2}>
+                  {pwBusy ? 'Memproses…' : 'Ganti password'}
+                </button>
+                <button className="set-link" onClick={() => void handleSendReset()} disabled={pwBusy}>Lupa password lama?</button>
+              </div>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+              Keluar lalu masuk lagi pakai Google atau email kamu untuk mengatur keamanan akun.
+            </p>
+          )}
         </div>
       </div>
 
@@ -417,26 +488,31 @@ export function DashboardSettings() {
         </div>
       </div>
 
-      {/* Notifikasi */}
+      {/* Pengingat */}
       <div className="set-card">
         <div className="set-card-hdr">
           <MiraIcon name="bell" size={30} />
-          <h3>Notifikasi</h3>
+          <h3>Pengingat</h3>
         </div>
         <div className="set-card-body">
-          {([
-            { label: 'Spending Reminder', desc: 'Notifikasi ketika mendekati limit',  val: reminder,     set: () => setReminder(!reminder) },
-            { label: 'Weekly Report',     desc: 'Laporan mingguan via WhatsApp',       val: weeklyReport, set: () => setWeeklyReport(!weeklyReport) },
-            { label: 'Budget Alert',      desc: 'Alert ketika over budget',            val: budgetAlert,  set: () => setBudgetAlert(!budgetAlert) },
-          ] as const).map(({ label, desc, val, set }) => (
-            <div key={label} className="set-trow">
-              <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111827' }}>{label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280' }}>{desc}</p>
-              </div>
-              <Toggle value={val} onChange={set} />
+          <div className="set-row-info">
+            <MiraIcon name="mail" size={28} />
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111827' }}>Email masa langganan</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+                Dikirim ke {shownEmail || 'email kamu'} saat trial tinggal 2 hari, langganan berakhir 7 hari & 1 hari lagi, dan saat sudah berakhir.
+              </p>
             </div>
-          ))}
+          </div>
+          <div className="set-row-info">
+            <MiraIcon name="dashboard" size={28} />
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111827' }}>Pengingat di dashboard</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+                Banner & sheet perpanjang muncul otomatis saat masa aktif mau habis — sekali sehari, nggak ganggu.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -448,11 +524,13 @@ export function DashboardSettings() {
         </div>
         <div className="set-card-body">
           <p style={{ margin: '0 0 10px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
-            Data kamu di-enkripsi dan aman. Kami tidak akan membagikan data ke pihak ketiga.
+            Data kamu dikirim lewat koneksi terenkripsi dan tidak pernah dijual atau dipakai untuk iklan. Detailnya ada di kebijakan privasi.
           </p>
-          <a href="/privacy-policy" style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}>
-            Lihat Privacy Policy →
-          </a>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <a href="/privacy-policy" style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}>Kebijakan Privasi →</a>
+            <a href="/terms-of-service" style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}>Syarat & Ketentuan →</a>
+            <a href="/refund-policy" style={{ fontSize: 13, color: '#2563EB', fontWeight: 500, textDecoration: 'none' }}>Kebijakan Refund →</a>
+          </div>
         </div>
       </div>
 
@@ -483,10 +561,28 @@ export function DashboardSettings() {
               Aksi ini tidak bisa dibatalkan. Semua data akan dihapus permanen.
             </p>
           </div>
-          <button className="set-del-btn" onClick={handleDelete}>
-            <AlertTriangle style={{ width: 14, height: 14 }} />
-            Hapus Akun
-          </button>
+          {!delOpen ? (
+            <button className="set-del-btn" onClick={() => { setDelOpen(true); setDelErr(''); setDelText(''); }}>
+              <AlertTriangle style={{ width: 14, height: 14 }} />
+              Hapus Akun
+            </button>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 8px', fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+                Semua transaksi, target, aset, piutang, riwayat chat, dan login kamu akan dihapus permanen. Sisa masa langganan ikut hangus.
+                Ketik <strong>HAPUS</strong> untuk konfirmasi.
+              </p>
+              <input className="set-input" value={delText} onChange={e => setDelText(e.target.value)} placeholder="HAPUS" autoCapitalize="characters" style={{ marginBottom: 10 }} />
+              {delErr && <div className="set-err">{delErr}</div>}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="set-btn2" onClick={() => setDelOpen(false)} disabled={delBusy}>Batal</button>
+                <button className="set-del-btn" onClick={() => void handleDelete()} disabled={delBusy || delText.trim().toUpperCase() !== 'HAPUS'}
+                  style={{ background: delText.trim().toUpperCase() === 'HAPUS' ? '#EF4444' : 'transparent', color: delText.trim().toUpperCase() === 'HAPUS' ? '#fff' : '#EF4444' }}>
+                  {delBusy ? 'Menghapus…' : 'Hapus akun permanen'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

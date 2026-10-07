@@ -32,6 +32,9 @@
  *     users, so the order goes into users_draft here; n8n's
  *     midtrans-notification then extends valid_to from max(now, valid_to)
  *     ("recurring_extended") and trg_users_billing_guard copies the plan.
+ *
+ *   { op: 'delete_account', access_token, confirm: 'HAPUS' }
+ *     -> { status: 'deleted' }   every row of the account + the login itself
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -269,6 +272,30 @@ async function startRenewal(user: any, body: any): Promise<Response> {
   return json({ status: 'payment', redirect_url: redirectUrl, subs_id: subsId, price_final: priceFinal });
 }
 
+// Everything keyed by the account ID. affiliate_referrals stays: it's the
+// referrer's commission record, not this user's data.
+const PHONE_TABLES = [
+  'expenses', 'expenses_draft', 'chat_messages', 'split_bills', 'user_goal_entries', 'user_goals',
+  'user_assets', 'user_liabilities', 'user_nw_history', 'user_reminders', 'user_states',
+  'piutang_history', 'billing_reminders', 'otp', 'otp_verifications', 'pending_google_links',
+];
+
+async function deleteAccount(id: Identity, phone: string | null): Promise<Response> {
+  if (phone) {
+    for (const t of PHONE_TABLES) {
+      const { error } = await sb.from(t).delete().eq('phone_number', phone);
+      if (error) console.error('delete_account', t, error.message);
+    }
+    await sb.from('users_draft').delete().eq('primary_phone', phone);
+    const { error } = await sb.from('users').delete().eq('primary_phone', phone);
+    if (error) throw new Error('delete_user_row_failed: ' + error.message);
+  }
+  await sb.from('pending_google_links').delete().eq('auth_user_id', id.uid);
+  const { error } = await sb.auth.admin.deleteUser(id.uid);
+  if (error) throw new Error('delete_auth_user_failed: ' + error.message);
+  return json({ status: 'deleted' });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -283,6 +310,10 @@ Deno.serve(async (req: Request) => {
     if (!id) return json({ error: 'invalid_token', message: 'Sesi login sudah habis. Masuk lagi ya.' }, 401);
 
     const user = await linkedUser(id);
+    if (op === 'delete_account') {
+      if (body.confirm !== 'HAPUS') return json({ error: 'confirm_required', message: 'Ketik HAPUS untuk konfirmasi.' }, 400);
+      return await deleteAccount(id, user?.primary_phone ?? null);
+    }
     if (op === 'start_renewal') {
       if (!user) return json({ error: 'no_account', message: 'Akun MIRA untuk login ini belum ada.' }, 404);
       return await startRenewal(user, body);

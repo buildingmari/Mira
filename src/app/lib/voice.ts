@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Voice notes for the AI inputs (chat, "+" AI mode, Split Bill).
+ * Voice input for the AI inputs (chat, "+" AI mode, Split Bill) — see
+ * useVoiceInput at the bottom.
  *
  * Browsers record in different containers — Chrome/Android: audio/webm
  * (opus), Safari/iOS: audio/mp4 (aac) — and the AI side (Gemini via
@@ -76,74 +77,235 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 export interface VoiceNote { dataUrl: string; seconds: number }
 
-/**
- * Mic recording with a live seconds counter. `onDone` gets a WAV data URL
- * (falls back to the raw recording if this browser can't decode it).
+export const fmtSeconds = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
+/* ── Voice input with live text ──────────────────────────────────────
+ * Where the browser has speech recognition (Chrome, Edge, Safari incl.
+ * iPhone) the words appear while you talk and land in the text box, so you
+ * can check them before sending. Phones can't run speech recognition and a
+ * recording at the same time (the mic has one user), so it's one or the
+ * other: dictation first; if it isn't available or the speech service
+ * refuses (e.g. dictation turned off on iOS), it falls back — for the rest
+ * of the session — to a normal voice note that MIRA's AI transcribes, with
+ * a live level meter.
  */
-export function useVoiceRecorder(onDone: (note: VoiceNote) => void, onError: (message: string) => void) {
-  const [recording, setRecording] = useState(false);
-  const [preparing, setPreparing] = useState(false);
+
+type SR = {
+  lang: string; continuous: boolean; interimResults: boolean; maxAlternatives: number;
+  onresult: ((e: any) => void) | null; onerror: ((e: any) => void) | null; onend: (() => void) | null;
+  start: () => void; stop: () => void; abort: () => void;
+};
+
+const speechCtor = (): (new () => SR) | null =>
+  typeof window === 'undefined' ? null : ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null);
+
+let liveUnavailable = false; // set once the speech service refuses; stays for the session
+
+export type VoiceMode = 'idle' | 'live' | 'record' | 'preparing';
+
+export function useVoiceInput(opts: {
+  /** Live dictation finished — the recognised words. */
+  onText: (text: string) => void;
+  /** Fallback path finished — a WAV voice note for the AI. */
+  onAudio: (note: VoiceNote) => void;
+  onError: (message: string) => void;
+}) {
+  const [mode, setMode] = useState<VoiceMode>('idle');
   const [seconds, setSeconds] = useState(0);
-  const recRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [finalText, setFinalText] = useState('');
+  const [interim, setInterim] = useState('');
+  const [level, setLevel] = useState(0);
+  const cb = useRef(opts);
+  cb.current = opts;
+
+  const recRef = useRef<SR | null>(null);
+  const mediaRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedRef = useRef(0);
-  const cbRef = useRef({ onDone, onError });
-  cbRef.current = { onDone, onError };
+  const meterRef = useRef<{ ctx: AudioContext; raf: number } | null>(null);
+  const st = useRef({ session: 0, active: false, stopping: false, cancelled: false, fallback: false, denied: false, finalText: '', interim: '', started: 0 });
 
-  const stop = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (recRef.current?.state === 'recording') recRef.current.stop();
-    setRecording(false);
-  }, []);
+  const clearTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  const startTimer = (onTick?: (s: number) => void) => {
+    st.current.started = Date.now();
+    setSeconds(0);
+    clearTimer();
+    timerRef.current = setInterval(() => {
+      const s = Math.round((Date.now() - st.current.started) / 1000);
+      setSeconds(s);
+      onTick?.(s);
+    }, 400);
+  };
+  const stopMeter = () => {
+    if (!meterRef.current) return;
+    cancelAnimationFrame(meterRef.current.raf);
+    meterRef.current.ctx.close?.().catch(() => {});
+    meterRef.current = null;
+    setLevel(0);
+  };
 
-  const start = useCallback(async () => {
-    if (recRef.current?.state === 'recording') return;
+  /* Fallback: recorded voice note + live level meter (same stream, no conflict). */
+  const startRecord = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      cbRef.current.onError('Browser ini belum bisa rekam suara. Coba pakai Chrome atau Safari terbaru ya.');
+      cb.current.onError('Browser ini belum bisa rekam suara. Coba pakai Chrome atau Safari terbaru ya.');
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      rec.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const secs = Math.max(1, Math.round((Date.now() - startedRef.current) / 1000));
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
-        if (blob.size === 0) { cbRef.current.onError('Rekamannya kosong, coba ulang ya.'); return; }
-        setPreparing(true);
-        try {
-          cbRef.current.onDone({ dataUrl: await blobToWavDataUrl(blob), seconds: secs });
-        } catch {
-          try { cbRef.current.onDone({ dataUrl: await blobToDataUrl(blob), seconds: secs }); }
-          catch { cbRef.current.onError('Voice note gagal diproses, coba rekam ulang ya.'); }
-        } finally {
-          setPreparing(false);
-        }
-      };
-      rec.start();
-      recRef.current = rec;
-      startedRef.current = Date.now();
-      setSeconds(0);
-      setRecording(true);
-      timerRef.current = setInterval(() => {
-        const s = Math.round((Date.now() - startedRef.current) / 1000);
-        setSeconds(s);
-        if (s >= MAX_SECONDS) stop();
-      }, 500);
-    } catch {
-      cbRef.current.onError('MIRA butuh izin mikrofon buat rekam voice note. Izinkan dulu ya di pengaturan browser.');
-    }
-  }, [stop]);
+    let stream: MediaStream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { cb.current.onError('MIRA butuh izin mikrofon buat rekam suara. Izinkan dulu ya di pengaturan browser.'); return; }
 
-  useEffect(() => () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (recRef.current?.state === 'recording') recRef.current.stop();
+    const rec = new MediaRecorder(stream);
+    const chunks: Blob[] = [];
+    st.current.cancelled = false;
+    rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearTimer(); stopMeter();
+      if (st.current.cancelled) { setMode('idle'); return; }
+      const secs = Math.max(1, Math.round((Date.now() - st.current.started) / 1000));
+      const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+      if (!blob.size) { setMode('idle'); cb.current.onError('Rekamannya kosong, coba ulang ya.'); return; }
+      setMode('preparing');
+      try { cb.current.onAudio({ dataUrl: await blobToWavDataUrl(blob), seconds: secs }); }
+      catch {
+        try { cb.current.onAudio({ dataUrl: await blobToDataUrl(blob), seconds: secs }); }
+        catch { cb.current.onError('Voice note gagal diproses, coba rekam ulang ya.'); }
+      }
+      setMode('idle');
+    };
+
+    try {
+      const AC: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 512;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const buf = new Uint8Array(analyser.fftSize);
+      let last = 0;
+      const tick = (t: number) => {
+        analyser.getByteTimeDomainData(buf);
+        if (t - last > 70) {
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+          setLevel(Math.min(1, Math.sqrt(sum / buf.length) * 4));
+          last = t;
+        }
+        if (meterRef.current) meterRef.current.raf = requestAnimationFrame(tick);
+      };
+      meterRef.current = { ctx, raf: requestAnimationFrame(tick) };
+    } catch { /* the meter is decoration only */ }
+
+    rec.start();
+    mediaRef.current = rec;
+    setMode('record');
+    startTimer((s) => { if (s >= MAX_SECONDS && rec.state === 'recording') rec.stop(); });
   }, []);
 
-  return { recording, preparing, seconds, start, stop };
-}
+  /* Live dictation. */
+  const finishLive = useCallback(() => {
+    const s = st.current;
+    if (!s.active) return;
+    s.active = false;
+    clearTimer();
+    recRef.current = null;
+    const text = `${s.finalText} ${s.interim}`.replace(/\s+/g, ' ').trim();
+    setInterim('');
+    setMode('idle');
+    if (s.cancelled) return;
+    if (s.fallback && !text) { liveUnavailable = true; void startRecord(); return; }
+    if (s.denied) { cb.current.onError('MIRA butuh izin mikrofon buat dengerin. Izinkan dulu ya di pengaturan browser.'); return; }
+    if (text) cb.current.onText(text);
+    else cb.current.onError('MIRA belum nangkep suaranya. Coba ngomong lebih dekat ke mic ya.');
+  }, [startRecord]);
 
-export const fmtSeconds = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  const startLive = useCallback((Ctor: new () => SR) => {
+    const s = st.current;
+    Object.assign(s, { session: s.session + 1, active: true, stopping: false, cancelled: false, fallback: false, denied: false, finalText: '', interim: '' });
+    setFinalText(''); setInterim('');
+    const android = /android/i.test(navigator.userAgent);
+
+    const begin = () => {
+      const rec = new Ctor();
+      rec.lang = 'id-ID';
+      rec.interimResults = true;
+      // Android Chrome repeats earlier words in continuous mode — use short
+      // sessions there and stitch them together instead.
+      rec.continuous = !android;
+      rec.maxAlternatives = 1;
+      rec.onresult = (e: any) => {
+        let live = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          const t = String(r[0]?.transcript || '');
+          if (r.isFinal) s.finalText = `${s.finalText} ${t}`.replace(/\s+/g, ' ').trim();
+          else live += t;
+        }
+        s.interim = live.trim();
+        setFinalText(s.finalText);
+        setInterim(s.interim);
+      };
+      rec.onerror = (e: any) => {
+        const err = String(e?.error || '');
+        if (err === 'no-speech' || err === 'aborted') return;
+        if (err === 'not-allowed') { s.denied = !s.finalText; return; }
+        // service-not-allowed / audio-capture / network / language-not-supported
+        if (!s.finalText && !s.interim) s.fallback = true;
+      };
+      rec.onend = () => {
+        // Engines end a session after a pause — keep listening until the user stops.
+        const elapsed = (Date.now() - s.started) / 1000;
+        if (s.active && !s.stopping && !s.fallback && !s.denied && elapsed < MAX_SECONDS) {
+          if (s.interim) { s.finalText = `${s.finalText} ${s.interim}`.trim(); s.interim = ''; }
+          try { begin(); return; } catch { /* fall through */ }
+        }
+        finishLive();
+      };
+      recRef.current = rec;
+      rec.start();
+    };
+
+    try { begin(); }
+    catch { s.active = false; liveUnavailable = true; void startRecord(); return; }
+    setMode('live');
+    startTimer((sec) => { if (sec >= MAX_SECONDS) stop(); });
+  }, [finishLive, startRecord]);
+
+  const start = useCallback(() => {
+    if (st.current.active || mediaRef.current?.state === 'recording') return;
+    const Ctor = speechCtor();
+    if (Ctor && !liveUnavailable) startLive(Ctor);
+    else void startRecord();
+  }, [startLive, startRecord]);
+
+  const stop = useCallback(() => {
+    if (st.current.active) {
+      st.current.stopping = true;
+      try { recRef.current?.stop(); } catch { /* ended already */ }
+      // Some engines never fire onend after stop().
+      const session = st.current.session;
+      setTimeout(() => { if (st.current.session === session) finishLive(); }, 1500);
+      return;
+    }
+    if (mediaRef.current?.state === 'recording') mediaRef.current.stop();
+  }, [finishLive]);
+
+  const cancel = useCallback(() => {
+    st.current.cancelled = true;
+    if (st.current.active) { st.current.stopping = true; try { recRef.current?.abort(); } catch {} finishLive(); return; }
+    if (mediaRef.current?.state === 'recording') mediaRef.current.stop();
+  }, [finishLive]);
+
+  useEffect(() => () => {
+    st.current.cancelled = true;
+    st.current.active = false;
+    clearTimer(); stopMeter();
+    try { recRef.current?.abort(); } catch {}
+    if (mediaRef.current?.state === 'recording') mediaRef.current.stop();
+  }, []);
+
+  return {
+    mode, seconds, finalText, interim, level,
+    busy: mode !== 'idle',
+    listening: mode === 'live' || mode === 'record',
+    start, stop, cancel,
+  };
+}

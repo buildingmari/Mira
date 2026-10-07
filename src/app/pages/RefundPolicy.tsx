@@ -50,7 +50,7 @@ export function RefundPolicy() {
             <h1 className="legal-title">Kebijakan Pengembalian Dana</h1>
             <div className="legal-meta">
               <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
-              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 7 Oktober 2026</span>
             </div>
           </div>
 
@@ -87,7 +87,8 @@ export function RefundPolicy() {
               <li>Pengajuan dilakukan dalam 7 hari sejak tanggal pembayaran (bukan tanggal mulai berlangganan)</li>
               <li>Akun belum digunakan secara ekstensif (tidak lebih dari 50 transaksi tercatat)</li>
               <li>Tidak ada indikasi penyalahgunaan atau pelanggaran Syarat &amp; Ketentuan</li>
-              <li>Satu klaim garansi per nomor WhatsApp (tidak berlaku untuk perpanjangan)</li>
+              <li>Satu klaim garansi per akun (tidak berlaku untuk perpanjangan)</li>
+              <li>Trial gratis 7 hari (kode MIRA100) tidak dikenai biaya, sehingga tidak ada yang perlu di-refund</li>
             </ul>
             <p className="legal-p">
               Dana dikembalikan <strong>100%</strong> ke metode pembayaran asal dalam <strong>3–7 hari kerja</strong>.
@@ -111,7 +112,7 @@ export function RefundPolicy() {
                 <strong>Tagihan setelah pembatalan dikonfirmasi</strong> — jika terjadi kesalahan sistem yang menagih setelah akun resmi dibatalkan dan dikonfirmasi.
               </li>
               <li>
-                <strong>Layanan tidak dapat diakses lebih dari 72 jam berturut-turut</strong> akibat gangguan teknis dari sisi MIRA (bukan dari sisi WhatsApp/Meta atau internet Anda). Refund pro-rata untuk hari tidak dapat diakses.
+                <strong>Layanan tidak dapat diakses lebih dari 72 jam berturut-turut</strong> akibat gangguan teknis dari sisi MIRA (bukan dari koneksi internet, perangkat, atau browser Anda). Refund pro-rata untuk hari tidak dapat diakses.
               </li>
               <li>
                 <strong>Pembelian yang tidak sah</strong> — jika Anda dapat membuktikan akun dibobol dan digunakan oleh pihak tidak berwenang, dan laporan diajukan dalam 48 jam setelah mengetahuinya.
@@ -134,7 +135,7 @@ export function RefundPolicy() {
               <li>Ketidakpuasan akibat ekspektasi yang tidak sesuai dengan deskripsi fitur yang sudah jelas tercantum</li>
               <li>Akun yang telah digunakan secara aktif (&gt;50 transaksi) melewati minggu pertama</li>
               <li>Downgrade paket dari Tahunan ke Bulanan — selisih harga tidak dapat dikembalikan</li>
-              <li>Gangguan layanan WhatsApp dari pihak Meta yang bukan tanggung jawab MIRA</li>
+              <li>Gangguan dari koneksi internet, perangkat, atau browser Anda yang bukan tanggung jawab MIRA</li>
               <li>Perubahan harga yang sudah diberitahukan 30 hari sebelumnya dan Anda tetap melanjutkan</li>
               <li>Akun yang melanggar Syarat &amp; Ketentuan dan ditangguhkan/dihapus akibat pelanggaran</li>
             </ul>
@@ -270,7 +271,7 @@ export function RefundPolicy() {
               </table>
             </div>
             <p className="legal-p">
-              Gangguan akibat pemeliharaan terjadwal (diberitahukan minimal 24 jam sebelumnya), gangguan dari pihak WhatsApp/Meta, atau force majeure tidak masuk dalam ketentuan kompensasi ini.
+              Gangguan akibat pemeliharaan terjadwal (diberitahukan minimal 24 jam sebelumnya), gangguan dari koneksi internet atau perangkat Anda, atau force majeure tidak masuk dalam ketentuan kompensasi ini.
             </p>
           </section>
 
@@ -288,7 +289,7 @@ export function RefundPolicy() {
                 <strong>Langkah 1:</strong> Hubungi kami via email ke <a href="mailto:support@halo-mira.com" style={{color:'#2D4BFF'}}>support@halo-mira.com</a>
               </li>
               <li>
-                <strong>Langkah 2:</strong> Sertakan informasi: nomor WhatsApp terdaftar, tanggal &amp; nominal pembayaran, alasan pengajuan refund
+                <strong>Langkah 2:</strong> Sertakan informasi: email akun MIRA Anda, tanggal &amp; nominal pembayaran (order ID dari Midtrans jika ada), alasan pengajuan refund
               </li>
               <li>
                 <strong>Langkah 3:</strong> Tim kami akan memverifikasi dan merespons dalam <strong>1×24 jam kerja</strong>

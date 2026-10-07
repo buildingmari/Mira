@@ -2,7 +2,8 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { X, Check, Sparkles, Camera, Loader2, Users, Pencil, Mic, Square } from 'lucide-react';
 import { compressImage } from '../lib/image';
-import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../lib/voice';
+import { useVoiceInput, fmtSeconds, type VoiceNote } from '../lib/voice';
+import { VoiceLive } from './VoiceLive';
 import { isReadOnlyError, openRenewSheet } from '../lib/subscription';
 import { parseItems, serializeItems, type ItemLine } from '../lib/items';
 
@@ -213,7 +214,13 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
   const [aiTxs,    setAiTxs]    = useState<AiTx[] | null>(null);
   const [aiVoice,  setAiVoice]  = useState<VoiceNote | null>(null);
   const photoRef = useRef<HTMLInputElement>(null);
-  const voice = useVoiceRecorder((note) => { setAiVoice(note); setErr(null); }, (message) => setErr(message));
+  // Live dictation fills the text box (checkable before "Proses"); browsers
+  // without it record a voice note that MIRA transcribes.
+  const voice = useVoiceInput({
+    onText: (t) => { setAiText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)); setErr(null); },
+    onAudio: (note) => { setAiVoice(note); setErr(null); },
+    onError: (message) => setErr(message),
+  });
 
   const today = todayWIB();
   const [type,     setType]     = useState<'expense' | 'income'>('expense');
@@ -278,7 +285,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
   };
 
   const runAi = async () => {
-    if (aiBusy || voice.recording || (!aiText.trim() && !aiPhoto && !aiVoice)) return;
+    if (aiBusy || voice.busy || (!aiText.trim() && !aiPhoto && !aiVoice)) return;
     if (!phone) { setErr('Sesi tidak ditemukan. Silakan login ulang.'); return; }
     setAiBusy(true); setErr(null); setAiNote(null);
     try {
@@ -371,7 +378,7 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
 
             {!aiTxs ? (
               <>
-                <div>
+                {voice.busy ? <VoiceLive voice={voice} /> : <div>
                   <span className="atm-label">Ceritain aja ke MIRA</span>
                   <textarea
                     className="atm-textarea"
@@ -381,8 +388,8 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                     onChange={e => setAiText(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runAi(); } }}
                   />
-                </div>
-                {!aiText && !aiPhoto && !aiVoice && !voice.recording && (
+                </div>}
+                {!aiText && !aiPhoto && !aiVoice && !voice.busy && (
                   <div className="atm-examples">
                     {AI_EXAMPLES.map(ex => (
                       <button key={ex} className="atm-ex" onClick={() => setAiText(ex)}>{ex}</button>
@@ -396,36 +403,30 @@ export function AddTransactionModal({ onClose, onSuccess }: Props) {
                     <button className="atm-close" onClick={() => setAiPhoto(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
                   </div>
                 )}
-                {(aiVoice || voice.recording || voice.preparing) && (
-                  <div className="atm-row" style={{ background: voice.recording ? '#FEF2F2' : '#F8F9FB', borderRadius: 12, padding: '10px 12px' }}>
-                    <Mic style={{ width: 16, height: 16, color: voice.recording ? '#DC2626' : '#2563EB' }} />
-                    <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>
-                      {voice.recording ? `Merekam… ${fmtSeconds(voice.seconds)} — tap ■ kalau udah`
-                        : voice.preparing ? 'Nyiapin voice note…'
-                        : `Voice note ${fmtSeconds(aiVoice!.seconds)} siap`}
-                    </span>
-                    {aiVoice && !voice.recording && (
-                      <button className="atm-close" onClick={() => setAiVoice(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
-                    )}
+                {aiVoice && !voice.busy && (
+                  <div className="atm-row" style={{ background: '#F8F9FB', borderRadius: 12, padding: '10px 12px' }}>
+                    <Mic style={{ width: 16, height: 16, color: '#2563EB' }} />
+                    <span style={{ flex: 1, fontSize: 13, color: '#374151' }}>Voice note {fmtSeconds(aiVoice.seconds)} siap — MIRA yang dengerin</span>
+                    <button className="atm-close" onClick={() => setAiVoice(null)}><X style={{ width: 14, height: 14, color: '#6B7280' }} /></button>
                   </div>
                 )}
                 {aiNote && <div className="atm-err" style={{ color: '#92400E', background: '#FFFBEB' }}>{aiNote}</div>}
                 {err && <div className="atm-err">{err}</div>}
                 <div className="atm-row">
-                  <button className="atm-photo-btn" onClick={() => photoRef.current?.click()} disabled={aiBusy || voice.recording} title="Foto struk / bukti transfer">
+                  <button className="atm-photo-btn" onClick={() => photoRef.current?.click()} disabled={aiBusy || voice.busy} title="Foto struk / bukti transfer">
                     <Camera style={{ width: 16, height: 16 }} />
                   </button>
                   <button
                     className="atm-photo-btn"
-                    style={voice.recording ? { background: '#FEE2E2', borderColor: 'rgba(239,68,68,0.35)', color: '#DC2626' } : undefined}
-                    onClick={voice.recording ? voice.stop : voice.start}
-                    disabled={aiBusy || voice.preparing}
-                    title={voice.recording ? 'Berhenti merekam' : 'Rekam voice note'}
+                    style={voice.listening ? { background: '#FEE2E2', borderColor: 'rgba(239,68,68,0.35)', color: '#DC2626' } : undefined}
+                    onClick={voice.listening ? voice.stop : voice.start}
+                    disabled={aiBusy || voice.mode === 'preparing'}
+                    title={voice.listening ? 'Selesai ngomong' : 'Ngomong ke MIRA'}
                   >
-                    {voice.recording ? <Square style={{ width: 14, height: 14 }} /> : <Mic style={{ width: 16, height: 16 }} />}
+                    {voice.listening ? <Square style={{ width: 14, height: 14 }} /> : <Mic style={{ width: 16, height: 16 }} />}
                   </button>
                   <button className="atm-submit" style={{ marginTop: 0, flex: 1 }} onClick={runAi}
-                    disabled={aiBusy || voice.recording || voice.preparing || (!aiText.trim() && !aiPhoto && !aiVoice)}>
+                    disabled={aiBusy || voice.busy || (!aiText.trim() && !aiPhoto && !aiVoice)}>
                     {aiBusy
                       ? <><Loader2 className="atm-spin" style={{ width: 16, height: 16 }} /> MIRA lagi baca…</>
                       : <><Sparkles style={{ width: 16, height: 16 }} /> Proses</>}

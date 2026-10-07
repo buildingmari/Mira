@@ -128,6 +128,7 @@ export function DashboardAssets() {
   const [aValue,    setAValue]    = useState('');
   const [saving,    setSaving]    = useState(false);
   const [err,       setErr]       = useState<string | null>(null);
+  const [editing,   setEditing]   = useState<Asset | null>(null);
   // collapsed state per group key
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -162,9 +163,31 @@ export function DashboardAssets() {
     fetchAssets(ph);
   }, []);
 
+  const openEdit = (a: Asset) => {
+    // Piutang have their own manager (lunas history, reminders) on Split Bill.
+    if (classifyAsset(a) === 'piutang') { navigate('/dashboard/split-bill'); return; }
+    if (!requireActive('Ubah aset butuh langganan aktif.')) return;
+    setEditing(a); setAName(a.name || ''); setASubtype(a.subtype && ASSET_SUBTYPES.includes(a.subtype) ? a.subtype : 'Lainnya');
+    setAValue(String(a.value ?? '')); setErr(null); setShowModal(true);
+  };
+  const closeModal = () => { setShowModal(false); setEditing(null); setAName(''); setASubtype('Tabungan'); setAValue(''); };
+
   const handleAdd = async () => {
     if (!aName.trim() || !aValue) return;
     setSaving(true); setErr(null);
+    if (editing) {
+      try {
+        const patch = { name: aName.trim(), subtype: aSubtype, category: subtypeToCategory(aSubtype), value: Number(aValue), updated_date: new Date().toISOString().split('T')[0] };
+        const r = await fetch(`${SUPA_URL}/rest/v1/user_assets?id=eq.${editing.id}`, { method: 'PATCH', headers: HW, body: JSON.stringify(patch) });
+        if (!r.ok) throw new Error(await r.text());
+        setAssets((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...patch } : x)));
+        closeModal();
+      } catch (e: any) {
+        setErr(e.message || 'Gagal menyimpan aset');
+      }
+      setSaving(false);
+      return;
+    }
     try {
       const payload = {
         phone_number:  phone,
@@ -178,8 +201,7 @@ export function DashboardAssets() {
         method: 'POST', headers: HW, body: JSON.stringify(payload),
       });
       if (!r.ok) throw new Error(await r.text());
-      setAName(''); setASubtype('Tabungan'); setAValue('');
-      setShowModal(false);
+      closeModal();
       await fetchAssets(phone);
     } catch (e: any) {
       setErr(e.message || 'Gagal menyimpan aset');
@@ -291,13 +313,13 @@ export function DashboardAssets() {
 
                 {/* Items */}
                 {isOpen && group.items.map(a => (
-                  <div key={a.id} className="ast-item">
+                  <div key={a.id} className="ast-item" role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => openEdit(a)}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 500, color: '#111827' }}>{a.name}</div>
-                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{a.subtype || a.category}</div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>{a.subtype || a.category}{classifyAsset(a) === 'piutang' ? ' · kelola di Split Bill' : ' · tap untuk edit'}</div>
                     </div>
                     <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 13, fontWeight: 600, color: '#111827', flexShrink: 0 }}>{fmt(a.value)}</div>
-                    <button onClick={() => handleDelete(a.id)}
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }} aria-label="Hapus aset"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#D1D5DB', padding: '4px 6px', display: 'flex', marginLeft: 4 }}>
                       <X style={{ width: 13, height: 13 }} />
                     </button>
@@ -311,11 +333,11 @@ export function DashboardAssets() {
 
       {/* Add Modal */}
       {showModal && (
-        <div className="ast-modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+        <div className="ast-modal-overlay" onClick={e => { if (e.target === e.currentTarget) closeModal(); }}>
           <div className="ast-modal">
             <div style={{ padding: '18px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 600, color: '#111827' }}>Tambah Aset</span>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex' }}>
+              <span style={{ fontFamily: "'Sora',sans-serif", fontSize: 15, fontWeight: 600, color: '#111827' }}>{editing ? 'Edit Aset' : 'Tambah Aset'}</span>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex' }}>
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
@@ -339,7 +361,7 @@ export function DashboardAssets() {
                 onClick={handleAdd}
                 disabled={saving || !aName.trim() || !aValue}
                 style={{ height: 48, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans',sans-serif", opacity: (saving || !aName.trim() || !aValue) ? 0.5 : 1 }}
-              >{saving ? 'Menyimpan...' : 'Simpan Aset'}</button>
+              >{saving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Simpan Aset'}</button>
             </div>
           </div>
         </div>

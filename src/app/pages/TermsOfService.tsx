@@ -52,7 +52,7 @@ export function TermsOfService() {
             <h1 className="legal-title">Syarat &amp; Ketentuan</h1>
             <div className="legal-meta">
               <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
-              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 7 Oktober 2026</span>
             </div>
           </div>
 
@@ -63,10 +63,10 @@ export function TermsOfService() {
               Pendahuluan
             </h2>
             <p className="legal-p">
-              Syarat dan Ketentuan ini ("S&amp;K") merupakan perjanjian hukum antara Anda ("Pengguna") dan MIRA yang mengatur penggunaan layanan asisten keuangan berbasis WhatsApp beserta semua platform pendukungnya.
+              Syarat dan Ketentuan ini ("S&amp;K") merupakan perjanjian hukum antara Anda ("Pengguna") dan MIRA yang mengatur penggunaan MIRA — aplikasi web pencatat keuangan dengan bantuan AI di halo-mira.com, termasuk versi yang dipasang ke layar utama perangkat Anda.
             </p>
             <p className="legal-p">
-              Dengan mendaftarkan akun, mengirimkan pesan ke nomor WhatsApp MIRA, atau menggunakan dashboard web kami, Anda menyatakan telah membaca, memahami, dan menyetujui S&amp;K ini.
+              Dengan membuat akun atau menggunakan dashboard MIRA, Anda menyatakan telah membaca, memahami, dan menyetujui S&amp;K ini serta <a href="/privacy-policy" style={{color:'#2D4BFF'}}>Kebijakan Privasi</a> kami.
             </p>
             <div className="legal-box">
               <p>
@@ -85,15 +85,15 @@ export function TermsOfService() {
               MIRA adalah layanan Software-as-a-Service (SaaS) yang menyediakan:
             </p>
             <ul className="legal-ul">
-              <li>Pencatatan pengeluaran dan pemasukan secara otomatis via pesan WhatsApp</li>
-              <li>Kategorisasi transaksi menggunakan kecerdasan buatan (AI)</li>
-              <li>Dashboard web untuk visualisasi dan analisis data keuangan pribadi</li>
-              <li>Laporan keuangan periodik (harian, mingguan, bulanan)</li>
-              <li>Pengingat anggaran dan notifikasi batas pengeluaran</li>
+              <li>Pencatatan pemasukan & pengeluaran lewat chat, foto struk, dan voice note yang diproses AI</li>
+              <li>Kategorisasi transaksi otomatis dan rincian item dari struk</li>
+              <li>Dashboard untuk riwayat transaksi (daftar & kalender), insight, dan ekspor data (Excel/CSV)</li>
+              <li>Target tabungan dengan riwayat setoran, aset & net worth, piutang, dan split bill</li>
+              <li>Pengingat masa langganan lewat dashboard dan email</li>
             </ul>
             <div className="legal-box warning">
               <p>
-                <MiraIcon name="warn" size={20} tile={false} /> <strong>Penting:</strong> MIRA adalah alat bantu pencatatan pribadi. MIRA <strong>bukan</strong> software akuntansi resmi, bukan penasihat keuangan, dan bukan lembaga keuangan. Laporan yang dihasilkan tidak dapat digunakan sebagai dokumen resmi untuk keperluan perpajakan, audit, atau perbankan.
+                <MiraIcon name="warn" size={20} tile={false} /> <strong>Penting:</strong> MIRA adalah alat bantu pencatatan pribadi. MIRA <strong>bukan</strong> software akuntansi resmi, bukan penasihat keuangan, dan bukan lembaga keuangan. Hasil pembacaan AI bisa keliru — selalu cek sebelum menyimpan. Laporan yang dihasilkan tidak dapat digunakan sebagai dokumen resmi untuk keperluan perpajakan, audit, atau perbankan.
               </p>
             </div>
           </section>
@@ -107,7 +107,7 @@ export function TermsOfService() {
             <p className="legal-p">Untuk menggunakan layanan MIRA, Anda harus memenuhi syarat berikut:</p>
             <ul className="legal-ul">
               <li>Berusia minimal <strong>17 tahun</strong> atau telah mendapat persetujuan orang tua/wali</li>
-              <li>Memiliki nomor WhatsApp aktif yang terdaftar atas nama Anda</li>
+              <li>Memiliki akun Google atau alamat email aktif milik Anda sendiri</li>
               <li>Warga negara atau berdomisili di <strong>Indonesia</strong></li>
               <li>Memiliki kapasitas hukum untuk membuat perjanjian yang mengikat</li>
             </ul>
@@ -120,11 +120,11 @@ export function TermsOfService() {
               Akun &amp; Keamanan
             </h2>
             <p className="legal-p">
-              Akun MIRA terikat pada nomor WhatsApp Anda. Anda bertanggung jawab untuk:
+              Akun MIRA terikat pada login Anda — akun Google atau email &amp; password. Anda bertanggung jawab untuk:
             </p>
             <ul className="legal-ul">
-              <li>Menjaga kerahasiaan akses WhatsApp yang digunakan untuk MIRA</li>
-              <li>Memastikan hanya Anda yang menggunakan akun dengan nomor tersebut</li>
+              <li>Menjaga kerahasiaan password MIRA atau akses akun Google Anda</li>
+              <li>Memastikan hanya Anda yang menggunakan akun tersebut, termasuk di perangkat bersama</li>
               <li>Segera memberitahukan MIRA jika terdapat akses tidak sah ke akun Anda</li>
               <li>Tidak mentransfer atau meminjamkan akun kepada pihak lain</li>
             </ul>
@@ -151,7 +151,7 @@ export function TermsOfService() {
               Anda <strong>dilarang</strong> menggunakan MIRA untuk:
             </p>
             <ul className="legal-ul">
-              <li>Mencatat transaksi bisnis komersial atau perusahaan (gunakan paket Business)</li>
+              <li>Mencatat transaksi atas nama perusahaan atau pihak lain secara komersial</li>
               <li>Mengirimkan spam, konten ilegal, atau data palsu ke sistem kami</li>
               <li>Mencoba menembus, meretas, atau memanipulasi sistem MIRA</li>
               <li>Menggunakan bot atau skrip otomatis tanpa izin tertulis</li>
@@ -172,14 +172,15 @@ export function TermsOfService() {
               MIRA menawarkan model berlangganan dengan ketentuan berikut:
             </p>
             <ul className="legal-ul">
-              <li><strong>Periode langganan:</strong> Bulanan atau Tahunan, aktif sejak tanggal pembayaran berhasil</li>
-              <li><strong>Perpanjangan:</strong> Langganan <strong>tidak</strong> diperpanjang otomatis — Anda perlu memperbarui secara manual</li>
-              <li><strong>Harga:</strong> Tertera di halaman Harga dan dapat berubah dengan pemberitahuan 30 hari sebelumnya</li>
-              <li><strong>Metode pembayaran:</strong> Transfer bank, kartu kredit/debit, e-wallet (GoPay, OVO, Dana), QRIS</li>
-              <li><strong>Bukti pembayaran:</strong> Akan dikirimkan ke nomor WhatsApp dan email terdaftar</li>
+              <li><strong>Trial gratis:</strong> 7 hari dengan kode <strong>MIRA100</strong> saat mendaftar, satu kali per akun, tanpa data pembayaran</li>
+              <li><strong>Paket:</strong> Bulanan, 3 Bulan, atau Tahunan — aktif sejak pembayaran terverifikasi hingga akhir periode yang dibeli</li>
+              <li><strong>Perpanjangan:</strong> <strong>tidak</strong> otomatis. Perpanjang kapan saja di menu Langganan; sisa masa aktif tidak hangus dan langsung ditambahkan</li>
+              <li><strong>Harga:</strong> tertera di halaman paket dan dapat berubah dengan pemberitahuan minimal 30 hari sebelumnya; tidak memengaruhi periode yang sudah dibayar</li>
+              <li><strong>Metode pembayaran:</strong> melalui Midtrans — QRIS, e-wallet, transfer bank (virtual account), atau kartu</li>
+              <li><strong>Bukti pembayaran:</strong> ditampilkan di halaman pembayaran Midtrans; status dan masa aktif langganan selalu bisa dicek di menu Langganan</li>
             </ul>
             <p className="legal-p">
-              Paket berbayar mencakup akses penuh ke semua fitur sesuai paket yang dipilih. Masa aktif dihitung sejak pembayaran terverifikasi hingga akhir periode yang dibeli.
+              Saat trial atau langganan berakhir, akun menjadi <strong>mode baca saja</strong>: Anda tetap bisa masuk, melihat riwayat, dan mengekspor data, tetapi belum bisa mencatat atau mengubah data sampai langganan diperpanjang.
             </p>
           </section>
 
@@ -195,7 +196,7 @@ export function TermsOfService() {
             <ul className="legal-ul">
               <li>Keputusan keuangan yang Anda ambil berdasarkan data dari MIRA</li>
               <li>Kesalahan kategorisasi AI yang tidak dilaporkan dalam 7 hari setelah transaksi</li>
-              <li>Gangguan layanan akibat downtime WhatsApp/Meta di luar kendali kami</li>
+              <li>Gangguan layanan pihak ketiga (penyedia cloud, AI, atau pembayaran) di luar kendali kami</li>
               <li>Kerugian tidak langsung, insidental, atau konsekuensial dari penggunaan layanan</li>
               <li>Kehilangan data akibat bencana alam, serangan siber yang tidak dapat dicegah, atau force majeure</li>
             </ul>
@@ -226,9 +227,9 @@ export function TermsOfService() {
             </h2>
             <p className="legal-p"><strong>Penghentian oleh Pengguna:</strong></p>
             <ul className="legal-ul">
-              <li>Anda dapat menghentikan langganan kapan saja melalui WhatsApp atau dashboard</li>
-              <li>Layanan tetap aktif hingga akhir periode yang telah dibayar</li>
-              <li>Data Anda tersedia untuk diunduh selama 90 hari setelah penghentian</li>
+              <li>Anda bisa berhenti kapan saja cukup dengan tidak memperpanjang — tidak ada tagihan otomatis</li>
+              <li>Layanan tetap aktif hingga akhir periode yang telah dibayar, lalu menjadi mode baca saja</li>
+              <li>Data tetap tersedia untuk dilihat dan diunduh sampai Anda menghapus akun di Pengaturan → Hapus Akun (penghapusan bersifat permanen)</li>
             </ul>
             <p className="legal-p"><strong>Penghentian oleh MIRA:</strong></p>
             <ul className="legal-ul">

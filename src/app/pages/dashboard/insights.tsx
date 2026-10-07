@@ -1,9 +1,21 @@
-import { useEffect, useState, useMemo } from 'react';
+/**
+ * Insight — this month against the plan from the assessment.
+ *
+ * Sources (nothing estimated that isn't labelled as such):
+ *   expenses  last 6 months (paged; PostgREST caps a response at 1000 rows)
+ *   users     limit_nominal (Pengaturan), income_estimated_idr +
+ *             expense_allocation_pct / saving_allocation_pct (assessment,
+ *             editable in Pengaturan), biggest_spend_raw (assessment)
+ * "Pengeluaran" = everything not income and not Investasi — money moved to
+ * savings/investments counts as saved, not spent.
+ * Dates are calendar days (YYYY-MM-DD), parsed locally, never via UTC.
+ */
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { normalizeCategory } from '../../lib/category';
-import { MiraIcon } from '../../components/icons/MiraIcon';
+import { MiraIcon, type IconName } from '../../components/icons/MiraIcon';
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, Legend,
   ResponsiveContainer, XAxis, YAxis, Tooltip,
 } from 'recharts';
 
@@ -13,9 +25,9 @@ const H = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, Accept: 'ap
 
 const fmt  = (n: number) => 'Rp' + Math.abs(Math.round(n)).toLocaleString('id-ID');
 const fmtK = (n: number) => {
-  if (n === 0) return '0';
-  if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1).replace('.0', '') + 'jt';
-  if (Math.abs(n) >= 1000)    return Math.round(n / 1000) + 'rb';
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 }) + 'jt';
+  if (a >= 1e3) return Math.round(n / 1e3) + 'rb';
   return String(Math.round(n));
 };
 
@@ -24,35 +36,92 @@ const CAT_COLOR: Record<string, string> = {
   Tagihan: '#F59E0B', Kesehatan: '#EF4444', Hiburan: '#EC4899',
   Pemasukan: '#16A34A', Investasi: '#0891B2', Lainnya: '#6B7280',
 };
-
 const mapCat = (c: string) => normalizeCategory(c, 'Lainnya');
 
+// Assessment answer (biggest_spend_raw) → the category it corresponds to.
+const ASSESS_CAT: Record<string, { cat: string; label: string }> = {
+  makan: { cat: 'Makanan', label: 'makan & jajan' },
+  lifestyle: { cat: 'Hiburan', label: 'nongkrong & lifestyle' },
+  'belanja-online': { cat: 'Belanja', label: 'belanja online' },
+  keluarga: { cat: 'Lainnya', label: 'kebutuhan keluarga' },
+};
+
+// Monday-first, full names — "Min" was ambiguous.
+const DOW = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+const dowIdx = (d: Date) => (d.getDay() + 6) % 7;
+
+const DAY = 86400000;
+const todayWIB = () => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+const parseDay = (s: string) => { const [y, m, d] = s.slice(0, 10).split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const monthKey = (d: Date) => ymd(d).slice(0, 7);
+
+type Txn = { amount: number; category?: string; transaction_type?: string; date?: string; created_at?: string; merchant?: string; item?: string };
+type Profile = {
+  limit_nominal?: number | null; income_estimated_idr?: number | null;
+  expense_allocation_pct?: number | null; saving_allocation_pct?: number | null;
+  biggest_spend_raw?: string | null;
+};
+
 const INS_CSS = `
-  .ins-wrap { padding: 28px 32px 40px; max-width: 960px; margin: 0 auto; font-family: 'DM Sans', sans-serif; }
-  .ins-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
-  .ins-insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .ins-wrap { padding: 24px 32px 48px; max-width: 960px; margin: 0 auto; font-family: 'DM Sans', sans-serif; color: #111827; }
+  .ins-h1 { font: 600 20px 'Sora', sans-serif; margin: 0; }
+  .ins-sub { font-size: 13px; color: #6B7280; margin: 3px 0 0; }
+  .ins-card { background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 16px; overflow: hidden; }
+  .ins-card-hd { padding: 14px 18px; border-bottom: 1px solid rgba(0,0,0,.07); display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .ins-card-hd h3 { font: 600 14px 'Sora', sans-serif; margin: 0; }
+  .ins-card-hd span { font-size: 12px; color: #9CA3AF; }
+  .ins-plan { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .ins-plan-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ins-big { font: 800 24px 'Sora', sans-serif; }
+  .ins-bar { position: relative; height: 10px; background: #EEF1F6; border-radius: 99px; overflow: visible; }
+  .ins-bar > div { height: 100%; border-radius: 99px; }
+  .ins-bar .ins-mark { position: absolute; top: -4px; width: 2px; height: 18px; background: #111827; border-radius: 2px; }
+  .ins-kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ins-kv div { background: #F8FAFC; border-radius: 12px; padding: 10px 12px; min-width: 0; }
+  .ins-kv small { display: block; font-size: 11.5px; color: #6B7280; }
+  .ins-kv strong { display: block; font: 700 14px 'Sora', sans-serif; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ins-note { font-size: 12px; color: #6B7280; line-height: 1.55; }
+  .ins-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .ins-tip { border-radius: 16px; padding: 14px 16px; border: 1px solid; display: flex; flex-direction: column; gap: 4px; }
+  .ins-tip p { margin: 0; font-size: 13px; line-height: 1.55; color: #374151; }
+  .ins-tip .ins-tip-t { font-weight: 700; color: #111827; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+  .ins-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .ins-row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid rgba(0,0,0,.05); }
+  .ins-row:last-child { border-bottom: 0; }
   @media (max-width: 900px) {
-    .ins-wrap { padding: 16px 16px 24px; }
-    .ins-two-col { grid-template-columns: 1fr; gap: 10px; }
-    .ins-insight-grid { grid-template-columns: 1fr; }
+    .ins-wrap { padding: 16px 12px 28px; }
+    .ins-grid, .ins-two { grid-template-columns: 1fr; }
   }
+  @media (max-width: 480px) { .ins-kv { grid-template-columns: 1fr 1fr; } .ins-big { font-size: 20px; } }
+  .dark .ins-wrap { color: #F1F5F9; }
+  .dark .ins-card { background: #1E293B; border-color: rgba(255,255,255,.08); }
+  .dark .ins-card-hd { border-color: rgba(255,255,255,.07); }
+  .dark .ins-bar { background: #334155; }
+  .dark .ins-bar .ins-mark { background: #F1F5F9; }
+  .dark .ins-kv div { background: #0F172A; }
+  .dark .ins-kv small, .dark .ins-note, .dark .ins-sub { color: #94A3B8; }
+  .dark .ins-tip p { color: #CBD5E1; }
+  .dark .ins-tip .ins-tip-t { color: #F1F5F9; }
+  .dark .ins-row { border-color: rgba(255,255,255,.05); }
 `;
 
-const CARD: React.CSSProperties = {
-  background: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 16, overflow: 'hidden',
-};
-const CARD_HDR: React.CSSProperties = {
-  padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.07)',
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-};
 const TT: React.CSSProperties = {
-  backgroundColor: '#fff', border: '1px solid rgba(0,0,0,0.07)',
-  borderRadius: 10, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  backgroundColor: '#fff', border: '1px solid rgba(0,0,0,0.07)', borderRadius: 10, fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', color: '#111827',
+};
+
+type Tone = 'blue' | 'green' | 'amber' | 'red';
+const TONE: Record<Tone, { bg: string; bd: string }> = {
+  blue: { bg: 'rgba(37,99,235,.07)', bd: 'rgba(37,99,235,.18)' },
+  green: { bg: 'rgba(22,163,74,.07)', bd: 'rgba(22,163,74,.2)' },
+  amber: { bg: 'rgba(245,158,11,.08)', bd: 'rgba(245,158,11,.25)' },
+  red: { bg: 'rgba(239,68,68,.07)', bd: 'rgba(239,68,68,.2)' },
 };
 
 export function DashboardInsights() {
   const navigate = useNavigate();
-  const [txns,    setTxns]    = useState<any[]>([]);
+  const [txns, setTxns] = useState<Txn[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,276 +130,314 @@ export function DashboardInsights() {
       const s = document.createElement('style'); s.id = id; s.textContent = INS_CSS;
       document.head.appendChild(s);
     }
-    return () => { document.getElementById('mira-ins-css')?.remove(); };
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
+
+  const load = useCallback(async (ph: string) => {
+    const t = parseDay(todayWIB());
+    const from = ymd(new Date(t.getFullYear(), t.getMonth() - 5, 1));
+    const all: Txn[] = [];
+    try {
+      for (let page = 0; page < 10; page++) {
+        const r = await fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${from}&select=amount,category,transaction_type,date,created_at,merchant,item&order=date.desc&limit=1000&offset=${page * 1000}`, { headers: H });
+        if (!r.ok) break;
+        const rows = await r.json();
+        if (!Array.isArray(rows)) break;
+        all.push(...rows.map((x: Txn) => ({ ...x, amount: Number(x.amount || 0) })));
+        if (rows.length < 1000) break;
+      }
+      const u = await fetch(`${SUPA_URL}/rest/v1/users?primary_phone=eq.${ph}&select=limit_nominal,income_estimated_idr,expense_allocation_pct,saving_allocation_pct,biggest_spend_raw`, { headers: H });
+      if (u.ok) { const a = await u.json(); setProfile(a?.[0] || null); }
+    } catch {}
+    setTxns(all);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     const ph = localStorage.getItem('mira_phone');
     if (!ph) { navigate('/', { replace: true }); return; }
-
-    (async () => {
-      try {
-        const from = new Date(); from.setMonth(from.getMonth() - 6);
-        const r = await fetch(
-          `${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${from.toISOString().split('T')[0]}&order=date.desc&limit=2000`,
-          { headers: H }
-        );
-        if (r.ok) { const a = await r.json(); if (Array.isArray(a)) setTxns(a); }
-      } catch {}
-      setLoading(false);
-    })();
-  }, []);
-
-  // Listen for new transactions added via modal
-  useEffect(() => {
-    const refresh = () => {
-      const ph = localStorage.getItem('mira_phone');
-      if (!ph) return;
-      fetch(`${SUPA_URL}/rest/v1/expenses?phone_number=eq.${ph}&date=gte.${(() => { const d = new Date(); d.setMonth(d.getMonth()-6); return d.toISOString().split('T')[0]; })()}&order=date.desc&limit=2000`, { headers: H })
-        .then(r => r.json()).then(a => { if (Array.isArray(a)) setTxns(a); }).catch(() => {});
-    };
+    void load(ph);
+    const refresh = () => void load(ph);
     window.addEventListener('mira:tx-added', refresh);
     return () => window.removeEventListener('mira:tx-added', refresh);
   }, []);
 
   const s = useMemo(() => {
-    const now = new Date();
-    const isExp = (t: any) => t.transaction_type?.toLowerCase() !== 'income' && mapCat(t.category || '') !== 'Pemasukan';
+    const today = parseDay(todayWIB());
+    const dayN = today.getDate();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const thisM = monthKey(today);
+    const lastMDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastM = monthKey(lastMDate);
+    const lastMDays = new Date(lastMDate.getFullYear(), lastMDate.getMonth() + 1, 0).getDate();
 
-    // Monthly trend — last 6 months
-    const monthlyMap: Record<string, number> = {};
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
-      monthlyMap[key] = 0;
-    }
-    txns.filter(isExp).forEach(t => {
-      const d = new Date(t.date);
-      const key = d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
-      if (key in monthlyMap) monthlyMap[key] += Number(t.amount || 0);
-    });
-    const monthlyTrend = Object.entries(monthlyMap).map(([month, amount]) => ({ month, amount }));
+    const dayOf = (t: Txn) => String(t.date || t.created_at || '').slice(0, 10);
+    const isInc = (t: Txn) => String(t.transaction_type || '').toLowerCase() === 'income' || mapCat(t.category || '') === 'Pemasukan';
+    const isInv = (t: Txn) => !isInc(t) && mapCat(t.category || '') === 'Investasi';
+    const isExp = (t: Txn) => !isInc(t) && !isInv(t);
 
-    // This month category breakdown
-    const mTxns = txns.filter(t => {
-      const d = new Date(t.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && isExp(t);
-    });
+    const month = txns.filter((t) => dayOf(t).startsWith(thisM));
+    const spent = month.filter(isExp).reduce((a, t) => a + t.amount, 0);
+    const income = month.filter(isInc).reduce((a, t) => a + t.amount, 0);
+    const invested = month.filter(isInv).reduce((a, t) => a + t.amount, 0);
+    // Same stretch of last month (1st … today's date) — a fair comparison mid-month.
+    const lastSame = txns.filter((t) => { const d = dayOf(t); return d.startsWith(lastM) && Number(d.slice(8, 10)) <= Math.min(dayN, lastMDays) && isExp(t); })
+      .reduce((a, t) => a + t.amount, 0);
+    const changePct = lastSame > 0 ? ((spent - lastSame) / lastSame) * 100 : null;
+
+    // Plan: the monthly limit from Pengaturan, else the assessment's split of estimated income.
+    const estIncome = Number(profile?.income_estimated_idr || 0);
+    const expPct = Number(profile?.expense_allocation_pct ?? 0) || (profile?.saving_allocation_pct != null ? 100 - Number(profile.saving_allocation_pct) : 0);
+    const savePct = profile?.saving_allocation_pct != null ? Number(profile.saving_allocation_pct) : expPct ? 100 - expPct : 0;
+    const limit = Number(profile?.limit_nominal || 0);
+    const budget = limit > 0 ? limit : estIncome > 0 && expPct > 0 ? Math.round((estIncome * expPct) / 100) : 0;
+    const budgetSource = limit > 0 ? 'limit' : budget > 0 ? 'assessment' : null;
+    const projected = dayN > 0 ? Math.round((spent / dayN) * daysInMonth) : spent;
+    const daysLeft = daysInMonth - dayN + 1;
+    const perDayLeft = budget > 0 ? Math.max(0, budget - spent) / daysLeft : 0;
+    const incomeBase = income > 0 ? income : estIncome;
+    const saveTarget = incomeBase > 0 && savePct > 0 ? Math.round((incomeBase * savePct) / 100) : 0;
+
+    // Categories this month
     const catMap: Record<string, number> = {};
-    mTxns.forEach(t => { const c = mapCat(t.category || ''); catMap[c] = (catMap[c] || 0) + Number(t.amount || 0); });
-    const total = Object.values(catMap).reduce((s, v) => s + v, 0);
+    month.filter(isExp).forEach((t) => { const c = mapCat(t.category || ''); catMap[c] = (catMap[c] || 0) + t.amount; });
     const catData = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({
-      name, value, color: CAT_COLOR[name] || '#6B7280', percentage: total > 0 ? Math.round((value / total) * 100) : 0,
+      name, value, color: CAT_COLOR[name] || '#6B7280', pct: spent > 0 ? Math.round((value / spent) * 100) : 0,
     }));
 
     // Top merchants this month
-    const merchantMap: Record<string, { amount: number; count: number }> = {};
-    mTxns.forEach(t => {
-      const key = t.merchant || t.item || mapCat(t.category || '');
-      if (!merchantMap[key]) merchantMap[key] = { amount: 0, count: 0 };
-      merchantMap[key].amount += Number(t.amount || 0);
-      merchantMap[key].count += 1;
+    const mm: Record<string, { amount: number; count: number }> = {};
+    month.filter(isExp).forEach((t) => {
+      const k = (t.merchant || t.item || mapCat(t.category || '')).trim();
+      mm[k] = mm[k] || { amount: 0, count: 0 };
+      mm[k].amount += t.amount; mm[k].count++;
     });
-    const topMerchants = Object.entries(merchantMap)
-      .sort((a, b) => b[1].amount - a[1].amount)
-      .slice(0, 5)
-      .map(([name, d]) => ({ name, ...d }));
+    const topMerchants = Object.entries(mm).sort((a, b) => b[1].amount - a[1].amount).slice(0, 5).map(([name, v]) => ({ name, ...v }));
 
-    // Last month comparison
-    const lmTxns = txns.filter(t => {
-      const d = new Date(t.date);
-      const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      return d.getMonth() === lm.getMonth() && d.getFullYear() === lm.getFullYear() && isExp(t);
+    // 6-month trend
+    const trend = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date(today.getFullYear(), today.getMonth() - 5 + i, 1);
+      const k = monthKey(d);
+      const rows = txns.filter((t) => dayOf(t).startsWith(k));
+      return {
+        month: d.toLocaleDateString('id-ID', { month: 'short' }) + (d.getFullYear() !== today.getFullYear() ? ` ${String(d.getFullYear()).slice(2)}` : ''),
+        Pengeluaran: rows.filter(isExp).reduce((a, t) => a + t.amount, 0),
+        Pemasukan: rows.filter(isInc).reduce((a, t) => a + t.amount, 0),
+      };
     });
-    const lastMonthTotal = lmTxns.reduce((s, t) => s + Number(t.amount || 0), 0);
-    const changePct = lastMonthTotal > 0 ? ((total - lastMonthTotal) / lastMonthTotal) * 100 : 0;
-    const topCatName = catData[0]?.name || '';
-    const topCatAmt  = catData[0]?.value || 0;
 
-    // Day-of-week spending
-    const dowMap: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    const dowCount: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    txns.filter(isExp).forEach(t => {
-      const dow = new Date(t.date).getDay();
-      dowMap[dow] += Number(t.amount || 0);
-      dowCount[dow]++;
-    });
-    const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-    const dowData = DAYS.map((day, i) => ({ day, amount: dowCount[i] > 0 ? Math.round(dowMap[i] / dowCount[i]) : 0 }));
-    const peakDay = DAYS[Object.entries(dowMap).sort((a, b) => Number(b[1]) - Number(a[1]))[0]?.[0] as any] || '';
+    // Day of week: average spend per calendar day of that weekday, counting
+    // every such day in the window (also the ones without any spending).
+    const expDays = txns.filter(isExp).map(dayOf).filter(Boolean).sort();
+    let dow: { day: string; avg: number; days: number }[] = [];
+    let peak: { day: string; avg: number; days: number } | null = null;
+    let dailyAvg = 0;
+    const activeDays = new Set(expDays).size;
+    if (expDays.length) {
+      const start = parseDay(expDays[0]);
+      const totals = Array(7).fill(0), counts = Array(7).fill(0);
+      for (let d = new Date(start); d <= today; d = new Date(d.getTime() + DAY)) counts[dowIdx(d)]++;
+      txns.filter(isExp).forEach((t) => { const k = dayOf(t); if (k) totals[dowIdx(parseDay(k))] += t.amount; });
+      dow = DOW.map((day, i) => ({ day, avg: counts[i] ? Math.round(totals[i] / counts[i]) : 0, days: counts[i] }));
+      const totalDays = counts.reduce((a, b) => a + b, 0);
+      dailyAvg = totalDays ? totals.reduce((a, b) => a + b, 0) / totalDays : 0;
+      peak = dow.reduce((a, b) => (b.avg > a.avg ? b : a), dow[0]);
+    }
 
-    return { monthlyTrend, catData, topMerchants, total, lastMonthTotal, changePct, topCatName, topCatAmt, dowData, peakDay };
-  }, [txns]);
+    return {
+      dayN, daysInMonth, spent, income, invested, lastSame, changePct,
+      budget, budgetSource, estIncome, expPct, savePct, projected, daysLeft, perDayLeft, saveTarget, incomeBase,
+      catData, topMerchants, trend, dow, peak, dailyAvg, activeDays,
+      monthLabel: today.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+    };
+  }, [txns, profile]);
 
-  if (loading) return (
-    <div className="ins-wrap">
-      <p style={{ color: '#6B7280', fontSize: 14 }}>Memuat insight...</p>
-    </div>
-  );
+  if (loading) return <div className="ins-wrap"><p style={{ color: '#6B7280', fontSize: 14 }}>Memuat insight…</p></div>;
 
   if (txns.length === 0) return (
     <div className="ins-wrap" style={{ textAlign: 'center', paddingTop: 80 }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><MiraIcon name="report" size={72} /></div>
-      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada data. Mulai catat transaksi lewat Chat MIRA atau tombol Catat.</p>
+      <p style={{ color: '#6B7280', fontSize: 14 }}>Belum ada data. Mulai catat transaksi lewat Chat MIRA atau tombol +.</p>
     </div>
   );
 
-  const upDown = s.changePct >= 0 ? '▲' : '▼';
-  const upDownColor = s.changePct >= 0 ? '#EF4444' : '#16A34A';
+  // ── Plan card copy ──
+  const ratio = s.budget > 0 ? s.spent / s.budget : 0;
+  const expectedRatio = s.dayN / s.daysInMonth;
+  const barColor = ratio > 1 ? '#DC2626' : ratio > expectedRatio * 1.1 ? '#F59E0B' : '#16A34A';
+  const planStatus = s.budget <= 0 ? null
+    : ratio > 1 ? { tone: 'red' as Tone, text: `Sudah lewat batas ${fmt(s.spent - s.budget)}.` }
+    : s.projected > s.budget ? { tone: 'amber' as Tone, text: `Dengan kecepatan sekarang, akhir bulan bisa tembus ${fmt(s.projected)} — ${fmt(s.projected - s.budget)} di atas rencana.` }
+    : { tone: 'green' as Tone, text: `Aman. Perkiraan akhir bulan ${fmt(s.projected)}, masih ${fmt(s.budget - s.projected)} di bawah rencana.` };
+
+  // ── Insight cards ──
+  const tips: { tone: Tone; icon: IconName; title: string; body: React.ReactNode }[] = [];
+  const top = s.catData[0];
+  if (top) {
+    const assess = ASSESS_CAT[String(profile?.biggest_spend_raw || '')];
+    tips.push({
+      tone: 'blue', icon: 'pie', title: 'Pengeluaran terbesar bulan ini',
+      body: <><strong>{top.name}</strong> — {fmt(top.value)} ({top.pct}% dari pengeluaran).
+        {assess && (assess.cat === top.name
+          ? <> Sesuai jawaban assessment-mu: paling banyak keluar untuk {assess.label}.</>
+          : <> Waktu assessment kamu bilang paling banyak untuk {assess.label}; bulan ini ternyata {top.name}.</>)}</>,
+    });
+  }
+  if (s.changePct !== null) {
+    const pct = Math.round(s.changePct);
+    const up = pct > 0;
+    tips.push({
+      tone: up ? 'amber' : 'green', icon: up ? 'growth' : 'chart-down', title: `Dibanding tanggal 1–${s.dayN} bulan lalu`,
+      body: pct === 0
+        ? <>Pengeluaran <strong>sama</strong> dengan periode yang sama bulan lalu ({fmt(s.spent)}).</>
+        : <>Pengeluaran {up ? 'naik' : 'turun'} <strong>{Math.abs(pct)}%</strong> ({fmt(s.spent)} vs {fmt(s.lastSame)} di periode yang sama).</>,
+    });
+  }
+  if (s.peak && s.peak.avg > 0 && s.activeDays >= 10) {
+    const vs = s.dailyAvg > 0 ? Math.round((s.peak.avg / s.dailyAvg - 1) * 100) : 0;
+    tips.push({
+      tone: 'amber', icon: 'calendar-star', title: `Hari paling boros: ${s.peak.day}`,
+      body: <>Rata-rata kamu keluar <strong>{fmt(s.peak.avg)}</strong> setiap hari {s.peak.day}{vs > 0 ? <> — {vs}% di atas rata-rata harianmu ({fmt(s.dailyAvg)})</> : ''}. Dihitung dari {s.peak.days} hari {s.peak.day} dalam 6 bulan terakhir.</>,
+    });
+  }
+  if (s.saveTarget > 0) {
+    const saved = Math.max(0, s.incomeBase - s.projected);
+    const ok = saved >= s.saveTarget;
+    tips.push({
+      tone: ok ? 'green' : 'amber', icon: 'piggy', title: `Target nabung ${s.savePct}%`,
+      body: <>Dari {s.income > 0 ? 'pemasukan tercatat' : 'perkiraan penghasilan'} {fmt(s.incomeBase)}, target nabungmu <strong>{fmt(s.saveTarget)}</strong>/bulan.
+        {ok ? <> Kalau pengeluaran tetap segini, sisa ≈ {fmt(saved)} — target tercapai.</> : <> Dengan pengeluaran sekarang sisa ≈ {fmt(saved)}, kurang {fmt(s.saveTarget - saved)}.</>}
+        {s.invested > 0 && <> Sudah dipindah ke investasi/tabungan bulan ini: {fmt(s.invested)}.</>}</>,
+    });
+  }
 
   return (
     <div className="ins-wrap">
-
-      {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "'Sora',sans-serif", fontSize: 20, fontWeight: 600, margin: 0, color: '#111827' }}>Insight</h1>
-        <p style={{ fontSize: 13, color: '#6B7280', margin: '3px 0 0' }}>Analisis keuangan berdasarkan data transaksimu</p>
+      <div style={{ marginBottom: 16 }}>
+        <h1 className="ins-h1">Insight</h1>
+        <p className="ins-sub">{s.monthLabel} · dari transaksi yang kamu catat dan hasil assessment-mu</p>
       </div>
 
-      {/* AI Insight cards */}
-      <div className="ins-insight-grid">
-        {s.topCatName && (
-          <div style={{ ...CARD, padding: '16px 18px', background: '#EFF6FF', border: '1px solid rgba(37,99,235,0.15)' }}>
-            <div style={{ marginBottom: 10 }}><MiraIcon name="pie" size={40} /></div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Kategori Terbesar</p>
-            <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-              Bulan ini <strong>{s.topCatName}</strong> menghabiskan <strong>{fmt(s.topCatAmt)}</strong> — {s.total > 0 ? Math.round((s.topCatAmt / s.total) * 100) : 0}% dari total pengeluaran.
-            </p>
-          </div>
-        )}
-        {s.lastMonthTotal > 0 && (
-          <div style={{ ...CARD, padding: '16px 18px', background: s.changePct >= 0 ? '#FFF1F2' : '#F0FDF4', border: `1px solid ${s.changePct >= 0 ? 'rgba(239,68,68,0.15)' : 'rgba(22,163,74,0.15)'}` }}>
-            <div style={{ marginBottom: 10 }}><MiraIcon name={s.changePct >= 0 ? 'growth' : 'chart-down'} size={40} /></div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Vs Bulan Lalu</p>
-            <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-              Pengeluaran <span style={{ color: upDownColor, fontWeight: 600 }}>{upDown} {Math.abs(s.changePct).toFixed(0)}%</span> dibanding bulan lalu ({fmt(s.lastMonthTotal)}).
-            </p>
-          </div>
-        )}
-        {s.peakDay && (
-          <div style={{ ...CARD, padding: '16px 18px', background: '#FFFBEB', border: '1px solid rgba(245,158,11,0.15)' }}>
-            <div style={{ marginBottom: 10 }}><MiraIcon name="calendar-star" size={40} /></div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Hari Tertinggi</p>
-            <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-              Rata-rata pengeluaran tertinggi di hari <strong>{s.peakDay}</strong>. Coba lebih bijak di hari tersebut.
-            </p>
-          </div>
-        )}
-        {s.topCatName && (
-          <div style={{ ...CARD, padding: '16px 18px', background: '#F0FDF4', border: '1px solid rgba(22,163,74,0.15)' }}>
-            <div style={{ marginBottom: 10 }}><MiraIcon name="piggy" size={40} /></div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827', marginBottom: 4 }}>Saving Opportunity</p>
-            <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
-              Hemat <strong>{fmt(Math.round(s.topCatAmt * 0.15))}</strong> dengan mengurangi 15% dari {s.topCatName}.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Monthly trend */}
-      <div style={{ ...CARD, marginBottom: 20 }}>
-        <div style={CARD_HDR}>
-          <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>Tren Pengeluaran 6 Bulan</h3>
+      {/* Plan vs actual */}
+      <div className="ins-card">
+        <div className="ins-card-hd">
+          <h3>Pengeluaran bulan ini</h3>
+          <span>hari ke-{s.dayN} dari {s.daysInMonth}</span>
         </div>
-        <div style={{ padding: '12px 20px 20px' }}>
+        <div className="ins-plan">
+          <div className="ins-plan-top">
+            <div className="ins-big">{fmt(s.spent)}</div>
+            {s.budget > 0 && <div style={{ fontSize: 13, color: '#6B7280' }}>dari rencana <strong style={{ color: 'inherit' }}>{fmt(s.budget)}</strong></div>}
+          </div>
+          {s.budget > 0 && (
+            <div className="ins-bar" title="Garis hitam = posisi seharusnya hari ini">
+              <div style={{ width: `${Math.min(100, ratio * 100)}%`, background: barColor }} />
+              <span className="ins-mark" style={{ left: `calc(${Math.min(100, expectedRatio * 100)}% - 1px)` }} />
+            </div>
+          )}
+          {planStatus && <div style={{ fontSize: 13.5, fontWeight: 600, color: planStatus.tone === 'red' ? '#DC2626' : planStatus.tone === 'amber' ? '#B45309' : '#15803D' }}>{planStatus.text}</div>}
+          <div className="ins-kv">
+            <div><small>Pemasukan tercatat</small><strong style={{ color: '#16A34A' }}>{fmt(s.income)}</strong></div>
+            <div><small>Perkiraan akhir bulan</small><strong>{fmt(s.projected)}</strong></div>
+            <div><small>{s.budget > 0 ? 'Jatah per hari tersisa' : 'Ke investasi/tabungan'}</small><strong>{s.budget > 0 ? fmt(s.perDayLeft) : fmt(s.invested)}</strong></div>
+          </div>
+          <div className="ins-note">
+            {s.budgetSource === 'limit' ? 'Rencana = limit bulanan yang kamu set di Pengaturan.'
+              : s.budgetSource === 'assessment' ? <>Rencana = {s.expPct}% dari perkiraan penghasilan {fmt(s.estIncome)} (hasil assessment). Ubah limit atau rasio di Pengaturan.</>
+              : 'Set limit bulanan di Pengaturan biar MIRA bisa bandingin pengeluaran dengan rencanamu.'}
+            {' '}Perkiraan akhir bulan = rata-rata harian bulan ini × {s.daysInMonth} hari. Investasi/tabungan nggak dihitung sebagai pengeluaran.
+          </div>
+        </div>
+      </div>
+
+      {tips.length > 0 && (
+        <div className="ins-grid">
+          {tips.map((t) => (
+            <div key={t.title} className="ins-tip" style={{ background: TONE[t.tone].bg, borderColor: TONE[t.tone].bd }}>
+              <div className="ins-tip-t"><MiraIcon name={t.icon} size={30} />{t.title}</div>
+              <p>{t.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Trend */}
+      <div className="ins-card" style={{ marginBottom: 14 }}>
+        <div className="ins-card-hd"><h3>Tren 6 bulan</h3><span>pengeluaran vs pemasukan</span></div>
+        <div style={{ padding: '12px 12px 16px' }}>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={s.monthlyTrend}>
+            <LineChart data={s.trend}>
               <XAxis dataKey="month" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={40} />
-              <Tooltip formatter={(v: number) => [fmt(v), 'Pengeluaran']} contentStyle={TT} />
-              <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2.5}
-                dot={{ fill: '#fff', stroke: '#2563EB', r: 3, strokeWidth: 2 }}
-                activeDot={{ fill: '#2563EB', r: 5, strokeWidth: 0 }} />
+              <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={44} />
+              <Tooltip formatter={(v: number, n: string) => [fmt(v), n]} contentStyle={TT} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="Pengeluaran" stroke="#2563EB" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="Pemasukan" stroke="#16A34A" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Category + Day of week */}
-      <div className="ins-two-col">
-        {/* Category breakdown */}
-        <div style={CARD}>
-          <div style={CARD_HDR}>
-            <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>Kategori Bulan Ini</h3>
-          </div>
-          <div style={{ padding: '12px 20px 20px' }}>
-            {s.catData.length === 0
-              ? <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>Belum ada data</p>
-              : (
-                <>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie data={s.catData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="value">
-                        {s.catData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => [fmt(v)]} contentStyle={TT} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-                    {s.catData.slice(0, 5).map(({ name, value, color, percentage }) => (
-                      <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                          <span style={{ fontSize: 13, color: '#374151' }}>{name}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 12, color: '#9CA3AF' }}>{percentage}%</span>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: '#111827', minWidth: 80, textAlign: 'right' }}>{fmt(value)}</span>
-                        </div>
-                      </div>
-                    ))}
+      <div className="ins-two">
+        <div className="ins-card">
+          <div className="ins-card-hd"><h3>Kategori bulan ini</h3><span>{fmt(s.spent)}</span></div>
+          <div style={{ padding: '10px 16px 16px' }}>
+            {s.catData.length === 0 ? <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>Belum ada pengeluaran bulan ini.</p> : (
+              <>
+                <ResponsiveContainer width="100%" height={170}>
+                  <PieChart>
+                    <Pie data={s.catData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value">
+                      {s.catData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number, n: string) => [fmt(v), n]} contentStyle={TT} />
+                  </PieChart>
+                </ResponsiveContainer>
+                {s.catData.map((c) => (
+                  <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, padding: '4px 0' }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{c.name}</span>
+                    <span style={{ color: '#9CA3AF', fontSize: 12 }}>{c.pct}%</span>
+                    <span style={{ fontWeight: 600, minWidth: 92, textAlign: 'right' }}>{fmt(c.value)}</span>
                   </div>
-                </>
-              )
-            }
+                ))}
+              </>
+            )}
           </div>
         </div>
 
-        {/* Day of week spending */}
-        <div style={CARD}>
-          <div style={CARD_HDR}>
-            <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>Rata-rata per Hari</h3>
-          </div>
-          <div style={{ padding: '12px 20px 20px' }}>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={s.dowData} barSize={24}>
-                <XAxis dataKey="day" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={38} />
-                <Tooltip formatter={(v: number) => [fmt(v), 'Rata-rata']} contentStyle={TT} cursor={{ fill: '#F1F4F8' }} />
-                <Bar dataKey="amount" fill="#2563EB" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        <div className="ins-card">
+          <div className="ins-card-hd"><h3>Rata-rata per hari</h3><span>6 bulan terakhir</span></div>
+          <div style={{ padding: '12px 8px 8px' }}>
+            {s.dow.length === 0 ? <p style={{ fontSize: 13, color: '#9CA3AF', margin: '0 10px' }}>Belum ada data.</p> : (
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart data={s.dow} barSize={22}>
+                  <XAxis dataKey="day" stroke="#9CA3AF" fontSize={10} tickLine={false} axisLine={false} interval={0} />
+                  <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} tickFormatter={fmtK} width={40} />
+                  <Tooltip formatter={(v: number) => [fmt(v), 'Rata-rata per hari']} labelFormatter={(l) => `Setiap hari ${l}`} contentStyle={TT} cursor={{ fill: 'rgba(148,163,184,.12)' }} />
+                  <Bar dataKey="avg" radius={[6, 6, 0, 0]}>
+                    {s.dow.map((d) => <Cell key={d.day} fill={s.peak && d.day === s.peak.day ? '#F59E0B' : '#2563EB'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <p className="ins-note" style={{ margin: '4px 10px 6px' }}>Total pengeluaran di hari itu ÷ jumlah hari itu sejak transaksi pertama (hari tanpa transaksi ikut dihitung).</p>
           </div>
         </div>
       </div>
 
-      {/* Top merchants */}
-      <div style={CARD}>
-        <div style={CARD_HDR}>
-          <h3 style={{ fontFamily: "'Sora',sans-serif", fontSize: 14, fontWeight: 600, margin: 0, color: '#111827' }}>Top Merchant Bulan Ini</h3>
-        </div>
-        <div style={{ padding: '4px 0' }}>
-          {s.topMerchants.length === 0
-            ? <p style={{ padding: '16px 20px', fontSize: 13, color: '#9CA3AF', margin: 0 }}>Belum ada data</p>
-            : s.topMerchants.map((m, i) => (
-              <div key={m.name} style={{
-                display: 'flex', alignItems: 'center', gap: 14, padding: '13px 20px',
-                borderBottom: i < s.topMerchants.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-              }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%', background: '#EFF6FF',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 700, color: '#1D4ED8', flexShrink: 0,
-                }}>#{i + 1}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>{m.count} transaksi</div>
-                </div>
-                <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 13, fontWeight: 600, color: '#111827' }}>{fmt(m.amount)}</div>
+      <div className="ins-card">
+        <div className="ins-card-hd"><h3>Top merchant bulan ini</h3></div>
+        {s.topMerchants.length === 0 ? <p style={{ padding: '14px 18px', fontSize: 13, color: '#9CA3AF', margin: 0 }}>Belum ada data.</p>
+          : s.topMerchants.map((m, i) => (
+            <div key={m.name} className="ins-row">
+              <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(37,99,235,.1)', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Sora',sans-serif", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF' }}>{m.count} transaksi</div>
               </div>
-            ))
-          }
-        </div>
+              <div style={{ fontFamily: "'Sora',sans-serif", fontSize: 13.5, fontWeight: 700 }}>{fmt(m.amount)}</div>
+            </div>
+          ))}
       </div>
     </div>
   );

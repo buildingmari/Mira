@@ -8,10 +8,11 @@ const TOC = [
   { id: 'intro',       label: 'Pendahuluan' },
   { id: 'data',        label: 'Data yang Kami Kumpulkan' },
   { id: 'use',         label: 'Penggunaan Data' },
-  { id: 'share',       label: 'Berbagi Data dengan Pihak Ketiga' },
+  { id: 'ai',          label: 'Pemrosesan AI & Suara' },
+  { id: 'share',       label: 'Pihak Ketiga' },
   { id: 'storage',     label: 'Penyimpanan & Keamanan' },
   { id: 'rights',      label: 'Hak Pengguna' },
-  { id: 'cookies',     label: 'Cookie & Pelacakan' },
+  { id: 'cookies',     label: 'Cookie & Penyimpanan Lokal' },
   { id: 'children',    label: 'Layanan untuk Anak-Anak' },
   { id: 'changes',     label: 'Perubahan Kebijakan' },
   { id: 'contact',     label: 'Hubungi Kami' },
@@ -51,212 +52,193 @@ export function PrivacyPolicy() {
             <h1 className="legal-title">Kebijakan Privasi</h1>
             <div className="legal-meta">
               <span><MiraIcon name="calendar-check" size={20} tile={false} /> Berlaku sejak: 1 Januari 2025</span>
-              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 17 Maret 2025</span>
+              <span><MiraIcon name="cycle-coin" size={20} tile={false} /> Terakhir diperbarui: 7 Oktober 2026</span>
             </div>
           </div>
 
-          {/* 1. Pendahuluan */}
           <section className="legal-section" id="intro">
             <h2 className="legal-section-title">
               <span className="legal-section-num">1</span>
               Pendahuluan
             </h2>
             <p className="legal-p">
-              MIRA ("kami", "kita") menghormati privasi Anda dan berkomitmen untuk melindungi data pribadi yang Anda berikan saat menggunakan layanan MIRA — asisten pencatat keuangan berbasis WhatsApp.
+              MIRA ("kami") adalah aplikasi web pencatat keuangan pribadi dengan bantuan AI yang dapat diakses di <strong>halo-mira.com</strong> — lewat browser atau dipasang ke layar utama perangkat Anda. Kami menghormati privasi Anda dan berkomitmen melindungi data pribadi yang Anda berikan.
             </p>
             <p className="legal-p">
-              Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi Anda ketika mengakses layanan melalui platform WhatsApp maupun dashboard web di <strong>halo-mira.com</strong>.
+              Kebijakan ini menjelaskan data apa yang kami kumpulkan, untuk apa, siapa saja yang ikut memprosesnya, berapa lama disimpan, dan hak Anda atas data tersebut, sesuai UU No. 27 Tahun 2022 tentang Perlindungan Data Pribadi.
             </p>
             <div className="legal-box">
               <p>
-                Dengan menggunakan layanan MIRA, Anda menyetujui pengumpulan dan penggunaan informasi sebagaimana dijelaskan dalam kebijakan ini. Jika Anda tidak setuju, mohon hentikan penggunaan layanan.
+                Dengan membuat akun dan menggunakan MIRA, Anda menyetujui pemrosesan data sebagaimana dijelaskan di sini. Jika tidak setuju, mohon jangan menggunakan layanan.
               </p>
             </div>
           </section>
 
-          {/* 2. Data yang Dikumpulkan */}
           <section className="legal-section" id="data">
             <h2 className="legal-section-title">
               <span className="legal-section-num">2</span>
               Data yang Kami Kumpulkan
             </h2>
-            <p className="legal-p">Kami mengumpulkan beberapa kategori data berikut:</p>
-
-            <p className="legal-p"><strong>a. Data Identitas &amp; Akun</strong></p>
+            <p className="legal-p"><strong>a. Data akun</strong></p>
             <ul className="legal-ul">
-              <li>Nomor WhatsApp yang Anda gunakan untuk mendaftar</li>
-              <li>Nama tampilan (jika diberikan)</li>
-              <li>Alamat email (untuk penerima laporan opsional)</li>
+              <li>Nama dan alamat email</li>
+              <li>Jika masuk dengan Google: nama, email, dan foto profil dari akun Google Anda</li>
+              <li>Jika masuk dengan email: password Anda disimpan oleh penyedia autentikasi dalam bentuk ter-hash — kami tidak pernah melihat password asli</li>
             </ul>
 
-            <p className="legal-p"><strong>b. Data Transaksi Keuangan</strong></p>
+            <p className="legal-p"><strong>b. Jawaban assessment</strong></p>
             <ul className="legal-ul">
-              <li>Pesan yang Anda kirimkan ke MIRA via WhatsApp berisi informasi pengeluaran</li>
-              <li>Nominal, kategori, metode pembayaran, dan tanggal transaksi yang diinput</li>
-              <li>Catatan atau deskripsi tambahan yang Anda sertakan secara sukarela</li>
+              <li>Jawaban kuesioner saat mendaftar (kisaran penghasilan, pola gajian, kebiasaan belanja, dana darurat, investasi, utang, bank & e-wallet yang dipakai, tujuan menabung) dan skor kesehatan finansial yang dihitung darinya</li>
             </ul>
 
-            <p className="legal-p"><strong>c. Data Teknis</strong></p>
+            <p className="legal-p"><strong>c. Data keuangan yang Anda catat</strong></p>
             <ul className="legal-ul">
-              <li>Alamat IP dan informasi browser saat mengakses dashboard web</li>
-              <li>Data penggunaan fitur (tombol yang diklik, halaman yang dikunjungi)</li>
-              <li>Waktu dan frekuensi penggunaan layanan</li>
+              <li>Transaksi (nominal, kategori, merchant, keterangan, tanggal, wallet) beserta rincian item jika ada</li>
+              <li>Target tabungan dan riwayat setorannya, aset, piutang, split bill, limit bulanan, dan pengingat</li>
+              <li>Riwayat percakapan teks dengan Chat MIRA</li>
             </ul>
 
-            <p className="legal-p"><strong>d. Data Pembayaran</strong></p>
+            <p className="legal-p"><strong>d. Foto struk & suara</strong></p>
             <ul className="legal-ul">
-              <li>Kami <strong>tidak menyimpan</strong> data kartu kredit/debit Anda secara langsung</li>
-              <li>Proses pembayaran dilakukan melalui payment gateway pihak ketiga yang bersertifikasi PCI-DSS</li>
-              <li>Kami hanya menyimpan status transaksi, tanggal, dan paket yang dibeli</li>
+              <li>Foto struk dan rekaman voice note dikirim untuk diproses saat itu juga. <strong>File foto dan rekamannya tidak kami simpan</strong> — yang tersimpan hanya hasil catatannya (teks dan angka)</li>
+            </ul>
+
+            <p className="legal-p"><strong>e. Data langganan & pembayaran</strong></p>
+            <ul className="legal-ul">
+              <li>Paket, masa aktif, voucher yang dipakai, dan status order pembayaran</li>
+              <li>Pembayaran diproses Midtrans. Kami <strong>tidak menerima dan tidak menyimpan</strong> nomor kartu, rekening, atau PIN Anda</li>
+            </ul>
+
+            <p className="legal-p"><strong>f. Data teknis</strong></p>
+            <ul className="legal-ul">
+              <li>Sesi login dan preferensi tampilan yang disimpan di browser Anda (local storage)</li>
+              <li>Log standar di sisi server penyedia infrastruktur (alamat IP, waktu akses, jenis browser) untuk keamanan dan penanganan gangguan</li>
             </ul>
           </section>
 
-          {/* 3. Penggunaan Data */}
           <section className="legal-section" id="use">
             <h2 className="legal-section-title">
               <span className="legal-section-num">3</span>
               Penggunaan Data
             </h2>
-            <p className="legal-p">Data yang kami kumpulkan digunakan untuk:</p>
+            <p className="legal-p">Data Anda kami gunakan untuk:</p>
             <ul className="legal-ul">
-              <li>Menjalankan dan meningkatkan layanan pencatatan keuangan otomatis MIRA</li>
-              <li>Memproses dan memverifikasi transaksi pembayaran langganan</li>
-              <li>Mengirimkan laporan keuangan mingguan/bulanan kepada Anda</li>
-              <li>Mendeteksi dan mencegah penipuan serta penyalahgunaan layanan</li>
-              <li>Memberikan dukungan pelanggan ketika Anda menghubungi kami</li>
-              <li>Melakukan analisis agregat (anonim) untuk pengembangan produk</li>
-              <li>Mengirimkan pengumuman penting terkait layanan (bukan iklan)</li>
+              <li>Mencatat, mengelompokkan, dan menampilkan keuangan Anda di dashboard</li>
+              <li>Menyusun insight — misalnya membandingkan pengeluaran dengan rencana dari assessment dan limit Anda</li>
+              <li>Mengelola langganan, trial, dan memproses pembayaran</li>
+              <li>Mengirim email penting: konfirmasi akun, reset password, dan pengingat masa langganan (trial hampir habis, H-7, H-1, dan saat berakhir)</li>
+              <li>Menjaga keamanan akun dan mencegah penyalahgunaan</li>
+              <li>Menjawab pertanyaan saat Anda menghubungi kami</li>
             </ul>
             <div className="legal-box warning">
               <p>
-                <MiraIcon name="warn" size={20} tile={false} /> Kami <strong>tidak</strong> menggunakan data transaksi keuangan pribadi Anda untuk keperluan periklanan, profiling komersial, atau dijual kepada pihak ketiga manapun.
+                <MiraIcon name="warn" size={20} tile={false} /> Kami <strong>tidak</strong> menjual data Anda, tidak memakainya untuk iklan, dan tidak membagikannya untuk keperluan pemasaran pihak lain.
               </p>
             </div>
           </section>
 
-          {/* 4. Berbagi Data */}
-          <section className="legal-section" id="share">
+          <section className="legal-section" id="ai">
             <h2 className="legal-section-title">
               <span className="legal-section-num">4</span>
-              Berbagi Data dengan Pihak Ketiga
+              Pemrosesan AI & Suara
             </h2>
-            <p className="legal-p">
-              Kami hanya berbagi data kepada pihak ketiga dalam kondisi terbatas berikut:
-            </p>
             <ul className="legal-ul">
-              <li><strong>Penyedia infrastruktur cloud</strong> (penyimpanan data terenkripsi) — terikat perjanjian kerahasiaan</li>
-              <li><strong>WhatsApp / Meta</strong> — sebagai platform perpesanan yang kami gunakan, tunduk pada kebijakan privasi Meta</li>
-              <li><strong>Payment gateway</strong> (Midtrans/Xendit) — untuk memproses pembayaran langganan</li>
-              <li><strong>Penegak hukum</strong> — jika diwajibkan oleh hukum yang berlaku di Indonesia</li>
+              <li><strong>Fitur AI</strong> (Chat MIRA, Catat pakai AI, scan struk, split bill pintar): teks, foto, atau voice note yang Anda kirim diteruskan ke penyedia model AI melalui OpenRouter (misalnya Google Gemini dan OpenAI) hanya untuk memproses permintaan tersebut</li>
+              <li><strong>Dikte langsung</strong> (teks muncul saat Anda bicara): menggunakan layanan pengenalan suara bawaan browser/perangkat Anda — Google untuk Chrome, Apple untuk Safari — sesuai kebijakan privasi mereka. Jika tidak tersedia, MIRA merekam voice note dan memprosesnya lewat penyedia AI di atas</li>
+              <li>Hasil AI bisa keliru. Karena itu MIRA selalu menampilkan hasilnya dulu untuk Anda cek sebelum disimpan</li>
             </ul>
-            <p className="legal-p">
-              Kami tidak menjual, menyewakan, atau memperdagangkan data pribadi Anda kepada pihak ketiga untuk tujuan pemasaran.
-            </p>
           </section>
 
-          {/* 5. Penyimpanan & Keamanan */}
-          <section className="legal-section" id="storage">
+          <section className="legal-section" id="share">
             <h2 className="legal-section-title">
               <span className="legal-section-num">5</span>
-              Penyimpanan &amp; Keamanan
+              Pihak Ketiga yang Memproses Data
             </h2>
-            <p className="legal-p">
-              Data Anda disimpan di server yang berlokasi di Indonesia dan/atau Singapura dengan standar keamanan berikut:
-            </p>
+            <p className="legal-p">Untuk menjalankan layanan, kami memakai penyedia berikut. Masing-masing hanya menerima data yang diperlukan untuk tugasnya:</p>
             <ul className="legal-ul">
-              <li>Enkripsi data saat transit (TLS 1.3) dan saat tersimpan (AES-256)</li>
-              <li>Kontrol akses berbasis peran — hanya tim teknis berwenang yang dapat mengakses data</li>
-              <li>Pencadangan otomatis harian dengan retensi 30 hari</li>
-              <li>Audit log untuk setiap akses data sensitif</li>
+              <li><strong>Supabase</strong> — database, autentikasi login, dan server function (server di Sydney, Australia)</li>
+              <li><strong>Vercel</strong> — hosting aplikasi web</li>
+              <li><strong>OpenRouter</strong> beserta penyedia model AI-nya — pemrosesan fitur AI</li>
+              <li><strong>Google</strong> — login dengan akun Google (jika Anda memilihnya)</li>
+              <li><strong>Midtrans</strong> — pemrosesan pembayaran</li>
+              <li><strong>Resend</strong> — pengiriman email</li>
+              <li><strong>Penegak hukum</strong> — hanya jika diwajibkan oleh hukum yang berlaku di Indonesia</li>
             </ul>
-            <p className="legal-p">
-              Data akun aktif disimpan selama masa berlangganan aktif. Data akan dihapus permanen <strong>90 hari</strong> setelah akun dinonaktifkan atau Anda meminta penghapusan.
-            </p>
           </section>
 
-          {/* 6. Hak Pengguna */}
-          <section className="legal-section" id="rights">
+          <section className="legal-section" id="storage">
             <h2 className="legal-section-title">
               <span className="legal-section-num">6</span>
-              Hak Pengguna
+              Penyimpanan & Keamanan
             </h2>
-            <p className="legal-p">
-              Sesuai dengan regulasi perlindungan data yang berlaku, Anda memiliki hak:
-            </p>
             <ul className="legal-ul">
-              <li><strong>Hak Akses</strong> — meminta salinan data pribadi yang kami simpan tentang Anda</li>
-              <li><strong>Hak Koreksi</strong> — memperbarui atau memperbaiki data yang tidak akurat</li>
-              <li><strong>Hak Penghapusan</strong> — meminta penghapusan data Anda ("hak untuk dilupakan")</li>
-              <li><strong>Hak Portabilitas</strong> — mendapatkan ekspor data transaksi Anda dalam format CSV/JSON</li>
-              <li><strong>Hak Keberatan</strong> — menolak pemrosesan data untuk tujuan tertentu</li>
+              <li>Semua koneksi ke MIRA dienkripsi (HTTPS/TLS); data yang tersimpan dienkripsi oleh penyedia infrastruktur</li>
+              <li>Data Anda disimpan dan diproses di luar Indonesia (antara lain Australia) oleh penyedia di atas, dengan perlindungan yang setara sesuai UU PDP</li>
+              <li><strong>Selama akun ada</strong>, data disimpan — termasuk saat langganan berakhir (akun jadi mode baca saja, riwayat tetap bisa dilihat dan diekspor)</li>
+              <li><strong>Saat Anda menghapus akun</strong>, data akun, keuangan, dan riwayat chat dihapus dari database kami saat itu juga. Salinan cadangan otomatis di penyedia infrastruktur dapat bertahan sementara sesuai siklus cadangan mereka sebelum terhapus</li>
+              <li>Catatan transaksi pembayaran dapat kami simpan lebih lama bila diwajibkan peraturan (misalnya perpajakan)</li>
             </ul>
-            <p className="legal-p">
-              Untuk mengajukan permintaan terkait hak-hak ini, hubungi kami melalui email <a href="mailto:support@halo-mira.com" style={{color:'#2D4BFF'}}>support@halo-mira.com</a>. Kami akan merespons dalam <strong>14 hari kerja</strong>.
-            </p>
           </section>
 
-          {/* 7. Cookie */}
-          <section className="legal-section" id="cookies">
+          <section className="legal-section" id="rights">
             <h2 className="legal-section-title">
               <span className="legal-section-num">7</span>
-              Cookie &amp; Pelacakan
+              Hak Pengguna
             </h2>
-            <p className="legal-p">
-              Dashboard web MIRA menggunakan cookie terbatas untuk:
-            </p>
+            <p className="legal-p">Anda berhak:</p>
             <ul className="legal-ul">
-              <li>Menjaga sesi login Anda tetap aktif (cookie sesi — wajib)</li>
-              <li>Mengingat preferensi tampilan Anda (cookie fungsional)</li>
-              <li>Analitik penggunaan anonim untuk peningkatan produk (dapat dinonaktifkan)</li>
+              <li><strong>Mengakses & membawa data</strong> — unduh transaksi Anda kapan saja lewat menu <strong>Export Data</strong> (Excel/CSV)</li>
+              <li><strong>Memperbaiki data</strong> — edit transaksi, target, aset, piutang, dan profil langsung di dashboard</li>
+              <li><strong>Menghapus data</strong> — hapus transaksi satu per satu, atau hapus seluruh akun di <strong>Pengaturan → Hapus Akun</strong></li>
+              <li><strong>Menarik persetujuan & keberatan</strong> atas pemrosesan tertentu dengan menghubungi kami</li>
             </ul>
             <p className="legal-p">
-              Kami tidak menggunakan cookie pihak ketiga untuk periklanan lintas situs. Anda dapat mengelola cookie melalui pengaturan browser.
+              Untuk permintaan lain terkait data Anda, email <a href="mailto:support@halo-mira.com" style={{color:'#2D4BFF'}}>support@halo-mira.com</a>. Kami merespons dalam <strong>14 hari kerja</strong>.
             </p>
           </section>
 
-          {/* 8. Anak-anak */}
-          <section className="legal-section" id="children">
+          <section className="legal-section" id="cookies">
             <h2 className="legal-section-title">
               <span className="legal-section-num">8</span>
+              Cookie & Penyimpanan Lokal
+            </h2>
+            <ul className="legal-ul">
+              <li>MIRA menyimpan sesi login dan preferensi (misalnya mode gelap dan tampilan) di penyimpanan lokal browser Anda agar Anda tetap masuk</li>
+              <li>Kami <strong>tidak</strong> memasang cookie iklan atau pelacak pihak ketiga</li>
+              <li>Saat Anda memakai tombol masuk dengan Google, Google dapat menyimpan cookie-nya sendiri sesuai kebijakan Google</li>
+            </ul>
+          </section>
+
+          <section className="legal-section" id="children">
+            <h2 className="legal-section-title">
+              <span className="legal-section-num">9</span>
               Layanan untuk Anak-Anak
             </h2>
             <p className="legal-p">
-              Layanan MIRA ditujukan untuk pengguna berusia <strong>17 tahun ke atas</strong>. Kami tidak secara sadar mengumpulkan data dari anak-anak di bawah umur. Jika kami mengetahui ada data pengguna di bawah 17 tahun, data tersebut akan segera dihapus.
+              MIRA ditujukan untuk pengguna berusia <strong>17 tahun ke atas</strong>. Kami tidak secara sadar mengumpulkan data anak di bawah umur. Jika kami mengetahuinya, data tersebut akan segera dihapus.
             </p>
           </section>
 
-          {/* 9. Perubahan */}
           <section className="legal-section" id="changes">
             <h2 className="legal-section-title">
-              <span className="legal-section-num">9</span>
+              <span className="legal-section-num">10</span>
               Perubahan Kebijakan
             </h2>
             <p className="legal-p">
-              Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Perubahan material akan diberitahukan melalui:
-            </p>
-            <ul className="legal-ul">
-              <li>Pesan WhatsApp dari akun MIRA resmi</li>
-              <li>Notifikasi di dashboard web</li>
-              <li>Email (jika Anda mendaftarkan email)</li>
-            </ul>
-            <p className="legal-p">
-              Penggunaan layanan yang berkelanjutan setelah tanggal efektif perubahan dianggap sebagai penerimaan kebijakan baru.
+              Kami dapat memperbarui kebijakan ini. Perubahan penting akan kami beritahukan lewat dashboard MIRA dan/atau email ke alamat akun Anda sebelum berlaku. Tanggal "terakhir diperbarui" di atas selalu menunjukkan versi terbaru.
             </p>
           </section>
 
-          {/* 10. Kontak */}
           <section className="legal-section" id="contact">
             <h2 className="legal-section-title">
-              <span className="legal-section-num">10</span>
+              <span className="legal-section-num">11</span>
               Hubungi Kami
             </h2>
-            <p className="legal-p">
-              Jika Anda memiliki pertanyaan, kekhawatiran, atau ingin mengajukan permintaan terkait privasi data Anda, silakan hubungi kami:
-            </p>
+            <p className="legal-p">Pertanyaan atau permintaan terkait privasi:</p>
             <div className="legal-contact-block">
               <p><strong>MIRA</strong></p>
               <p>Email: <a href="mailto:support@halo-mira.com">support@halo-mira.com</a></p>
-              <p style={{marginTop:'8px', color:'#94A3B8', fontSize:'0.8rem'}}>Jam respons: Senin–Jumat, 09.00–18.00 WIB (MIRA bot aktif 24/7)</p>
+              <p style={{marginTop:'8px', color:'#94A3B8', fontSize:'0.8rem'}}>Jam respons: Senin–Jumat, 09.00–18.00 WIB</p>
             </div>
           </section>
         </main>

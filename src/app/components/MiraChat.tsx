@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Send, Paperclip, Mic, Square, X, Loader2, Trash2, Check, Ban, SlidersHorizontal } from 'lucide-react';
 import { compressImage } from '../lib/image';
-import { useVoiceRecorder, fmtSeconds } from '../lib/voice';
+import { useVoiceInput, fmtSeconds } from '../lib/voice';
+import { VoiceLive } from './VoiceLive';
 import { MiraIcon } from './icons/MiraIcon';
 import { ReadOnlyNotice } from './SubscriptionNotices';
 import { useSubscription } from '../lib/subscription';
@@ -173,13 +174,14 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
     }
   };
 
-  // Voice notes are converted to WAV in the browser (see lib/voice.ts) —
-  // Chrome records webm, which the AI side doesn't accept.
-  const voice = useVoiceRecorder(
-    ({ dataUrl, seconds }) => setPendingAttachment({ kind: 'audio', dataUrl, durationSec: seconds }),
-    (message) => setMessages((m) => [...m, { id: crypto.randomUUID(), from: 'mira', error: true, text: message }]),
-  );
-  const recording = voice.recording;
+  // Voice: live dictation goes into the message box (check, then send);
+  // browsers without it record a WAV voice note (see lib/voice.ts).
+  const voice = useVoiceInput({
+    onText: (t) => setText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)),
+    onAudio: ({ dataUrl, seconds }) => setPendingAttachment({ kind: 'audio', dataUrl, durationSec: seconds }),
+    onError: (message) => setMessages((m) => [...m, { id: crypto.randomUUID(), from: 'mira', error: true, text: message }]),
+  });
+  const recording = voice.busy;
   const sub = useSubscription();
   const startRecording = voice.start;
   const stopRecording = voice.stop;
@@ -378,13 +380,14 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
           </div>
         )}
 
-        <div className="mirac-bar">
+        {voice.busy && <div style={{ marginBottom: 8 }}><VoiceLive voice={voice} /></div>}
+        <div className="mirac-bar" style={voice.busy ? { display: 'none' } : undefined}>
           <button className="mirac-icon-btn" title="Lampirkan foto" onClick={() => fileInputRef.current?.click()} disabled={recording}>
             <Paperclip size={16} />
           </button>
           <button
             className={`mirac-icon-btn${recording ? ' recording' : ''}`}
-            title={recording ? 'Berhenti merekam' : 'Rekam voice note'}
+            title={recording ? 'Selesai ngomong' : 'Ngomong ke MIRA'}
             onClick={recording ? stopRecording : startRecording}
           >
             {recording ? <Square size={14} /> : <Mic size={16} />}
@@ -394,14 +397,14 @@ export function MiraChat({ onClose }: { onClose?: () => void } = {}) {
             ref={textareaRef}
             className="mirac-input"
             rows={1}
-            placeholder={recording ? `Merekam… ${fmtSec(voice.seconds)} — tap ■ kalau udah` : voice.preparing ? 'Nyiapin voice note…' : 'Tulis pesan ke MIRA…'}
+            placeholder={recording ? `Lagi dengerin… ${fmtSec(voice.seconds)}` : 'Tulis pesan ke MIRA…'}
             value={text}
             disabled={recording}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
           />
 
-          <button className="mirac-send-btn" onClick={handleSend} disabled={sending || recording || voice.preparing || (!text.trim() && !pendingAttachment)}>
+          <button className="mirac-send-btn" onClick={handleSend} disabled={sending || recording || (!text.trim() && !pendingAttachment)}>
             {sending ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
           </button>
         </div>

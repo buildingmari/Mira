@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Share2, Lock, Send, Trash2, Mic, Square,
+  Camera, Sparkles, Pencil, Plus, X, Check, Loader2, Share2, Lock, Send, Trash2, Mic,
 } from 'lucide-react';
 import { compressImage } from '../../lib/image';
-import { useVoiceRecorder, fmtSeconds, type VoiceNote } from '../../lib/voice';
+import { useVoiceInput, fmtSeconds, type VoiceNote } from '../../lib/voice';
+import { VoiceLive } from '../../components/VoiceLive';
 import { SPLIT_PREFILL_KEY } from '../../components/MiraChat';
 import { MiraIcon } from '../../components/icons/MiraIcon';
 import { ReadOnlyNotice } from '../../components/SubscriptionNotices';
-import { requireActive } from '../../lib/subscription';
+import { AmountInput, Sheet } from '../../components/Sheet';
+import { isReadOnlyError, openRenewSheet, requireActive } from '../../lib/subscription';
 
 const SUPA_URL  = 'https://vhwissutkmxyzlyzkhyt.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZod2lzc3V0a214eXpseXpraHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0ODIxMTksImV4cCI6MjA4NzA1ODExOX0.pKVqCkDv8bsaMCPJSsjFx0pYTVN5FPg0KFyoKz4kLM0';
@@ -221,6 +223,15 @@ const CSS = `
   .sb-row:last-child { border-bottom:none; }
   .sb-pill { font-size:11px; font-weight:600; padding:3px 8px; border-radius:99px; }
   .sb-empty { padding:22px 18px; text-align:center; color:#9CA3AF; font-size:13px; }
+  .sb-ptabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; margin:10px 18px 4px; background:#F1F5F9; border-radius:12px; padding:3px; }
+  .sb-ptabs button { border:0; background:transparent; border-radius:9px; padding:8px; font:600 12.5px 'DM Sans',sans-serif; color:#64748B; cursor:pointer; }
+  .sb-ptabs button.on { background:#fff; color:#111827; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+  .sb-row-tap { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .sb-row-tap:hover { background:#F8F9FB; }
+  .dark .sb-ptabs { background:#0F172A; }
+  .dark .sb-ptabs button { color:#94A3B8; }
+  .dark .sb-ptabs button.on { background:#334155; color:#F1F5F9; }
+  .dark .sb-row-tap:hover { background:rgba(255,255,255,.04); }
   .sb-spin { animation: sb-spin .8s linear infinite; }
   @keyframes sb-spin { to { transform: rotate(360deg); } }
   @media (max-width: 900px) {
@@ -234,7 +245,15 @@ const CSS = `
 
 type InputTab = 'scan' | 'ai' | 'manual';
 
-interface PiutangRow { id: string; name: string; value: number; created_at?: string }
+interface PiutangRow { id: string; name: string; value: number; created_at?: string; updated_date?: string }
+interface SettledRow { id: string; name: string; amount: number; settled_at: string; opened_on?: string | null; split_bill_id?: string | null }
+type PiutangSheetState = { kind: 'new' } | { kind: 'active'; row: PiutangRow } | { kind: 'settled'; row: SettledRow };
+
+/** "Piutang Budi (Solaria)" → { friend: 'Budi', note: 'Solaria' } (the WhatsApp flow's naming). */
+const splitPiutangName = (name: string) => {
+  const m = /^Piutang (.+?) \((.+)\)$/.exec(name || '') || /^Piutang (.+)$/.exec(name || '');
+  return m ? { friend: m[1].trim(), note: (m[2] || '').trim() } : { friend: (name || '').trim(), note: '' };
+};
 interface SplitRow {
   id: string; merchant: string; date: string; total: number; source: string; created_at: string;
   participants: Participant[];
@@ -248,7 +267,19 @@ export function DashboardSplitBill() {
   const [note, setNote] = useState('');
   const [story, setStory] = useState('');
   const [voiceNote, setVoiceNote] = useState<VoiceNote | null>(null);
-  const voice = useVoiceRecorder((n) => { setVoiceNote(n); setErr(null); }, (m) => setErr(m));
+  // Live dictation lands in the text box of the open tab (scan: who joined,
+  // story: the whole story); without it, a voice note MIRA transcribes.
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  const voice = useVoiceInput({
+    onText: (t) => {
+      const add = (prev: string) => (prev.trim() ? `${prev.trim()} ${t}` : t);
+      if (tabRef.current === 'scan') setNote(add); else setStory(add);
+      setErr(null);
+    },
+    onAudio: (n) => { setVoiceNote(n); setErr(null); },
+    onError: (m) => setErr(m),
+  });
   const [aiEdit, setAiEdit] = useState('');
   const [newFriend, setNewFriend] = useState('');
   const [editingFixed, setEditingFixed] = useState<string | null>(null);
@@ -257,6 +288,9 @@ export function DashboardSplitBill() {
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ message: string; draft: Draft } | null>(null);
   const [piutang, setPiutang] = useState<PiutangRow[]>([]);
+  const [settled, setSettled] = useState<SettledRow[]>([]);
+  const [piutangTab, setPiutangTab] = useState<'aktif' | 'lunas'>('aktif');
+  const [piutangSheet, setPiutangSheet] = useState<PiutangSheetState | null>(null);
   const [history, setHistory] = useState<SplitRow[]>([]);
   const [settling, setSettling] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -286,11 +320,11 @@ export function DashboardSplitBill() {
     const phone = localStorage.getItem('mira_phone') || '';
     if (!phone) return;
     try {
-      const [pRes, hRes] = await Promise.all([
-        fetch(`${SUPA_URL}/rest/v1/user_assets?phone_number=eq.${phone}&category=eq.piutang&select=id,name,value,created_at&order=created_at.desc`, { headers: HR }),
+      const [pList, hRes] = await Promise.all([
+        callTools<{ active: PiutangRow[]; settled: SettledRow[] }>({ op: 'piutang_list' }).catch(() => null),
         fetch(`${SUPA_URL}/rest/v1/split_bills?phone_number=eq.${phone}&select=id,merchant,date,total,source,created_at,participants&order=created_at.desc&limit=20`, { headers: HR }),
       ]);
-      if (pRes.ok) setPiutang(await pRes.json());
+      if (pList) { setPiutang(pList.active); setSettled(pList.settled); }
       if (hRes.ok) setHistory(await hRes.json());
     } catch {}
   }, []);
@@ -325,23 +359,18 @@ export function DashboardSplitBill() {
     }
   };
 
-  /** Mic button + status chip for telling MIRA who had what by voice. */
-  const voiceControl = (
+  /** Mic button (live text while talking) for telling MIRA who had what. */
+  const voiceControl = voice.busy ? (
+    <div style={{ marginTop: 8 }}><VoiceLive voice={voice} hint="Teksnya masuk ke kolom di atas — cek dulu sebelum dibagi." /></div>
+  ) : (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-      <button
-        className="sb-btn light"
-        style={{ height: 38, padding: '0 12px', fontSize: 13, ...(voice.recording ? { background: '#FEE2E2', color: '#DC2626' } : {}) }}
-        onClick={voice.recording ? voice.stop : voice.start}
-        disabled={busy === 'parse' || voice.preparing}
-      >
-        {voice.recording ? <><Square size={13} /> Stop {fmtSeconds(voice.seconds)}</> : <><Mic size={15} /> {voiceNote ? 'Rekam ulang' : 'Rekam suara'}</>}
+      <button className="sb-btn light" style={{ height: 38, padding: '0 12px', fontSize: 13 }} onClick={voice.start} disabled={busy === 'parse'}>
+        <Mic size={15} /> Ngomong aja
       </button>
       <span style={{ fontSize: 12, color: '#6B7280', flex: 1 }}>
-        {voice.recording ? 'Ceritain siapa aja & siapa makan apa…'
-          : voice.preparing ? 'Nyiapin voice note…'
-          : voiceNote ? `Voice note ${fmtSeconds(voiceNote.seconds)} siap` : 'atau ceritain pakai suara'}
+        {voiceNote ? `Voice note ${fmtSeconds(voiceNote.seconds)} siap` : 'ceritain pakai suara — teksnya muncul langsung'}
       </span>
-      {voiceNote && !voice.recording && (
+      {voiceNote && (
         <button className="sb-icon" onClick={() => setVoiceNote(null)} title="Hapus voice note"><X size={15} /></button>
       )}
     </div>
@@ -529,7 +558,7 @@ export function DashboardSplitBill() {
                     placeholder='Misal: "sama Budi & Adi. Gua nasi goreng, Budi mie ayam, es teh buat semua"' />
                   {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
-                    disabled={!photo || busy === 'parse' || voice.recording || voice.preparing}
+                    disabled={!photo || busy === 'parse' || voice.busy}
                     onClick={() => photo && parse({ image_base64: photo, text: note.trim() || undefined, audio_base64: voiceNote?.dataUrl })}>
                     {busy === 'parse' ? <><Loader2 size={16} className="sb-spin" /> MIRA lagi baca struk…</> : <><Sparkles size={16} /> Bagi pakai MIRA</>}
                   </button>
@@ -542,7 +571,7 @@ export function DashboardSplitBill() {
                     placeholder='Contoh: "Makan di Solaria 156rb bertiga sama Budi & Adi. Gua nasi goreng 35rb, Budi mie ayam 30rb, Adi ayam bakar 45rb, es teh 3 buat semua. Adi bayar 50rb aja."' />
                   {voiceControl}
                   <button className="sb-btn primary" style={{ width: '100%', marginTop: 10 }}
-                    disabled={(!story.trim() && !voiceNote) || busy === 'parse' || voice.recording || voice.preparing}
+                    disabled={(!story.trim() && !voiceNote) || busy === 'parse' || voice.busy}
                     onClick={() => parse({ text: story.trim() || undefined, audio_base64: voiceNote?.dataUrl })}>
                     {busy === 'parse' ? <><Loader2 size={16} className="sb-spin" /> MIRA lagi ngitung…</> : <><Sparkles size={16} /> Bagi pakai MIRA</>}
                   </button>
@@ -748,31 +777,61 @@ export function DashboardSplitBill() {
         </div>
       )}
 
-      {/* ── Active piutang ── */}
+      {/* ── Piutang: aktif & lunas, all editable ── */}
       <div className="sb-card">
         <div className="sb-card-hd">
-          <h3><MiraIcon name="money-bag" size={28} /> Piutang aktif</h3>
-          {piutang.length > 0 && <span style={{ fontFamily: "'Sora',sans-serif", fontWeight: 700, fontSize: 14, color: '#D97706' }}>{fmt(piutangTotal)}</span>}
+          <h3><MiraIcon name="money-bag" size={28} /> Piutang</h3>
+          <button className="sb-mini on" onClick={() => requireActive('Catat piutang butuh langganan aktif.') && setPiutangSheet({ kind: 'new' })}>
+            <Plus size={12} style={{ marginRight: 3 }} />Tambah
+          </button>
         </div>
-        {piutang.length === 0 ? (
-          <div className="sb-empty">Belum ada yang ngutang. Aman!</div>
-        ) : piutang.map((row) => {
-          const m = /^Piutang (.+) \((.+)\)$/.exec(row.name || '');
-          return (
-            <div className="sb-row" key={row.id}>
-              <div className="sb-avatar" style={{ background: '#FFFBEB', color: '#D97706' }}>{(m ? m[1] : row.name).charAt(0).toUpperCase()}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{m ? m[1] : row.name}</div>
-                <div style={{ fontSize: 11.5, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m ? m[2] : ''}</div>
+        <div className="sb-ptabs">
+          <button className={piutangTab === 'aktif' ? 'on' : ''} onClick={() => setPiutangTab('aktif')}>
+            Aktif · {fmt(piutangTotal)}
+          </button>
+          <button className={piutangTab === 'lunas' ? 'on' : ''} onClick={() => setPiutangTab('lunas')}>
+            Lunas{settled.length ? ` · ${settled.length}` : ''}
+          </button>
+        </div>
+        {piutangTab === 'aktif' ? (
+          piutang.length === 0 ? <div className="sb-empty">Belum ada yang ngutang. Aman!</div> : piutang.map((row) => {
+            const n = splitPiutangName(row.name);
+            return (
+              <div className="sb-row sb-row-tap" key={row.id} role="button" tabIndex={0} onClick={() => setPiutangSheet({ kind: 'active', row })}>
+                <div className="sb-avatar" style={{ background: '#FFFBEB', color: '#D97706' }}>{n.friend.charAt(0).toUpperCase()}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{n.friend}</div>
+                  <div style={{ fontSize: 11.5, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[n.note, row.updated_date ? fmtDate(row.updated_date) : ''].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <span style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap' }}>{fmt(row.value)}</span>
+                <button className="sb-icon" title="Ingatkan teman (bagikan pesan)" onClick={(e) => { e.stopPropagation(); openWA(remindText(row)); }}><Send size={14} /></button>
+                <button className="sb-mini on" style={{ background: '#16A34A', borderColor: '#16A34A' }} disabled={settling === row.id}
+                  onClick={(e) => { e.stopPropagation(); void settle(row); }}>
+                  {settling === row.id ? <Loader2 size={12} className="sb-spin" /> : 'Lunas'}
+                </button>
               </div>
-              <span style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap' }}>{fmt(row.value)}</span>
-              <button className="sb-icon" title="Ingatkan lewat WhatsApp" onClick={() => openWA(remindText(row))}><Send size={14} /></button>
-              <button className="sb-mini on" style={{ background: '#16A34A', borderColor: '#16A34A' }} disabled={settling === row.id} onClick={() => settle(row)}>
-                {settling === row.id ? <Loader2 size={12} className="sb-spin" /> : 'Lunas'}
-              </button>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          settled.length === 0 ? <div className="sb-empty">Belum ada piutang yang lunas.</div> : settled.map((row) => {
+            const n = splitPiutangName(row.name);
+            return (
+              <div className="sb-row sb-row-tap" key={row.id} role="button" tabIndex={0} onClick={() => setPiutangSheet({ kind: 'settled', row })}>
+                <div className="sb-avatar" style={{ background: '#DCFCE7', color: '#15803D' }}><Check size={14} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{n.friend}</div>
+                  <div style={{ fontSize: 11.5, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[n.note, `lunas ${fmtDate(row.settled_at.slice(0, 10))}`].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <span style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap', color: '#15803D' }}>{fmt(row.amount)}</span>
+                <Pencil size={14} style={{ color: '#9CA3AF' }} />
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* ── History ── */}
@@ -804,6 +863,107 @@ export function DashboardSplitBill() {
           );
         })}
       </div>
+
+      {piutangSheet && (
+        <PiutangSheet state={piutangSheet} onClose={() => setPiutangSheet(null)}
+          onChanged={async () => { await loadLists(); setPiutangSheet(null); window.dispatchEvent(new CustomEvent('mira:tx-added')); }} />
+      )}
     </div>
+  );
+}
+
+/* ── Add / edit a piutang (active or lunas) ───────────────────────── */
+
+function PiutangSheet({ state, onClose, onChanged }: {
+  state: PiutangSheetState; onClose: () => void; onChanged: () => Promise<void>;
+}) {
+  const init = state.kind === 'new' ? { friend: '', note: '' } : splitPiutangName(state.row.name);
+  const [friend, setFriend] = useState(init.friend);
+  const [note, setNote] = useState(init.note);
+  const [amount, setAmount] = useState(state.kind === 'active' ? num(state.row.value) : state.kind === 'settled' ? num(state.row.amount) : 0);
+  const [settledOn, setSettledOn] = useState(state.kind === 'settled' ? state.row.settled_at.slice(0, 10) : '');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [confirmDel, setConfirmDel] = useState(false);
+
+  const run = async (body: Record<string, unknown>, guardMsg: string) => {
+    if (!requireActive(guardMsg)) return;
+    setBusy(true); setErr('');
+    try { await callTools(body); await onChanged(); }
+    catch (e: any) {
+      if (isReadOnlyError(e?.message)) { onClose(); openRenewSheet('Langganan kamu baru saja berakhir.'); return; }
+      setErr(e?.message || 'Gagal menyimpan. Coba lagi ya.'); setBusy(false);
+    }
+  };
+
+  const save = () => {
+    if (!friend.trim()) { setErr('Isi nama temannya.'); return; }
+    if (amount <= 0) { setErr('Isi nominalnya.'); return; }
+    if (state.kind === 'new') return run({ op: 'piutang_add', friend, note, amount }, 'Catat piutang butuh langganan aktif.');
+    if (state.kind === 'active') return run({ op: 'piutang_update', asset_id: state.row.id, friend, note, amount }, 'Ubah piutang butuh langganan aktif.');
+    return run({ op: 'piutang_history_update', history_id: state.row.id, friend, note, amount, settled_on: settledOn }, 'Ubah piutang butuh langganan aktif.');
+  };
+
+  const title = state.kind === 'new' ? 'Catat piutang' : state.kind === 'active' ? 'Piutang aktif' : 'Piutang lunas';
+  return (
+    <Sheet title={title} onClose={onClose} busy={busy}>
+      <div className="msh-two msh-field">
+        <div>
+          <span className="msh-label">Nama teman</span>
+          <input className="msh-input" placeholder="Misal: Budi" value={friend} onChange={(e) => setFriend(e.target.value)} />
+        </div>
+        <div>
+          <span className="msh-label">Untuk apa</span>
+          <input className="msh-input" placeholder="Misal: Solaria" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+      </div>
+      <div className="msh-field">
+        <span className="msh-label">Nominal</span>
+        <AmountInput value={amount} onChange={setAmount} />
+      </div>
+      {state.kind === 'settled' && (
+        <div className="msh-field">
+          <span className="msh-label">Tanggal lunas</span>
+          <input className="msh-input" type="date" value={settledOn} onChange={(e) => setSettledOn(e.target.value)} />
+        </div>
+      )}
+      {err && <div className="msh-err">{err}</div>}
+
+      {confirmDel ? (
+        <>
+          <div className="msh-confirm">
+            <strong>Hapus piutang ini?</strong> {state.kind === 'settled' ? 'Catatan lunasnya hilang dari riwayat.' : 'Dihapus dari daftar piutang dan Aset (pengingat tagihnya ikut dimatikan).'}
+          </div>
+          <div className="msh-btns">
+            <button className="msh-btn ghost" onClick={() => setConfirmDel(false)} disabled={busy}>Batal</button>
+            <button className="msh-btn danger-solid" disabled={busy}
+              onClick={() => void run(state.kind === 'settled' ? { op: 'piutang_history_delete', history_id: state.row.id } : { op: 'piutang_delete', asset_id: (state as { row: PiutangRow }).row.id }, 'Hapus piutang butuh langganan aktif.')}>
+              {busy ? 'Menghapus…' : 'Ya, hapus'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="msh-btns">
+            <button className="msh-btn ghost" onClick={onClose} disabled={busy}>Batal</button>
+            <button className="msh-btn primary" onClick={() => void save()} disabled={busy}>{busy ? 'Menyimpan…' : 'Simpan'}</button>
+          </div>
+          {state.kind !== 'new' && (
+            <div className="msh-btns" style={{ marginTop: 10 }}>
+              {state.kind === 'active' ? (
+                <button className="msh-btn green" disabled={busy} onClick={() => void run({ op: 'settle_piutang', asset_id: state.row.id }, 'Tandai lunas butuh langganan aktif.')}>
+                  <Check size={16} />Tandai lunas
+                </button>
+              ) : (
+                <button className="msh-btn ghost" disabled={busy} onClick={() => void run({ op: 'piutang_reopen', history_id: state.row.id }, 'Ubah piutang butuh langganan aktif.')}>
+                  Batal lunas
+                </button>
+              )}
+              <button className="msh-btn danger" disabled={busy} onClick={() => setConfirmDel(true)}><Trash2 size={16} />Hapus</button>
+            </div>
+          )}
+        </>
+      )}
+    </Sheet>
   );
 }
